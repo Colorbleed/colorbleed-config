@@ -4,6 +4,7 @@ from maya import cmds
 import pyblish.api
 
 from avalon import maya, api
+from colorbleed.maya import lib
 
 
 class CollectMindbenderMayaRenderlayers(pyblish.api.ContextPlugin):
@@ -28,6 +29,7 @@ class CollectMindbenderMayaRenderlayers(pyblish.api.ContextPlugin):
             if layer.endswith("defaultRenderLayer"):
                 continue
 
+            layername = layer.split("rs_", 1)[-1]
             data = {"family": "Render Layers",
                     "families": ["colorbleed.renderlayer"],
                     "publish": cmds.getAttr("{}.renderable".format(layer)),
@@ -35,16 +37,22 @@ class CollectMindbenderMayaRenderlayers(pyblish.api.ContextPlugin):
                     "startFrame": self.get_render_attribute("startFrame"),
                     "endFrame": self.get_render_attribute("endFrame"),
                     "byFrameStep": self.get_render_attribute("byFrameStep"),
-                    "renderer": self.get_render_attribute("currentRenderer"),
+                    "renderer": lib.get_renderer(layer),
 
                     # instance subset
                     "asset": asset_name,
-                    "subset": layer,
+                    "subset": layername,
                     "setMembers": layer,
 
                     "time": api.time(),
                     "author": context.data["user"],
                     "source": source_file}
+
+            # Include a subfamily for the renderer so we can target specific
+            # validators for specific renderers
+            data['families'].append(
+                "colorbleed.renderlayer.{}".format(data['renderer'])
+            )
 
             # Apply each user defined attribute as data
             for attr in cmds.listAttr(layer, userDefined=True) or list():
@@ -69,7 +77,7 @@ class CollectMindbenderMayaRenderlayers(pyblish.api.ContextPlugin):
                 _globals = maya.read(avalon_globals)
                 data["renderGlobals"] = self.get_global_overrides(_globals)
 
-            instance = context.create_instance(layer)
+            instance = context.create_instance(layername)
             instance.data.update(data)
 
     def get_render_attribute(self, attr):
