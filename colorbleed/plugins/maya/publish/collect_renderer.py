@@ -13,8 +13,7 @@ class CollectRenderer(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
-        renderlayer_node = instance.name
-        renderer = lib.get_renderer(renderlayer_node)
+        renderer = lib.get_renderer(instance.data["setMembers"])
         renderer_family = "colorbleed.renderer.{}".format(renderer)
         instance.data['families'].append(renderer_family)
         instance.data['renderer'] = renderer
