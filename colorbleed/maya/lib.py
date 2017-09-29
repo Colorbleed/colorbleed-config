@@ -275,6 +275,11 @@ def collect_animation_data():
     return data
 
 
+def get_renderer(renderlayer):
+    cmds.editRenderLayerGlobals(currenRenderLayer=renderlayer)
+    return cmds.getAttr("defaultRenderGlobals.currentRenderer")
+
+
 def get_current_renderlayer():
     return cmds.editRenderLayerGlobals(query=True, currentRenderLayer=True)
 
