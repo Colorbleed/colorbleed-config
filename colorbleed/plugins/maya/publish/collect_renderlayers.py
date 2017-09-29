@@ -4,6 +4,7 @@ from maya import cmds
 import pyblish.api
 
 from avalon import maya, api
+from colorbleed.maya import lib
 
 
 class CollectMindbenderMayaRenderlayers(pyblish.api.ContextPlugin):
@@ -27,6 +28,7 @@ class CollectMindbenderMayaRenderlayers(pyblish.api.ContextPlugin):
         for layer in renderlayers:
             if layer.endswith("defaultRenderLayer"):
                 continue
+
             layername = layer.split("rs_", 1)[-1]
             data = {"family": "Render Layers",
                     "families": ["colorbleed.renderlayer"],
@@ -35,7 +37,7 @@ class CollectMindbenderMayaRenderlayers(pyblish.api.ContextPlugin):
                     "startFrame": self.get_render_attribute("startFrame"),
                     "endFrame": self.get_render_attribute("endFrame"),
                     "byFrameStep": self.get_render_attribute("byFrameStep"),
-                    "renderer": self.get_render_attribute("currentRenderer"),
+                    "renderer": lib.get_renderer(layer),
 
                     # instance subset
                     "asset": asset_name,
@@ -45,6 +47,12 @@ class CollectMindbenderMayaRenderlayers(pyblish.api.ContextPlugin):
                     "time": api.time(),
                     "author": context.data["user"],
                     "source": source_file}
+
+            # Include a subfamily for the renderer so we can target specific
+            # validators for specific renderers
+            data['families'].append(
+                "colorbleed.renderlayer.{}".format(data['renderer'])
+            )
 
             # Apply each user defined attribute as data
             for attr in cmds.listAttr(layer, userDefined=True) or list():
