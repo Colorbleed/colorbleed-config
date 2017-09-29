@@ -106,6 +106,18 @@ def _maintained_selection_context():
                         noExpand=True)
 
 
+@contextlib.contextmanager
+def current_renderlayer(layer):
+    """Set the renderlayer during the context"""
+
+    original = cmds.editRenderLayerGlobals(query=True, currentRenderLayer=True)
+    try:
+        cmds.editRenderLayerGlobals(currentRenderLayer=layer)
+        yield
+    finally:
+        cmds.editRenderLayerGlobals(currentRenderLayer=original)
+
+
 def unique(name):
     assert isinstance(name, basestring), "`name` must be string"
 
@@ -276,7 +288,7 @@ def collect_animation_data():
 
 
 def get_renderer(renderlayer):
-    cmds.editRenderLayerGlobals(currentRenderLayer=renderlayer)
+    current_renderlayer(renderlayer)
     return cmds.getAttr("defaultRenderGlobals.currentRenderer")
 
 
