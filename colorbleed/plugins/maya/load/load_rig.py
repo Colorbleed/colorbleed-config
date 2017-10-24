@@ -1,9 +1,11 @@
 from maya import cmds
 
+import colorbleed.maya.plugin
 from avalon import api, Session, maya
 
 
 class RigLoader(maya.pipeline.ReferenceLoader):
+
     """Specific loader for rigs
 
     This automatically creates an instance for animators upon load.
@@ -18,7 +20,7 @@ class RigLoader(maya.pipeline.ReferenceLoader):
     icon = "code-fork"
     color = "orange"
 
-    def process(self, name, namespace, context, data):
+    def process_reference(self, context, name, namespace, data):
 
         nodes = cmds.file(self.fname,
                           namespace=namespace,
@@ -31,6 +33,8 @@ class RigLoader(maya.pipeline.ReferenceLoader):
         self[:] = nodes
         if data.get("post_process", True):
             self._post_process(name, namespace, context, data)
+
+        return nodes
 
     def _post_process(self, name, namespace, context, data):
 
