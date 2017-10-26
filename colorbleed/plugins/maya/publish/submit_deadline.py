@@ -39,6 +39,13 @@ def get_renderer_variables(renderlayer=None):
         # Maya's renderSettings function does not resolved V-Ray extension
         # Getting the extension for VRay settings node
         extension = cmds.getAttr("vraySettings.imageFormatStr")
+
+        # When V-Ray image format has not been switched once from default .png
+        # the getAttr command above returns None. As such we explicitly set
+        # it to `.png`
+        if extension is None:
+            extension = "png"
+
         filename_prefix = "<Scene>/<Scene>_<Layer>/<Layer>"
     else:
         # Get the extension, getAttr defaultRenderGlobals.imageFormat
@@ -79,23 +86,35 @@ class MindbenderSubmitDeadline(pyblish.api.InstancePlugin):
         fname = os.path.basename(fpath)
         comment = context.data.get("comment", "")
         scene = os.path.splitext(fname)[0]
+        # Get image rule from workspace
         dirname = os.path.join(workspace, "renders")
         renderlayer = instance.data['setMembers']       # rs_beauty
         renderlayer_name = instance.name                # beauty
-
-        try:
-            os.makedirs(dirname)
-        except OSError:
-            pass
+        deadline_user = context.data.get("deadlineUser", getpass.getuser())
+        jobname = "%s - %s" % (fname, instance.name)
 
         # Get the variables depending on the renderer
+        # Following hardcoded "renders/<Scene>/<Scene>_<Layer>/<Layer>"
         render_variables = get_renderer_variables(renderlayer)
-        # following hardcoded "renders/<Scene>/<Scene>_<Layer>/<Layer>"
         output_filename_0 = self.preview_fname(scene,
                                                renderlayer_name,
                                                dirname,
                                                render_variables["padding"],
                                                render_variables["ext"])
+
+        # Get parent folder of render output
+        render_folder = os.path.dirname(output_filename_0)
+
+        try:
+            # Ensure folders exists
+            os.makedirs(render_folder)
+        except OSError:
+            pass
+
+        # Get the folder name, this will be the name of the metadata file
+        json_fname = os.path.basename(render_folder)
+        json_fpath = os.path.join(os.path.dirname(render_folder),
+                                  "{}.json".format(json_fname))
 
         # E.g. http://192.168.0.1:8082/api/jobs
         url = "{}/api/jobs".format(AVALON_DEADLINE)
@@ -110,10 +129,10 @@ class MindbenderSubmitDeadline(pyblish.api.InstancePlugin):
                 "BatchName": fname,
 
                 # Job name, as seen in Monitor
-                "Name": "%s - %s" % (fname, instance.name),
+                "Name": jobname,
 
                 # Arbitrary username, for visualisation in Monitor
-                "UserName": getpass.getuser(),
+                "UserName": deadline_user,
 
                 "Plugin": "MayaBatch",
                 "Frames": "{start}-{end}x{step}".format(
@@ -184,21 +203,28 @@ class MindbenderSubmitDeadline(pyblish.api.InstancePlugin):
         self.log.info(json.dumps(payload, indent=4, sort_keys=True))
 
         response = requests.post(url, json=payload)
-
         if response.ok:
+            # TODO: REN-11 Implement auto publish logic here as depending job
             # Write metadata for publish
-            fname = os.path.join(dirname, "{}.json".format(instance.name))
+            render_job = response.json()
             data = {
                 "submission": payload,
                 "session": api.Session,
                 "instance": instance.data,
-                "jobs": [
-                    response.json()
-                ],
+                "jobs": [render_job],
             }
 
-            with open(fname, "w") as f:
+            with open(json_fpath, "w") as f:
                 json.dump(data, f, indent=4, sort_keys=True)
+
+            publish_job = self.create_publish_job(fname,
+                                                  deadline_user,
+                                                  comment,
+                                                  jobname,
+                                                  render_job,
+                                                  json_fpath)
+            if not publish_job:
+                self.log.error("Could not submit publish job!")
 
         else:
             try:
@@ -253,3 +279,49 @@ class MindbenderSubmitDeadline(pyblish.api.InstancePlugin):
                 "%f=%d was rounded off to nearest integer"
                 % (value, int(value))
             )
+
+    def create_publish_job(self, fname, user, comment, jobname,
+                           job, json_fpath):
+        """
+        Make sure all frames are published
+        Args:
+            job (dict): the render job data
+            json_fpath (str): file path to json file
+
+        Returns:
+
+        """
+
+        url = "{}/api/jobs".format(api.Session["AVALON_DEADLINE"])
+        try:
+            from colorbleed.scripts import publish_imagesequence
+        except Exception as e:
+            raise RuntimeError("Expected module 'publish_imagesequence'"
+                               "to be available")
+
+        payload = {
+            "JobInfo": {
+                "Plugin": "Python",
+                "BatchName": fname,
+                "Name": "{} [publish]".format(jobname),
+                "JobType": "Normal",
+                "JobDependency0": job["_id"],
+                "UserName": user,
+                "Comment": comment,
+            },
+            "PluginInfo": {
+                "Version": "3.6",
+                "ScriptFile": publish_imagesequence.__file__,
+                "Arguments": "--path {}".format(json_fpath),
+                "SingleFrameOnly": "True"
+            },
+
+            # Mandatory for Deadline, may be empty
+            "AuxFiles": []
+        }
+
+        response = requests.post(url, json=payload)
+        if not response.ok:
+            return
+
+        return payload
