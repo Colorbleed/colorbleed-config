@@ -1,3 +1,18 @@
+"""
+This module is used for command line publishing of image sequences.
+Due to its early intergration this module might change location within the
+config. It is also subject to change
+
+Contributors:
+    Roy Nieterau
+    Wijnand Koreman
+
+Dependencies:
+    Avalon
+    Pyblish
+
+"""
+
 import os
 import sys
 import json
@@ -9,7 +24,7 @@ log.setLevel(logging.DEBUG)
 
 
 def publish_data(json_file):
-    """Open the explorer in the work folder of the job
+    """Publish rendered image sequences based on the job data
 
     Args:
         json_file (str): the json file of the data dump of the submitted job
