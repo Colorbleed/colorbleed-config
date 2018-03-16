@@ -159,3 +159,7 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
         response = requests.post(url, json=payload)
         if not response.ok:
             raise Exception(response.text)
+
+        # Temporary key name, deadlineSubmissionJob was already taken
+        if instance.data("runSlapComp", False):
+            instance.data["deadlineDependJob"] = response.json()
