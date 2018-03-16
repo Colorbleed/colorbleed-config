@@ -165,7 +165,7 @@ def submit_deadline():
         sys.exit(2)
 
 
-def switch(asset_name, file_path=None, new=True, deadline=True):
+def switch(file_path=None, asset_name=None, new=True, deadline=True):
     """Switch the current containers of the file to the other asset (shot)
 
     Args:
@@ -178,6 +178,8 @@ def switch(asset_name, file_path=None, new=True, deadline=True):
         comp path (str): new filepath of the updated comp
 
     """
+
+    assert asset_name, "Function requires at least an asset name"
 
     # Ensure filename is absolute
     if not os.path.abspath(file_path):
@@ -274,6 +276,8 @@ if __name__ == '__main__':
     args, unknown = parser.parse_args()
 
     api.install(avalon.fusion)
-    switch(args.asset_name, args.file_path, deadline=args.render)
+    switch(file_path=args.file_path,
+           asset_name=args.asset_name,
+           deadline=args.render)
 
     sys.exit(0)
