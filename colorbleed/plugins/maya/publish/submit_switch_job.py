@@ -1,4 +1,5 @@
 import os
+import pprint
 
 from avalon import api
 from avalon.vendor import requests
@@ -21,7 +22,7 @@ def _get_script():
     return module_path
 
 
-class SubmitDependentSwitchJobDeadline(pyblish.api.InstancePlugin):
+class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
     """Run Switch Shot on specified comp as depending job
 
     """
@@ -31,13 +32,18 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     families = ["colorbleed.renderlayer"]
 
-    def process(self, instance):
+    def process(self, context):
+
+        instance = context[0]
 
         AVALON_DEADLINE = api.Session.get("AVALON_DEADLINE",
                                           "http://localhost:8082")
         assert AVALON_DEADLINE, "Requires AVALON_DEADLINE"
 
-        job = instance.data.get("deadlineDependJob", {})
+        job = instance.data.get("deadlineDependJob", None)
+        if not job:
+            self.log.warning("No dependent Job found")
+            return True
 
         filepath = instance.data("flowFile", "")
         if not filepath:
@@ -52,19 +58,21 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.InstancePlugin):
 
         payload = {
             "JobInfo": {
-                "BatchName": payload_name,
+                "Plugin": "Python",
+                "BatchName": job["Props"]["Batch"],
                 "Name": payload_name,
                 "JobType": "Normal",
                 "JobDependency0": job["_id"],
                 "UserName": job["Props"]["User"],
                 "Comment": comment,
-                "InitialStatus": "Pending"},
+                "InitialStatus": "Suspended"},
             "PluginInfo": {
                 "Version": "3.6",
                 "ScriptFile": _get_script(),
                 "Arguments": args,
                 "SingleFrameOnly": "True"
-            }
+            },
+            "AuxFiles": []
         }
 
         session = {}
@@ -79,3 +87,9 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.InstancePlugin):
         response = requests.post(url, json=payload)
         if not response.ok:
             raise Exception(response.text)
+
+        # Temporary key name, deadlineSubmissionJob was already taken
+        if instance.data("runSlapComp", False):
+            instance.data["deadlineDependJob"] = response.json()
+
+        self.log.info("Slap comp arguments: %s" % args)
