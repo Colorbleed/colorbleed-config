@@ -16,9 +16,6 @@ log = logging.getLogger("Update Slap Comp")
 self = sys.modules[__name__]
 self._project = None
 
-error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
-FUSION_EXE = "C:/Program File/Blackmagic Design/Fusion 9/Fusion.exe"
-
 
 def get_fusion_instance():
     fusion = getattr(sys.modules["__main__"], "fusion", None)
@@ -47,16 +44,14 @@ def format_version_folder(folder):
 
     new_version = 1
     if os.path.isdir(folder):
-        re_version = re.compile("v\d+$")
-        versions = [i for i in os.listdir(folder) if os.path.isdir(i)
-                    and re_version.match(i)]
+        re_version = re.compile("v\d+")
+        versions = [i for i in os.listdir(folder) if re_version.match(i)
+                    and os.path.isdir(os.path.join(folder, i))]
         if versions:
             # ensure the "v" is not included
             new_version = int(max(versions)[1:]) + 1
 
-    version_folder = "v{:03d}".format(new_version)
-
-    return version_folder
+    return "v{:03d}".format(new_version)
 
 
 def get_work_folder(session):
@@ -147,8 +142,11 @@ def update_frame_range(comp, representations):
     fusion_lib.update_frame_range(start, end, comp=comp)
 
 
-def submit_deadline():
+# NOT FUSION RELATED
+def publish_local():
     """Work around method to ensure everything works with said context"""
+
+    error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
 
     import pyblish.util
     context = pyblish.util.publish()
@@ -250,7 +248,7 @@ def switch(file_path=None, asset_name=None, new=True, deadline=True):
 
         # Submit to deadline render + publish
         current_comp.SetData("colorbleed.rendermode", "deadline")
-        submit_deadline()
+        publish_local()
 
     return current_comp
 
