@@ -237,7 +237,7 @@ def switch(file_path=None, asset_name=None, new=True, deadline=True):
             log.warning("Nothing collected.")
             sys.exit(1)
 
-        # Collect errors, {plugin name: error}
+        # Collect errors, {plugin name: error}, if any
         error_results = [r for r in context.data["results"] if r["error"]]
         if error_results:
             log.error(" Errors occurred ...")
@@ -246,35 +246,3 @@ def switch(file_path=None, asset_name=None, new=True, deadline=True):
             sys.exit(2)
 
     return current_comp
-
-
-# Usability for deadline job submission
-if __name__ == '__main__':
-
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Switch to a shot within an"
-                                                 "existing comp file")
-
-    parser.add_argument("--file_path",
-                        type=str,
-                        default=True,
-                        help="File path of the comp to use")
-
-    parser.add_argument("--asset_name",
-                        type=str,
-                        default=True,
-                        help="Name of the asset (shot) to switch")
-
-    parser.add_argument("--render",
-                        default=False,
-                        help="If set True the new composition file will be used"
-                             "to render")
-
-    args = parser.parse_args()
-
-    switch(file_path=args.file_path,
-           asset_name=args.asset_name,
-           deadline=args.render)
-
-    sys.exit(0)
