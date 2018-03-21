@@ -16,8 +16,11 @@ log = logging.getLogger("Update Slap Comp")
 self = sys.modules[__name__]
 self._project = None
 
+error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
+
 
 def get_fusion_instance():
+    """Try to get an instance of Fusion"""
     fusion = getattr(sys.modules["__main__"], "fusion", None)
     if fusion is None:
         try:
@@ -54,16 +57,6 @@ def format_version_folder(folder):
     return "v{:03d}".format(new_version)
 
 
-def get_work_folder(session):
-    """Convenience function to get the work folder path of the current asset"""
-
-    # Get new filename, create path based on asset and work template
-    template_work = self._project["config"]["template"]["work"]
-    work_path = pipeline._format_work_template(template_work, session)
-
-    return os.path.normpath(work_path)
-
-
 def format_filepath(session):
 
     project = session["AVALON_PROJECT"]
@@ -88,6 +81,16 @@ def format_filepath(session):
         new_filepath = colorbleed.version_up(new_filepath)
 
     return new_filepath
+
+
+def get_work_folder(session):
+    """Convenience function to get the work folder path of the current asset"""
+
+    # Get new filename, create path based on asset and work template
+    template_work = self._project["config"]["template"]["work"]
+    work_path = pipeline._format_work_template(template_work, session)
+
+    return os.path.normpath(work_path)
 
 
 def update_savers(comp, session):
@@ -140,28 +143,6 @@ def update_frame_range(comp, representations):
     end = max(v["data"]["endFrame"] for v in versions)
 
     fusion_lib.update_frame_range(start, end, comp=comp)
-
-
-# NOT FUSION RELATED
-def publish_local():
-    """Work around method to ensure everything works with said context"""
-
-    error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
-
-    import pyblish.util
-    context = pyblish.util.publish()
-
-    if not context:
-        log.warning("Nothing collected.")
-        sys.exit(1)
-
-    # Collect errors, {plugin name: error}
-    error_results = [r for r in context.data["results"] if r["error"]]
-    if error_results:
-        log.error(" Errors occurred ...")
-        for result in error_results:
-            log.error(error_format.format(**result))
-        sys.exit(2)
 
 
 def switch(file_path=None, asset_name=None, new=True, deadline=True):
@@ -240,15 +221,29 @@ def switch(file_path=None, asset_name=None, new=True, deadline=True):
     current_comp.Print("\nUpdating frame range ..")
     update_frame_range(current_comp, representations)
 
+    # Save changes
     current_comp.Save(comp_path)
 
     if deadline:
         # Update session with correct asset name and comp path
         api.Session.update(**switch_to_session)
 
-        # Submit to deadline render + publish
+        # Set render mode to deadline
         current_comp.SetData("colorbleed.rendermode", "deadline")
-        publish_local()
+
+        # Run publisher
+        context = api.publish()
+        if not context:
+            log.warning("Nothing collected.")
+            sys.exit(1)
+
+        # Collect errors, {plugin name: error}
+        error_results = [r for r in context.data["results"] if r["error"]]
+        if error_results:
+            log.error(" Errors occurred ...")
+            for result in error_results:
+                log.error(error_format.format(**result))
+            sys.exit(2)
 
     return current_comp
 
