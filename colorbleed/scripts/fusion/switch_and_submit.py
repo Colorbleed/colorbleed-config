@@ -17,6 +17,7 @@ self = sys.modules[__name__]
 self._project = None
 
 error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
+FUSION_EXE = "C:/Program File/Blackmagic Design/Fusion 9/Fusion.exe"
 
 
 def get_fusion_instance():
@@ -25,7 +26,7 @@ def get_fusion_instance():
         try:
             # Support for FuScript.exe, BlackmagicFusion module for py2 only
             import BlackmagicFusion as bmf
-            fusion = bmf.scriptapp("Fusion")
+            fusion = bmf.scriptapp("Fusion", "localhost", 2)
         except ImportError:
             raise RuntimeError("Could not find a Fusion instance")
     return fusion
@@ -182,8 +183,11 @@ def switch(file_path=None, asset_name=None, new=True, deadline=True):
     assert asset_name, "Function requires at least an asset name"
 
     # Ensure filename is absolute
-    if not os.path.abspath(file_path):
+    if file_path:
         file_path = os.path.abspath(file_path)
+
+    api.install(avalon.fusion)
+    host = api.registered_host()
 
     # Get current project
     self._project = io.find_one({"type": "project",
@@ -194,16 +198,17 @@ def switch(file_path=None, asset_name=None, new=True, deadline=True):
     asset = io.find_one({"type": "asset", "name": asset_name})
     assert asset, "Could not find '%s' in the database" % asset_name
 
-    # Go to comp
     if not file_path:
+        # Assuming we use the current open comp
         current_comp = avalon.fusion.get_current_comp()
         assert current_comp is not None, "Could not find current comp"
+        file_path = current_comp.GetAttrs("COMPS_FileName")
     else:
         fusion = get_fusion_instance()
-        current_comp = fusion.LoadComp(file_path, quiet=True)
-        assert current_comp is not None, "Fusion could not load '%s'" % file_path
+        current_comp = fusion.LoadComp(file_path)
+        assert current_comp is not None, ("Fusion could not load '%s'"
+                                          % file_path)
 
-    host = api.registered_host()
     containers = list(host.ls())
     assert containers, "Nothing to update"
 
@@ -240,7 +245,7 @@ def switch(file_path=None, asset_name=None, new=True, deadline=True):
     current_comp.Save(comp_path)
 
     if deadline:
-        # Update session with correct asset name
+        # Update session with correct asset name and comp path
         api.Session.update(**switch_to_session)
 
         # Submit to deadline render + publish
@@ -273,9 +278,8 @@ if __name__ == '__main__':
                         help="If set True the new composition file will be used"
                              "to render")
 
-    args, unknown = parser.parse_args()
+    args = parser.parse_args()
 
-    api.install(avalon.fusion)
     switch(file_path=args.file_path,
            asset_name=args.asset_name,
            deadline=args.render)
