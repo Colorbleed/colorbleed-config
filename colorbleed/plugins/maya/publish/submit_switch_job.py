@@ -104,8 +104,14 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
         self.log.info("Slap comp arguments: %s" % args)
 
     def get_machine_limit(self, instance):
-        renderglobals = instance.data.get("renderGlobals")
+        """Retrieve the machine limit from the instance"""
+
+        renderglobals = instance.data.get("renderGlobals", None)
+        if renderglobals is None:
+            return {}
+
         if "Whitelist" in renderglobals:
-            return {"Whitelist": renderglobals["Whitelise"]}
-        return {"Blacklist": renderglobals["Blacklist"]}
+            return {"Whitelist": renderglobals["Whitelist"]}
+
+        return {"Blacklist": renderglobals.get("Blacklist")}
 
