@@ -139,7 +139,11 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
         options["suspendPublishJob"] = state
 
         # Check if the run slap comp
-        if attributes["runSlapComp"]:
+        if "runSlapComp" not in attributes:
+            self.log.warning("renderGlobals node might be out of data, missing"
+                             "'runSlapComp' information.")
+
+        if attributes.get("runSlapComp", False):
             self.log.info("Running render through slap comp as post ..")
             options["runSlapComp"] = True
             options["flowFile"] = attributes["flowFile"]
