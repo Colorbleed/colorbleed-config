@@ -1,4 +1,5 @@
 import os
+import pprint
 
 from avalon import api
 from avalon.vendor import requests
@@ -55,7 +56,7 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
         comment = instance.context.data["comment"]
 
         scriptdir = _get_script_dir()
-        scriptfile = os.path.join(scriptdir, "deadline_swith_and_submi.py")
+        scriptfile = os.path.join(scriptdir, "deadline_swith_and_submit.py")
 
         args = '--file_path "{}" --asset_name "{}" --render 1'.format(
             filepath, shot)
@@ -80,6 +81,10 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
             "AuxFiles": []
         }
 
+        # Update payload with machine limits
+        list_type = self._get_list_type(job)
+        payload["JobInfo"][list_type] = job["Props"]["ListedSlaves"]
+
         environment = job["Props"].get("Env", {})
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(
@@ -98,3 +103,6 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
             instance.data["deadlineDependJob"] = response.json()
 
         self.log.info("Slap comp arguments: %s" % args)
+
+    def _get_list_type(self, job):
+        return "Whitelist" if job["Props"]["White"]is True else "Blacklist"
