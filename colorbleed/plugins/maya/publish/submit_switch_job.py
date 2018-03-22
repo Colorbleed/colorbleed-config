@@ -1,5 +1,4 @@
 import os
-import pprint
 
 from avalon import api
 from avalon.vendor import requests
@@ -7,19 +6,21 @@ from avalon.vendor import requests
 import pyblish.api
 
 
-def _get_script():
+def _get_script_dir():
     """Get path to the image sequence script"""
     try:
-        from colorbleed.scripts.fusion import switch_and_submit
-    except Exception as e:
-        raise RuntimeError("Expected module 'fusion_switch_shot'"
-                           "to be available")
+        import colorbleed
+        scriptdir = os.path.dirname(colorbleed.__file__)
+        fusion_scripts = os.path.join(scriptdir,
+                                      "scripts",
+                                      "fusion")
+    except:
+        raise RuntimeError("This is a bug")
 
-    module_path = switch_and_submit.__file__
-    if module_path.endswith(".pyc"):
-        module_path = module_path[:-len(".pyc")] + ".py"
+    assert os.path.isdir(fusion_scripts), "Config is incomplete"
+    fusion_scripts = fusion_scripts.replace(os.sep, "/")
 
-    return module_path
+    return fusion_scripts
 
 
 class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
@@ -34,7 +35,8 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
 
     def process(self, context):
 
-        instance = context[0]
+        # Run it as depend on the last submitted instance
+        instance = context[-1]
 
         AVALON_DEADLINE = api.Session.get("AVALON_DEADLINE",
                                           "http://localhost:8082")
@@ -52,6 +54,9 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
         shot = api.Session["AVALON_ASSET"]
         comment = instance.context.data["comment"]
 
+        scriptdir = _get_script_dir()
+        scriptfile = os.path.join(scriptdir, "deadline_swith_and_submi.py")
+
         args = '--file_path "{}" --asset_name "{}" --render 1'.format(
             filepath, shot)
         payload_name = "{} SWITCH".format(os.path.basename(filepath))
@@ -68,20 +73,20 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
                 "InitialStatus": "Suspended"},
             "PluginInfo": {
                 "Version": "3.6",
-                "ScriptFile": _get_script(),
+                "ScriptFile": scriptfile,
                 "Arguments": args,
                 "SingleFrameOnly": "True"
             },
             "AuxFiles": []
         }
 
-        session = {}
-        for index, key in enumerate(api.Session):
-            dl_key = "EnvironmentKeyValue%d" % index
-            value = "{key}={value}".format(key=key, value=api.Session[key])
-            session[dl_key] = value
-
-        payload.update(session)
+        environment = job["Props"].get("Env", {})
+        payload["JobInfo"].update({
+            "EnvironmentKeyValue%d" % index: "{key}={value}".format(
+                key=key,
+                value=environment[key]
+            ) for index, key in enumerate(environment)
+        })
 
         url = "{}/api/jobs".format(AVALON_DEADLINE)
         response = requests.post(url, json=payload)
