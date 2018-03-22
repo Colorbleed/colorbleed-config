@@ -227,7 +227,7 @@ def switch(file_path=None, asset_name=None, new=True, deadline=True):
 
     if deadline:
         # Update session with correct asset name and comp path
-        api.Session.update(**switch_to_session)
+        api.Session.update(switch_to_session)
 
         # Set render mode to deadline
         current_comp.SetData("colorbleed.rendermode", "deadline")
@@ -241,7 +241,7 @@ def switch(file_path=None, asset_name=None, new=True, deadline=True):
         # Collect errors, {plugin name: error}, if any
         error_results = [r for r in context.data["results"] if r["error"]]
         if error_results:
-            log.error("{} Errors occurred ...".format(__name__))
+            log.error("Errors occurred ...")
             for result in error_results:
                 log.error(error_format.format(**result))
             sys.exit(2)
