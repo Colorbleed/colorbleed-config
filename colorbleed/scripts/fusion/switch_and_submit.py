@@ -45,16 +45,17 @@ def format_version_folder(folder):
         str: new version folder name
     """
 
-    new_version = 1
+    version_int = 1
     if os.path.isdir(folder):
         re_version = re.compile("v\d+")
         versions = [i for i in os.listdir(folder) if re_version.match(i)
                     and os.path.isdir(os.path.join(folder, i))]
         if versions:
-            # ensure the "v" is not included
-            new_version = int(max(versions)[1:]) + 1
+            # ensure the "v" is not included and convert to ints
+            int_versions = [int(v[1:]) for v in versions]
+            version_int += max(int_versions)
 
-    return "v{:03d}".format(new_version)
+    return "v{:03d}".format(version_int)
 
 
 def format_filepath(session):
@@ -240,7 +241,7 @@ def switch(file_path=None, asset_name=None, new=True, deadline=True):
         # Collect errors, {plugin name: error}, if any
         error_results = [r for r in context.data["results"] if r["error"]]
         if error_results:
-            log.error(" Errors occurred ...")
+            log.error("{} Errors occurred ...".format(__name__))
             for result in error_results:
                 log.error(error_format.format(**result))
             sys.exit(2)
