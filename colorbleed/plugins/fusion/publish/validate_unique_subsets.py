@@ -11,10 +11,9 @@ class ValidateUniqueSubsets(pyblish.api.InstancePlugin):
 
     @classmethod
     def get_invalid(cls, instance):
-
         context = instance.context
         subset = instance.data["subset"]
-        for other_instance in context[:]:
+        for other_instance in list(context):
             if other_instance == instance:
                 continue
 
@@ -26,4 +25,4 @@ class ValidateUniqueSubsets(pyblish.api.InstancePlugin):
     def process(self, instance):
         invalid = self.get_invalid(instance)
         if invalid:
-            raise RuntimeError("Animation content is invalid. See log.")
+            raise RuntimeError("Content is invalid. See log.")
