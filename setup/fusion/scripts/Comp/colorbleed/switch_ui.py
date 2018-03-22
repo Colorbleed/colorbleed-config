@@ -1,4 +1,5 @@
 import os
+import site
 import glob
 import logging
 
@@ -146,6 +147,22 @@ class App(QtWidgets.QWidget):
 
     def _on_switch(self):
 
+        def _get_script_dir():
+            """Get path to the image sequence script"""
+            try:
+                import colorbleed
+                scriptdir = os.path.dirname(colorbleed.__file__)
+                fusion_scripts = os.path.join(scriptdir,
+                                              "scripts",
+                                              "fusion")
+            except:
+                raise RuntimeError("This is a bug")
+
+            assert os.path.isdir(fusion_scripts), "Config is incomplete"
+            fusion_scripts = fusion_scripts.replace(os.sep, "/")
+
+            return fusion_scripts
+
         if not self._use_current.isChecked():
             file_name = self._comps.itemData(self._comps.currentIndex())
         else:
@@ -154,8 +171,12 @@ class App(QtWidgets.QWidget):
 
         asset = self._assets.currentText()
 
-        import colorbleed.scripts.fusion_switch_shot as switch_shot
-        switch_shot.switch(asset_name=asset, filepath=file_name, new=True)
+        # Get  switch and submit module
+        script_dir = _get_script_dir()
+        site.addsitedir(script_dir)
+
+        import switch_and_submit as switch_shot
+        switch_shot.switch(asset_name=asset, file_path=file_name, new=True)
 
     def _get_context_directory(self):
 
