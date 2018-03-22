@@ -56,7 +56,7 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
         comment = instance.context.data["comment"]
 
         scriptdir = _get_script_dir()
-        scriptfile = os.path.join(scriptdir, "deadline_swith_and_submit.py")
+        scriptfile = os.path.join(scriptdir, "deadline_switch_and_submit.py")
 
         args = '--file_path "{}" --asset_name "{}" --render 1'.format(
             filepath, shot)
@@ -81,9 +81,8 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
             "AuxFiles": []
         }
 
-        # Update payload with machine limits
-        list_type = self._get_list_type(job)
-        payload["JobInfo"][list_type] = job["Props"]["ListedSlaves"]
+        machine_limit = self.get_machine_limit(instance)
+        payload["JobInfo"].update(machine_limit)
 
         environment = job["Props"].get("Env", {})
         payload["JobInfo"].update({
@@ -99,10 +98,14 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
             raise Exception(response.text)
 
         # Temporary key name, deadlineSubmissionJob was already taken
-        if instance.data("runSlapComp", False):
+        if instance.data.get("runSlapComp", False):
             instance.data["deadlineDependJob"] = response.json()
 
         self.log.info("Slap comp arguments: %s" % args)
 
-    def _get_list_type(self, job):
-        return "Whitelist" if job["Props"]["White"]is True else "Blacklist"
+    def get_machine_limit(self, instance):
+        renderglobals = instance.data.get("renderGlobals")
+        if "Whitelist" in renderglobals:
+            return {"Whitelist": renderglobals["Whitelise"]}
+        return {"Blacklist": renderglobals["Blacklist"]}
+
