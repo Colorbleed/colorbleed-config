@@ -149,6 +149,9 @@ def update_frame_range(comp, representations):
 def switch(file_path=None, asset_name=None, new=True, deadline=True):
     """Switch the current containers of the file to the other asset (shot)
 
+    Exitcode 1: No item found to publish
+    Exitcode 2: Errors during publish process
+
     Args:
         file_path (str): file path of the comp file
         asset_name (str): name of the asset (shot)
