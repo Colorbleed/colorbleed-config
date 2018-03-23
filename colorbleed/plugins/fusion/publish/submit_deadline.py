@@ -39,7 +39,7 @@ class FusionSubmitDeadline(pyblish.api.InstancePlugin):
 
         # Collect all saver instances in context that are to be rendered
         saver_instances = []
-        for instance in context[:]:
+        for instance in list(context):
             if not self.families[0] in instance.data.get("families"):
                 # Allow only saver family instances
                 continue

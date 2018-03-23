@@ -62,8 +62,9 @@ def publish(paths, gui=False):
             sys.exit(2)
 
 
-def __main__():
+if __name__ == '__main__':
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--paths",
                         nargs="*",
@@ -81,7 +82,3 @@ def __main__():
     print("Running publish imagesequence...")
     print("Paths: {}".format(kwargs.paths or [os.getcwd()]))
     publish(kwargs.paths, gui=kwargs.gui)
-
-
-if __name__ == '__main__':
-    __main__()

@@ -16,8 +16,23 @@ log = logging.getLogger("Update Slap Comp")
 self = sys.modules[__name__]
 self._project = None
 
+error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
 
-def _format_version_folder(folder):
+
+def get_fusion_instance():
+    """Try to get an instance of Fusion"""
+    fusion = getattr(sys.modules["__main__"], "fusion", None)
+    if fusion is None:
+        try:
+            # Support for FuScript.exe, BlackmagicFusion module for py2 only
+            import BlackmagicFusion as bmf
+            fusion = bmf.scriptapp("Fusion", "localhost", 2)
+        except ImportError:
+            raise RuntimeError("Could not find a Fusion instance")
+    return fusion
+
+
+def format_version_folder(folder):
     """Format a version folder based on the filepath
 
     Assumption here is made that, if the path does not exists the folder
@@ -30,49 +45,26 @@ def _format_version_folder(folder):
         str: new version folder name
     """
 
-    new_version = 1
+    version_int = 1
     if os.path.isdir(folder):
-        re_version = re.compile("v\d+$")
-        versions = [i for i in os.listdir(folder) if os.path.isdir(i)
-                    and re_version.match(i)]
+        re_version = re.compile("v\d+")
+        versions = [i for i in os.listdir(folder) if re_version.match(i)
+                    and os.path.isdir(os.path.join(folder, i))]
         if versions:
-            # ensure the "v" is not included
-            new_version = int(max(versions)[1:]) + 1
+            # ensure the "v" is not included and convert to ints
+            int_versions = [int(v[1:]) for v in versions]
+            version_int += max(int_versions)
 
-    version_folder = "v{:03d}".format(new_version)
-
-    return version_folder
-
-
-def _get_work_folder(session):
-    """Convenience function to get the work folder path of the current asset"""
-
-    # Get new filename, create path based on asset and work template
-    template_work = self._project["config"]["template"]["work"]
-    work_path = pipeline._format_work_template(template_work, session)
-
-    return os.path.normpath(work_path)
+    return "v{:03d}".format(version_int)
 
 
-def _get_fusion_instance():
-    fusion = getattr(sys.modules["__main__"], "fusion", None)
-    if fusion is None:
-        try:
-            # Support for FuScript.exe, BlackmagicFusion module for py2 only
-            import BlackmagicFusion as bmf
-            fusion = bmf.scriptapp("Fusion")
-        except ImportError:
-            raise RuntimeError("Could not find a Fusion instance")
-    return fusion
-
-
-def _format_filepath(session):
+def format_filepath(session):
 
     project = session["AVALON_PROJECT"]
     asset = session["AVALON_ASSET"]
 
     # Save updated slap comp
-    work_path = _get_work_folder(session)
+    work_path = get_work_folder(session)
     walk_to_dir = os.path.join(work_path, "scenes", "slapcomp")
     slapcomp_dir = os.path.abspath(walk_to_dir)
 
@@ -92,7 +84,17 @@ def _format_filepath(session):
     return new_filepath
 
 
-def _update_savers(comp, session):
+def get_work_folder(session):
+    """Convenience function to get the work folder path of the current asset"""
+
+    # Get new filename, create path based on asset and work template
+    template_work = self._project["config"]["template"]["work"]
+    work_path = pipeline._format_work_template(template_work, session)
+
+    return os.path.normpath(work_path)
+
+
+def update_savers(comp, session):
     """Update all savers of the current comp to ensure the output is correct
 
     Args:
@@ -103,9 +105,9 @@ def _update_savers(comp, session):
          None
     """
 
-    new_work = _get_work_folder(session)
+    new_work = get_work_folder(session)
     renders = os.path.join(new_work, "renders")
-    version_folder = _format_version_folder(renders)
+    version_folder = format_version_folder(renders)
     renders_version = os.path.join(renders, version_folder)
 
     comp.Print("New renders to: %s\n" % renders)
@@ -144,22 +146,31 @@ def update_frame_range(comp, representations):
     fusion_lib.update_frame_range(start, end, comp=comp)
 
 
-def switch(asset_name, filepath=None, new=True):
+def switch(file_path=None, asset_name=None, new=True, deadline=True):
     """Switch the current containers of the file to the other asset (shot)
 
+    Exitcode 1: No item found to publish
+    Exitcode 2: Errors during publish process
+
     Args:
-        filepath (str): file path of the comp file
+        file_path (str): file path of the comp file
         asset_name (str): name of the asset (shot)
         new (bool): Save updated comp under a different name
+        deadline (bool): if set to true
 
     Returns:
         comp path (str): new filepath of the updated comp
 
     """
 
+    assert asset_name, "Function requires at least an asset name"
+
     # Ensure filename is absolute
-    if not os.path.abspath(filepath):
-        filepath = os.path.abspath(filepath)
+    if file_path:
+        file_path = os.path.abspath(file_path)
+
+    api.install(avalon.fusion)
+    host = api.registered_host()
 
     # Get current project
     self._project = io.find_one({"type": "project",
@@ -170,16 +181,17 @@ def switch(asset_name, filepath=None, new=True):
     asset = io.find_one({"type": "asset", "name": asset_name})
     assert asset, "Could not find '%s' in the database" % asset_name
 
-    # Go to comp
-    if not filepath:
+    if not file_path:
+        # Assuming we use the current open comp
         current_comp = avalon.fusion.get_current_comp()
         assert current_comp is not None, "Could not find current comp"
+        file_path = current_comp.GetAttrs("COMPS_FileName")
     else:
-        fusion = _get_fusion_instance()
-        current_comp = fusion.LoadComp(filepath, quiet=True)
-        assert current_comp is not None, "Fusion could not load '%s'" % filepath
+        fusion = get_fusion_instance()
+        current_comp = fusion.LoadComp(file_path)
+        assert current_comp is not None, ("Fusion could not load '%s'"
+                                          % file_path)
 
-    host = api.registered_host()
     containers = list(host.ls())
     assert containers, "Nothing to update"
 
@@ -202,43 +214,40 @@ def switch(asset_name, filepath=None, new=True):
     switch_to_session["AVALON_ASSET"] = asset['name']
 
     if new:
-        comp_path = _format_filepath(switch_to_session)
+        comp_path = format_filepath(switch_to_session)
 
         # Update savers output based on new session
-        _update_savers(current_comp, switch_to_session)
+        update_savers(current_comp, switch_to_session)
     else:
-        comp_path = colorbleed.version_up(filepath)
+        comp_path = colorbleed.version_up(file_path)
 
-    current_comp.Print(comp_path)
-
-    current_comp.Print("\nUpdating frame range")
+    current_comp.Print("\nNew path: %s" % comp_path)
+    current_comp.Print("\nUpdating frame range ..")
     update_frame_range(current_comp, representations)
 
+    # Save changes
     current_comp.Save(comp_path)
 
-    return comp_path
+    if deadline:
+        # Update session with correct asset name and comp path
+        api.Session.update(switch_to_session)
+        os.environ.update(switch_to_session)
 
+        # Set render mode to deadline
+        current_comp.SetData("colorbleed.rendermode", "deadline")
 
-if __name__ == '__main__':
+        # Run publisher
+        context = api.publish()
+        if not context:
+            log.warning("Nothing collected.")
+            sys.exit(1)
 
-    import argparse
+        # Collect errors, {plugin name: error}, if any
+        error_results = [r for r in context.data["results"] if r["error"]]
+        if error_results:
+            log.error("Errors occurred ...")
+            for result in error_results:
+                log.error(error_format.format(**result))
+            sys.exit(2)
 
-    parser = argparse.ArgumentParser(description="Switch to a shot within an"
-                                                 "existing comp file")
-
-    parser.add_argument("--file_path",
-                        type=str,
-                        default=True,
-                        help="File path of the comp to use")
-
-    parser.add_argument("--asset_name",
-                        type=str,
-                        default=True,
-                        help="Name of the asset (shot) to switch")
-
-    args, unknown = parser.parse_args()
-
-    api.install(avalon.fusion)
-    switch(args.asset_name, args.file_path)
-
-    sys.exit(0)
+    return current_comp

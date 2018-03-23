@@ -120,10 +120,13 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
 
         attributes = maya.read(render_globals)
 
-        options = {"renderGlobals": {}}
-        options["renderGlobals"]["Priority"] = attributes["priority"]
-        legacy = attributes["useLegacyRenderLayers"]
-        options["renderGlobals"]["UseLegacyRenderLayers"] = legacy
+        options = {
+            "renderGlobals":
+                {
+                    "Priority": attributes["priority"],
+                    "UseLegacyRenderLayers": attributes["useLegacyRenderLayers"]
+            }
+        }
 
         # Machine list
         machine_list = attributes["machineList"]
@@ -134,5 +137,15 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
         # Suspend publish job
         state = "Suspended" if attributes["suspendPublishJob"] else "Active"
         options["publishJobState"] = state
+
+        # Check if the run slap comp
+        if "runSlapComp" not in attributes:
+            self.log.warning("renderGlobals node might be out of data, missing"
+                             "'runSlapComp' information.")
+
+        if attributes.get("runSlapComp", False):
+            self.log.info("Running render through slap comp as post ..")
+            options["runSlapComp"] = True
+            options["flowFile"] = attributes["flowFile"]
 
         return options
