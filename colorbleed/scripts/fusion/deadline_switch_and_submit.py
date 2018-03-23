@@ -144,7 +144,7 @@ def process(file_path, asset_name, deadline=False):
     loaded_comp = fusion.LoadComp(file_path)
     if not loaded_comp:
         raise RuntimeError("Comp could not be loaded. File '%s'" % file_path)
-    pipeline.force_current_comp(loaded_comp)
+    pipeline.set_current_comp(loaded_comp)
     current_comp = pipeline.get_current_comp()
 
     assert loaded_comp == current_comp, "Could not find the correct comp"
@@ -162,11 +162,13 @@ def process(file_path, asset_name, deadline=False):
         result = switch.switch(asset_name=asset_name, deadline=deadline)
     except:
         tb = traceback.format_exc()
+        pipeline.set_current_comp(None)
         proc.terminate()  # Ensure process closes when failing
         raise RuntimeError(tb)
 
     print("Success:", result is not None)
     print("Closing all running process ..")
+    pipeline.set_current_comp(None)
     proc.terminate()
 
 
