@@ -218,7 +218,7 @@ def process(file_path, asset_name, deadline=False):
 
     try:
         # Execute script in comp
-        fusionlib.switch(asset_name=asset_name, new=deadline)
+        fusionlib.switch(asset_name=asset_name)
         new_file_path = create_new_filepath(api.Session)
         current_comp.Save(new_file_path)
         if deadline:
