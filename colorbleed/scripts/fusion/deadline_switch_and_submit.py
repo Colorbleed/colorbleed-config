@@ -1,7 +1,11 @@
 """
+This holds the logic to open a comp, switch the assets (shot), save it with
+the correct naming. Optionally the new comp can be submitted to Deadline to
+render and publish the output
+
 This module is for a standalone approach for Fusion similar to Maya.
 Note that this will require FusionConsoleNode.exe and the BlackmagicFusion
-module,
+module.
 
 Deadline runs a python process, lets call it P
 
@@ -43,9 +47,10 @@ assert version in ["27", "36"], "Script only works in Python 2.7 or 3.6"
 key = "FUSION_PYTHON{0}_HOME".format(version)
 
 # Set Python 3.6 home for fusion, debug
-print("Settings FUSION_PYTHON36_HOME ..")
+print("Settings FUSION PYTHON HOME ..")
 os.environ[key] = os.path.dirname(sys.executable)
 
+# TODO: define these paths somewhere else
 FUSCRIPT_EXE = r"C:/Program Files/Blackmagic Design/Fusion9/FuScript.exe"
 FUSION_CONSOLE_EXE = r"C:/Program Files/Blackmagic Design/Fusion Render Node 9/FusionConsoleNode.exe"
 
@@ -112,6 +117,8 @@ def get_fusion_instance(pid, srv, timeout=10):
 
 def process(file_path, asset_name, deadline=False):
     """Run switch in a Fusion Console Node (cmd)
+
+    Open the comp (file_path) and switch to the asset (asset_name).
 
     Args:
         file_path (str): File path of the comp to use
