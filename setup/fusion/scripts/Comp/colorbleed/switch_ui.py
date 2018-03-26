@@ -10,7 +10,7 @@ from avalon.vendor.Qt import QtWidgets, QtCore
 from avalon.vendor import qtawesome as qta
 
 import colorbleed.lib as cblib
-from colorbleed.fusion import flib
+import colorbleed.fusion.lib as flib
 
 
 log = logging.getLogger("Fusion Switch Shot")
@@ -127,7 +127,7 @@ class App(QtWidgets.QWidget):
 
         start_dir = self._get_context_directory()
         comp_file, _ = QtWidgets.QFileDialog.getOpenFileName(
-                            self, "Choose comp", start_dir)
+                            self, "Choose comp", start_dir, "*.comp")
 
         if not comp_file:
             return
