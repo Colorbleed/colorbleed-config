@@ -155,7 +155,9 @@ class App(QtWidgets.QWidget):
             # Get the current comp's App (FusionUI)
             _fusion = _comp.GetApp()
             # Open the selected comp
-            _fusion.LoadComp(file_name)
+            loaded_comp = _fusion.LoadComp(file_name)
+            if not loaded_comp:
+                raise RuntimeError("Invalid file: '%s'" % file_name)
         else:
             file_name = _comp.GetAttrs("COMPS_FileName")
 
