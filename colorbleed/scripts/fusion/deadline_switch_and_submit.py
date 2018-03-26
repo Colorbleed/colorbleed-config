@@ -33,13 +33,14 @@ within `process()` can find `fusion`.
 
 """
 
-
 import subprocess
 import traceback
-import site
+import logging
 import time
 import sys
 import os
+
+log = logging.getLogger(__name__)
 
 # This script only works with Python 2.7 and 3.6
 version = "{0}{1}".format(*sys.version_info)  # {major}{minor}
@@ -56,24 +57,13 @@ os.environ[key] = os.path.dirname(sys.executable)
 FUSCRIPT_EXE = r"C:/Program Files/Blackmagic Design/Fusion9/FuScript.exe"
 FUSION_CONSOLE_EXE = r"C:/Program Files/Blackmagic Design/Fusion Render Node 9/FusionConsoleNode.exe"
 
+# Pipeline and config imports
+import avalon.fusion
+from avalon import api
+import colorbleed.fusion.lib as fusionlib
+
+# Application related imports
 import BlackmagicFusion as bmf
-
-
-def _get_script_dir():
-    """Get path to the image sequence script"""
-    try:
-        import colorbleed
-        scriptdir = os.path.dirname(colorbleed.__file__)
-        fusion_scripts = os.path.join(scriptdir,
-                                      "scripts",
-                                      "fusion")
-    except:
-        raise RuntimeError("This is a bug")
-
-    assert os.path.isdir(fusion_scripts), "Config is incomplete"
-    fusion_scripts = fusion_scripts.replace(os.sep, "/")
-
-    return fusion_scripts
 
 
 def start_server():
@@ -117,6 +107,31 @@ def get_fusion_instance(pid, srv, timeout=10):
     return bmf.scriptapp(host["Name"], "localhost", 2, host["UUID"])
 
 
+def submit(current_comp):
+    """Set rendermode to deadline and publish / submit comp"""
+
+    # Set comp render mode to deadline
+    current_comp.SetData("colorbleed.rendermode", "deadline")
+
+    error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
+
+    # Publish
+    context = api.publish()
+    if not context:
+        log.warning("Nothing collected.")
+        sys.exit(1)
+
+    # Collect errors, {plugin name: error}, if any
+    error_results = [r for r in context.data["results"] if r["error"]]
+    if error_results:
+        log.error("Errors occurred ...")
+        for result in error_results:
+            log.error(error_format.format(**result))
+        raise RuntimeError
+
+    return True
+
+
 def process(file_path, asset_name, deadline=False):
     """Run switch in a Fusion Console Node (cmd)
 
@@ -139,16 +154,16 @@ def process(file_path, asset_name, deadline=False):
 
     srv = get_server()
     if not srv:
-        print("No server found, starting server ..")
+        log.info("No server found, starting server ..")
         srv = start_server()
 
     # Force fusion into main magical module so that host.ls() works
     fusion = get_fusion_instance(proc.pid, srv)
     assert fusion
-    print("Connected to: %s" % fusion)
+    log.info("Connected to: %s" % fusion)
     setattr(sys.modules["__main__"], "fusion", fusion)
 
-    # Get fusion.pipeline
+    api.install(avalon.fusion)
     from avalon.fusion import pipeline
 
     # This does not set
@@ -159,25 +174,18 @@ def process(file_path, asset_name, deadline=False):
     current_comp = pipeline.get_current_comp()
 
     assert loaded_comp == current_comp, "Could not find the correct comp"
-
     print("Loaded comp name: %s" % current_comp.GetAttrs("COMPS_FileName"))
 
-    # Get switch and submit script
-    scriptdir = _get_script_dir()
-    site.addsitedir(scriptdir)
-    import switch_and_submit as switch
-
-    # Fusion host
     try:
         # Execute script in comp
-        result = switch.switch(asset_name=asset_name, deadline=deadline)
+        fusionlib.switch(asset_name=asset_name)
+        result = True if not deadline else submit(current_comp)
     except:
-        tb = traceback.format_exc()
         pipeline.set_current_comp(None)
         proc.terminate()  # Ensure process closes when failing
-        raise RuntimeError(tb)
+        raise RuntimeError(traceback.format_exc())  # detailed traceback
 
-    print("Success:", result is not None)
+    print("Success:", result)
     print("Closing all running process ..")
     pipeline.set_current_comp(None)
     proc.terminate()
