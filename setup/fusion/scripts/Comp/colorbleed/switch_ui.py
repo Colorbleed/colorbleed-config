@@ -159,9 +159,9 @@ class App(QtWidgets.QWidget):
         else:
             file_name = _comp.GetAttrs("COMPS_FileName")
 
-        switched = flib.switch(asset)
+        switched_comp = flib.switch(asset)
         new_filename = cblib.version_up(file_name)
-        switched.Save(new_filename)
+        switched_comp.Save(new_filename)
 
     def _get_context_directory(self):
 
