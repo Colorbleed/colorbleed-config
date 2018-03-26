@@ -59,7 +59,9 @@ FUSION_CONSOLE_EXE = r"C:/Program Files/Blackmagic Design/Fusion Render Node 9/F
 
 # Pipeline and config imports
 import avalon.fusion
-from avalon import api
+from avalon import io, api, pipeline
+
+import colorbleed.lib as cblib
 import colorbleed.fusion.lib as fusionlib
 
 # Application related imports
@@ -107,6 +109,45 @@ def get_fusion_instance(pid, srv, timeout=10):
     return bmf.scriptapp(host["Name"], "localhost", 2, host["UUID"])
 
 
+def create_new_filepath(session):
+    """
+    Create a new fil epath based on the session and the project's template
+
+    Args:
+        session (dict): the Avalon session
+
+    Returns:
+        file path (str)
+
+    """
+
+    # Save updated slap comp
+    project = io.find_one({"type": "project",
+                           "name": session["AVALON_PROJECT"]})
+
+    template = project["config"]["template"]["work"]
+    template_work = pipeline._format_work_template(template, session)
+
+    walk_to_dir = os.path.join(template_work, "scenes", "slapcomp")
+    slapcomp_dir = os.path.abspath(walk_to_dir)
+
+    # Ensure destination exists
+    if not os.path.isdir(slapcomp_dir):
+        log.warning("Folder did not exist, creating folder structure")
+        os.makedirs(slapcomp_dir)
+
+    # Compute output path
+    new_filename = "{}_{}_slapcomp_v001.comp".format(session["AVALON_PROJECT"],
+                                                     session["AVALON_ASSET"])
+    new_filepath = os.path.join(slapcomp_dir, new_filename)
+
+    # Create new unqiue filepath
+    if os.path.exists(new_filepath):
+        new_filepath = cblib.version_up(new_filepath)
+
+    return new_filepath
+
+
 def submit(current_comp):
     """Set rendermode to deadline and publish / submit comp"""
 
@@ -118,16 +159,14 @@ def submit(current_comp):
     # Publish
     context = api.publish()
     if not context:
-        log.warning("Nothing collected.")
-        sys.exit(1)
+        raise RuntimeError("Nothing collected for publish")
 
     # Collect errors, {plugin name: error}, if any
     error_results = [r for r in context.data["results"] if r["error"]]
     if error_results:
-        log.error("Errors occurred ...")
         for result in error_results:
             log.error(error_format.format(**result))
-        raise RuntimeError
+        raise RuntimeError("Errors occured")
 
     return True
 
@@ -170,6 +209,7 @@ def process(file_path, asset_name, deadline=False):
     loaded_comp = fusion.LoadComp(file_path)
     if not loaded_comp:
         raise RuntimeError("Comp could not be loaded. File '%s'" % file_path)
+
     pipeline.set_current_comp(loaded_comp)
     current_comp = pipeline.get_current_comp()
 
@@ -178,17 +218,18 @@ def process(file_path, asset_name, deadline=False):
 
     try:
         # Execute script in comp
-        fusionlib.switch(asset_name=asset_name)
-        result = True if not deadline else submit(current_comp)
-    except:
+        fusionlib.switch(asset_name=asset_name, new=deadline)
+        new_file_path = create_new_filepath(api.Session)
+        current_comp.Save(new_file_path)
+        if deadline:
+            submit(current_comp)
+    except Exception:
+        print(traceback.format_exc())  # ensure detailed traceback
+        raise
+    finally:
         pipeline.set_current_comp(None)
+        print("Closing running process ..")
         proc.terminate()  # Ensure process closes when failing
-        raise RuntimeError(traceback.format_exc())  # detailed traceback
-
-    print("Success:", result)
-    print("Closing all running process ..")
-    pipeline.set_current_comp(None)
-    proc.terminate()
 
 
 # Usability for deadline job submission
