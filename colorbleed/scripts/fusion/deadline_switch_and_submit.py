@@ -46,8 +46,10 @@ version = "{0}{1}".format(*sys.version_info)  # {major}{minor}
 assert version in ["27", "36"], "Script only works in Python 2.7 or 3.6"
 key = "FUSION_PYTHON{0}_HOME".format(version)
 
-# Set Python 3.6 home for fusion, debug
-print("Settings FUSION PYTHON HOME ..")
+# Importing BlackmagicFusion package in standalone Python interpreter
+# crashes when not installed on default location but runs from, e.g. a
+# network share. Forcing Fusion's Python home magically fixes it.
+print("Setting %s to Python executable directory.." % key)
 os.environ[key] = os.path.dirname(sys.executable)
 
 # TODO: define these paths somewhere else
@@ -118,7 +120,9 @@ def get_fusion_instance(pid, srv, timeout=10):
 def process(file_path, asset_name, deadline=False):
     """Run switch in a Fusion Console Node (cmd)
 
-    Open the comp (file_path) and switch to the asset (asset_name).
+    Open the comp (file_path) and switch to the asset (asset_name) and when
+    deadline is enabled it will submit the switched comp to Deadline to render
+    and publish the output.
 
     Args:
         file_path (str): File path of the comp to use
