@@ -1,15 +1,16 @@
 import os
-import site
 import glob
 import logging
 
-import avalon.io as io
-import avalon.api as api
-import avalon.pipeline as pipeline
+from avalon import io, api, pipeline
 import avalon.fusion
+
 import avalon.style as style
 from avalon.vendor.Qt import QtWidgets, QtCore
 from avalon.vendor import qtawesome as qta
+
+import colorbleed.lib as cblib
+from colorbleed.fusion import flib
 
 
 log = logging.getLogger("Fusion Switch Shot")
@@ -147,36 +148,20 @@ class App(QtWidgets.QWidget):
 
     def _on_switch(self):
 
-        def _get_script_dir():
-            """Get path to the image sequence script"""
-            try:
-                import colorbleed
-                scriptdir = os.path.dirname(colorbleed.__file__)
-                fusion_scripts = os.path.join(scriptdir,
-                                              "scripts",
-                                              "fusion")
-            except:
-                raise RuntimeError("This is a bug")
-
-            assert os.path.isdir(fusion_scripts), "Config is incomplete"
-            fusion_scripts = fusion_scripts.replace(os.sep, "/")
-
-            return fusion_scripts
-
+        asset = self._assets.currentText()
+        _comp = avalon.fusion.get_current_comp()
         if not self._use_current.isChecked():
             file_name = self._comps.itemData(self._comps.currentIndex())
+            # Get the current comp's App (FusionUI)
+            _fusion = _comp.GetApp()
+            # Open the selected comp
+            _fusion.LoadComp(file_name)
         else:
-            comp = avalon.fusion.get_current_comp()
-            file_name = comp.GetAttrs("COMPS_FileName")
+            file_name = _comp.GetAttrs("COMPS_FileName")
 
-        asset = self._assets.currentText()
-
-        # Get  switch and submit module
-        script_dir = _get_script_dir()
-        site.addsitedir(script_dir)
-
-        import switch_and_submit as switch_shot
-        switch_shot.switch(asset_name=asset, file_path=file_name, new=True)
+        switched = flib.switch(asset)
+        new_filename = cblib.version_up(file_name)
+        switched.Save(new_filename)
 
     def _get_context_directory(self):
 
