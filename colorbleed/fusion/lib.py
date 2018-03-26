@@ -1,6 +1,5 @@
 import os
 import re
-import sys
 import logging
 
 import avalon.fusion
@@ -8,8 +7,6 @@ from avalon import api, io, pipeline
 
 import colorbleed.lib as colorbleed
 
-self = sys.modules[__name__]
-self._project = None
 
 log = logging.getLogger(__name__)
 
@@ -73,46 +70,19 @@ def get_next_version_folder(folder):
     return "v{:03d}".format(version_int)
 
 
-def create_new_filepath(session):
-
-    project = session["AVALON_PROJECT"]
-    asset = session["AVALON_ASSET"]
-
-    # Save updated slap comp
-    template = self._project["config"]["template"]["work"]
-    template_work = pipeline._format_work_template(template, session)
-
-    walk_to_dir = os.path.join(template_work, "scenes", "slapcomp")
-    slapcomp_dir = os.path.abspath(walk_to_dir)
-
-    # Ensure destination exists
-    if not os.path.isdir(slapcomp_dir):
-        log.warning("Folder did not exist, creating folder structure")
-        os.makedirs(slapcomp_dir)
-
-    # Compute output path
-    new_filename = "{}_{}_slapcomp_v001.comp".format(project, asset)
-    new_filepath = os.path.join(slapcomp_dir, new_filename)
-
-    # Create new unqiue filepath
-    if os.path.exists(new_filepath):
-        new_filepath = colorbleed.version_up(new_filepath)
-
-    return new_filepath
-
-
-def update_savers(comp, session):
+def update_savers(comp, session, project):
     """Update all savers of the current comp to ensure the output is correct
 
     Args:
         comp (object): current comp instance
         session (dict): the current Avalon session
+        project (dict): the project document from the database
 
     Returns:
          None
     """
 
-    template = self._project["config"]["template"]["work"]
+    template = project["config"]["template"]["work"]
     template_work = pipeline._format_work_template(template, session)
 
     render_dir = os.path.join(os.path.normpath(template_work), "renders")
@@ -147,8 +117,8 @@ def switch(asset_name):
     assert host, "Host must be installed"
 
     # Get current project
-    self._project = io.find_one({"type": "project",
-                                 "name": api.Session["AVALON_PROJECT"]})
+    project = io.find_one({"type": "project",
+                           "name": api.Session["AVALON_PROJECT"]})
 
     # Assert asset name exists
     # It is better to do this here then to wait till switch_shot does it
@@ -193,6 +163,6 @@ def switch(asset_name):
     api.Session.update(switch_to_session)
     os.environ.update(switch_to_session)
 
-    self._project = None
+    update_savers(current_comp, switch_to_session, project)
 
     return current_comp
