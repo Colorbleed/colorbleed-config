@@ -12,9 +12,7 @@ def _get_script_dir():
     try:
         import colorbleed
         scriptdir = os.path.dirname(colorbleed.__file__)
-        fusion_scripts = os.path.join(scriptdir,
-                                      "scripts",
-                                      "fusion")
+        fusion_scripts = os.path.join(scriptdir, "scripts", "fusion")
     except:
         raise RuntimeError("This is a bug")
 
@@ -71,7 +69,7 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
                 "JobDependency0": job["_id"],
                 "UserName": job["Props"]["User"],
                 "Comment": comment,
-                "InitialStatus": "Suspended"},
+                "InitialStatus": "Active"},  # Set job pending
             "PluginInfo": {
                 "Version": "3.6",
                 "ScriptFile": scriptfile,
