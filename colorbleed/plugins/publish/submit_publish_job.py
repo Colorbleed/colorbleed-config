@@ -10,17 +10,15 @@ import pyblish.api
 
 def _get_script():
     """Get path to the image sequence script"""
-    try:
-        from colorbleed.scripts import publish_filesequence
-    except Exception as e:
-        raise RuntimeError("Expected module 'publish_imagesequence'"
-                           "to be available")
 
-    module_path = publish_filesequence.__file__
-    if module_path.endswith(".pyc"):
-        module_path = module_path[:-len(".pyc")] + ".py"
+    import colorbleed
+    configpath = os.path.dirname(colorbleed.__file__)
+    script = os.path.join(configpath, "scripts", "publish_filesequence.py")
+    # verify script exists
+    assert os.path.isfile(script), ("Script `publish_filesequence.py` does not"
+                                    "exists")
 
-    return module_path
+    return script
 
 
 class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
@@ -70,7 +68,7 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
                                "submission prior to this plug-in.")
 
         subset = instance.data["subset"]
-        state = instance.data.get("publishJobState", "Suspended")
+        state = instance.data.get("suspendPublishJob", "Active")
         job_name = "{batch} - {subset} [publish image sequence]".format(
             batch=job["Props"]["Name"],
             subset=subset
