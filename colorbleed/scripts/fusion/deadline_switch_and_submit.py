@@ -74,6 +74,15 @@ def start_server():
 
 
 def get_server(tries=10, timeout=0.5):
+    """Retrieve the server instance
+    Args:
+        tries (int): number of attempts
+        timeout (float): how long the function needs to time out in between
+                         attempts
+
+    Return:
+        server (PyObject)
+    """
 
     count = 0
     srv = None
@@ -89,7 +98,18 @@ def get_server(tries=10, timeout=0.5):
 
 
 def get_fusion_instance(pid, srv, timeout=10):
-    """Get the fusion instance which has been launched"""
+    """Get the fusion instance which has been launched
+
+    Args:
+        pid (int, long): process id
+        srv (PyObject): fusion server instance
+        timeout (float): how long the function needs to time out in between
+                         attempts
+
+    Returns:
+        fusion
+
+    """
 
     count = 0
     host = None
@@ -111,7 +131,7 @@ def get_fusion_instance(pid, srv, timeout=10):
 
 def create_new_filepath(session):
     """
-    Create a new fil epath based on the session and the project's template
+    Create a new file path based on the session and the project's template
 
     Args:
         session (dict): the Avalon session
@@ -137,8 +157,8 @@ def create_new_filepath(session):
         os.makedirs(slapcomp_dir)
 
     # Compute output path
-    new_filename = "{}_{}_slapcomp_v001.comp".format(session["AVALON_PROJECT"],
-                                                     session["AVALON_ASSET"])
+    new_filename = "{}_{}_v001.comp".format(session["AVALON_PROJECT"],
+                                            session["AVALON_ASSET"])
     new_filepath = os.path.join(slapcomp_dir, new_filename)
 
     # Create new unqiue filepath
@@ -149,7 +169,15 @@ def create_new_filepath(session):
 
 
 def submit(current_comp):
-    """Set rendermode to deadline and publish / submit comp"""
+    """Set rende rmode to deadline and publish / submit comp
+
+    Args:
+        current_comp (PyObject): current comp instance
+
+    Returns:
+        bool (True)
+
+    """
 
     # Set comp render mode to deadline
     current_comp.SetData("colorbleed.rendermode", "deadline")
