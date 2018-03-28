@@ -148,18 +148,17 @@ def create_new_filepath(session):
     template = project["config"]["template"]["work"]
     template_work = pipeline._format_work_template(template, session)
 
-    walk_to_dir = os.path.join(template_work, "scenes", "slapcomp")
-    slapcomp_dir = os.path.abspath(walk_to_dir)
+    comp_dir = os.path.abspath(os.path.join(template_work, "scenes"))
 
     # Ensure destination exists
-    if not os.path.isdir(slapcomp_dir):
+    if not os.path.isdir(comp_dir):
         log.warning("Folder did not exist, creating folder structure")
-        os.makedirs(slapcomp_dir)
+        os.makedirs(comp_dir)
 
     # Compute output path
     new_filename = "{}_{}_v001.comp".format(session["AVALON_PROJECT"],
                                             session["AVALON_ASSET"])
-    new_filepath = os.path.join(slapcomp_dir, new_filename)
+    new_filepath = os.path.join(comp_dir, new_filename)
 
     # Create new unqiue filepath
     if os.path.exists(new_filepath):
@@ -169,7 +168,7 @@ def create_new_filepath(session):
 
 
 def submit(current_comp):
-    """Set rende rmode to deadline and publish / submit comp
+    """Set render mode to deadline and publish / submit comp
 
     Args:
         current_comp (PyObject): current comp instance
