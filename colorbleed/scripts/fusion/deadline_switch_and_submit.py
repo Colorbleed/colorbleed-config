@@ -134,7 +134,7 @@ def create_new_filepath(session):
     Create a new file path based on the session and the project's template
 
     Args:
-        session (dict): the Avalon session
+        session (dict): a copy of the Avalon session
 
     Returns:
         file path (str)
@@ -167,29 +167,36 @@ def create_new_filepath(session):
     return new_filepath
 
 
-def submit(current_comp):
+def submit(current_comp, source=""):
     """Set render mode to deadline and publish / submit comp
 
     Args:
+        source (str): file path
         current_comp (PyObject): current comp instance
 
     Returns:
         bool (True)
 
     """
+    import pyblish
+    from pyblish import util
 
     # Set comp render mode to deadline
     current_comp.SetData("colorbleed.rendermode", "deadline")
 
     error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
+    comment = "slapped using: {}".format(os.path.basename(source))
 
     # Publish
-    context = api.publish()
-    if not context:
+    context = pyblish.api.Context()
+    context.data["comment"] = comment
+
+    results = util.publish(context=context)
+    if not results:
         raise RuntimeError("Nothing collected for publish")
 
     # Collect errors, {plugin name: error}, if any
-    error_results = [r for r in context.data["results"] if r["error"]]
+    error_results = [r for r in results.data["results"] if r["error"]]
     if error_results:
         for result in error_results:
             log.error(error_format.format(**result))
@@ -249,7 +256,7 @@ def process(file_path, asset_name, deadline=False):
         new_file_path = create_new_filepath(api.Session)
         current_comp.Save(new_file_path)
         if deadline:
-            submit(current_comp)
+            submit(current_comp, source=file_path)
     except Exception:
         print(traceback.format_exc())  # ensure detailed traceback
         raise
