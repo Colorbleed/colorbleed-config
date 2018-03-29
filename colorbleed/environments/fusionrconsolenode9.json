@@ -1,0 +1,30 @@
+{
+    "FUSION_VERSION": "9",
+    "FUSION_LOCATION": {
+        "darwin": "/Applications/Blackmagic Design/Fusion ${FUSION_VERSION}/Fusion.app/Contents",
+        "linux": "/usr/blackmagic design/fusion ${FUSION_VERSION}",
+        "windows": "C:/Program Files/Blackmagic Design/Fusion ${FUSION_VERSION}"
+    },
+    "PATH": {
+        "darwin": "${FUSION_LOCATION};{PATH}",
+        "linux": "${FUSION_LOCATION};{PATH}",
+        "windows": ["${FUSION_LOCATION}", "{PATH}"]
+    },
+
+    "FUSION9_MasterPrefs": "{CB_PIPELINE}/dev/apps/fusion_shared/{FUSION_VERSION}.0./fusion_shared.prefs",
+
+    "OFX_PLUGIN_PATH" :[
+        "P:/pipeline/dev/apps/ofx",
+        "P:/pipeline/dev/apps/ofx/Plugins",
+    ],
+
+    "PYTHONPATH": [
+        "P:/pipeline/dev/git/fusionless",
+        "P:/pipeline/dev/git/Qt.py",
+        "P:/pipeline/dev/apps/python/standalone/2.7/site-packages",
+        "{AVALON_CORE}/setup/fusion",
+        "{PYTHONPATH}"
+    ],
+
+    "FFMPEG_PATH": "{CB_PIPELINE}/dev/apps/ffmpeg/bin/ffmpeg.exe",
+}

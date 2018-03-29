@@ -1,0 +1,29 @@
+{
+    "FUSION_VERSION": "9",
+    "FUSION_LOCATION": {
+        "darwin": "/Applications/Blackmagic Design/Fusion ${FUSION_VERSION}/Fusion.app/Contents",
+        "linux": "/usr/blackmagic design/fusion ${FUSION_VERSION}",
+        "windows": "C:/Program Files/Blackmagic Design/Fusion ${FUSION_VERSION}"
+    },
+    "PATH": {
+        "darwin": "${FUSION_LOCATION};{PATH}",
+        "linux": "${FUSION_LOCATION};{PATH}",
+        "windows": ["${FUSION_LOCATION}", "{PATH}"]
+    },
+
+    "FUSION_SHARED": "{CB_PIPELINE}/dev/apps/fusion_shared/{MAYA_VERSION}",
+
+    "PYTHONPATH": [
+        "{CB_PIPELINE}/2.1_dev/git/scriptsmenu/python",
+        "{CB_PIPELINE}/2.1_dev/git/maya-look-assigner",
+        "{CB_PIPELINE}/2.1_dev/git/maya_deadline_submission_settings/python",
+        "{CB_PIPELINE}/dev/git/maya-capture",
+        "{CB_PIPELINE}/dev/git/maya-capture-gui",
+        "{CB_PIPELINE}/dev/git/maya-capture-gui-cb",
+        "{CB_PIPELINE}/dev/apps/maya_shared/2018/scripts",
+        "{AVALON_CORE}/setup/maya",
+        "{PYTHONPATH}"
+    ],
+
+    "FFMPEG_PATH": "{CB_PIPELINE}/dev/apps/ffmpeg/bin/ffmpeg.exe",
+}
