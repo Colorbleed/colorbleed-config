@@ -1,0 +1,9 @@
+{
+    "CB_PIPELINE": "P:/pipeline",
+    
+    "PYTHONPATH": [
+        "{CB_PIPELINE}/dev/git/Qt.py",
+        "{CB_PIPELINE}/dev/git/cb",
+        "{PYTHONPATH}"
+    ]
+}
