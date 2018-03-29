@@ -158,13 +158,6 @@ def switch(asset_name):
     # Build the session to switch to
     api.update_current_task(task="comp", asset=asset_name, app="fusion")
 
-    # switch_to_session = api.Session.copy()
-
-    import pprint
-    print("START DEBUG")
-    pprint.pprint(api.Session)
-    print("END DEBUG")
-
     update_savers(current_comp, api.Session, project)
 
     return current_comp
