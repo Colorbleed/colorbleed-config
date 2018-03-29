@@ -156,13 +156,15 @@ def switch(asset_name):
     update_frame_range(start, end, comp=current_comp)
 
     # Build the session to switch to
-    switch_to_session = api.Session.copy()
-    switch_to_session["AVALON_ASSET"] = asset['name']
+    api.update_current_task(task="comp", asset=asset_name, app="fusion")
 
-    # Update session and environment
-    api.Session.update(switch_to_session)
-    os.environ.update(switch_to_session)
+    # switch_to_session = api.Session.copy()
 
-    update_savers(current_comp, switch_to_session, project)
+    import pprint
+    print("START DEBUG")
+    pprint.pprint(api.Session)
+    print("END DEBUG")
+
+    update_savers(current_comp, api.Session, project)
 
     return current_comp
