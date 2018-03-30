@@ -222,6 +222,9 @@ def process(file_path, asset_name, deadline=False):
 
     """
 
+    # Build the session to switch to
+    api.update_current_task(task="comp", asset=asset_name, app="fusion")
+
     # Start a fusion console node in "listen" mode
     proc = subprocess.Popen([FUSION_CONSOLE_EXE, "/listen"])
 

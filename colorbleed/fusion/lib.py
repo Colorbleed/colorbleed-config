@@ -154,10 +154,6 @@ def switch(asset_name):
     end = max(v["data"]["endFrame"] for v in versions)
 
     update_frame_range(start, end, comp=current_comp)
-
-    # Build the session to switch to
-    api.update_current_task(task="comp", asset=asset_name, app="fusion")
-
     update_savers(current_comp, api.Session, project)
 
     return current_comp
