@@ -1,5 +1,4 @@
 import os
-import pprint
 
 from avalon import api
 from avalon.vendor import requests
@@ -82,7 +81,9 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
         machine_limit = self.get_machine_limit(instance)
         payload["JobInfo"].update(machine_limit)
 
-        environment = job["Props"].get("Env", {})
+        environment = api.Session.copy()
+        environment["AVALON_TOOLS"] = "global;python36"
+
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(
                 key=key,
@@ -120,4 +121,3 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
             return {"Whitelist": renderglobals["Whitelist"]}
 
         return {"Blacklist": renderglobals.get("Blacklist")}
-
