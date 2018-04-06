@@ -143,6 +143,7 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
         # Transfer the environment from the original job to this dependent
         # job so they use the same environment
         environment = job["Props"].get("Env", {})
+        environment["AVALON_TOOLS"] = "global;python36"
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(
                 key=key,
