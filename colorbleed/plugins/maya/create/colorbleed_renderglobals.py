@@ -30,6 +30,8 @@ class CreateRenderGlobals(avalon.maya.Creator):
         data["priority"] = 50
         data["whitelist"] = False
         data["machineList"] = ""
+        data["runSlapComp"] = False
+        data["flowFile"] = ""
 
         self.data = data
         self.options = {"useSelection": False}  # Force no content
