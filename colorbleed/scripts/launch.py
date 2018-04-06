@@ -3,10 +3,6 @@ import pprint
 
 import avalon.lib as lib
 
-
-# TODO: Remove redundant hack
-import sys
-sys.path.append(r"P:\pipeline\dev\git\env_prototype")
 import env_prototype.api as api
 
 
