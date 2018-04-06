@@ -136,7 +136,7 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
 
         # Suspend publish job
         state = "Suspended" if attributes["suspendPublishJob"] else "Active"
-        options["suspendPublishJob"] = state
+        options["publishJobState"] = state
 
         # Check if the run slap comp
         if "runSlapComp" not in attributes:

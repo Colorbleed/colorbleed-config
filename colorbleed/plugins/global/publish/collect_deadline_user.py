@@ -20,8 +20,6 @@ def deadline_command(cmd):
 
     query = (executable, cmd)
 
-    print executable
-
     process = subprocess.Popen(query, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE,
                                universal_newlines=True,
@@ -36,8 +34,8 @@ class CollectDeadlineUser(pyblish.api.ContextPlugin):
 
     order = pyblish.api.CollectorOrder + 0.499
     label = "Deadline User"
-    hosts = ['maya']
-    families = ["colorbleed.renderlayer"]
+    hosts = ['maya', 'fusion']
+    families = ["colorbleed.renderlayer", "colorbleed.saver.deadline"]
 
     def process(self, context):
         """Inject the current working file"""
