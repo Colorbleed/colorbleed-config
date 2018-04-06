@@ -1,14 +1,9 @@
 import os
-import site
-
-# todo: refactore out the need of site
-site.addsitedir(r"P:\pipeline\dev\git\env_prototype")
 
 try:
     from env_prototype import api
 except ImportError as exc:
-    # todo: nice error message
-    print(exc)
+    raise RuntimeError("EnvPrototype seems not to be available, this is a bug")
 
 
 def __main__(deadlinePlugin):
