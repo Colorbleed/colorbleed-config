@@ -1,10 +1,15 @@
 import os
-from avalon import api, lib, pipeline
+import pprint
+
+import avalon.pipeline as pipeline
+import avalon.api as avalon
+
+from env_prototype import api
 
 
-class FusionRenderNode(api.Action):
+class FusionRenderNode(avalon.Action):
 
-    name = "fusionrendernode9"
+    name = "fusionrendernode"
     label = "F9 Render Node"
     icon = "object-group"
     order = 997
@@ -27,18 +32,24 @@ class FusionRenderNode(api.Action):
         """
 
         # Update environment with session
-        env = os.environ.copy()
-        env.update(session)
+        tools_env = api.get_tools(["global", "fusionnode9"])
 
-        # Get executable by na.e
-        app = lib.get_application(self.name)
-        executable = lib.which(app["executable"])
+        env = api.compute(tools_env)
+        env = api.merge(env, current_env=session.copy())
+        print("Environment %s" % pprint.pformat(env))
 
-        return lib.launch(executable=executable, args=[], environment=env)
+        paths = env.get("PATH", os.environ.get("PATH", "")).split(os.pathsep)
+        exe = api.which(self.name, paths=paths)
+
+        if not exe:
+            raise ValueError("Unable to find executable: %s" % self.name)
+
+        print("Launching: %s" % exe)
+        return api.execute(exe, environment=env, args=[])
 
 
 def register_launcher_actions():
     """Register specific actions which should be accessible in the launcher"""
 
     # Register fusion actions
-    pipeline.register_plugin(api.Action, FusionRenderNode)
+    pipeline.register_plugin(avalon.Action, FusionRenderNode)
