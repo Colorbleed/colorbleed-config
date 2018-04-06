@@ -194,36 +194,17 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
             "AuxFiles": []
         }
 
-        # Include critical environment variables with submission
-        keys = [
-            # This will trigger `userSetup.py` on the slave
-            # such that proper initialisation happens the same
-            # way as it does on a local machine.
-            # TODO(marcus): This won't work if the slaves don't
-            # have accesss to these paths, such as if slaves are
-            # running Linux and the submitter is on Windows.
-            "PYTHONPATH",
+        # Collects tools setup
+        # TODO: AVALON_TOOLS to be set at application launch, this is temp
+        env = api.Session.copy()
+        env["AVALON_TOOLS"] = self.find_loaded_tools()
 
-            # todo: This is a temporary fix for yeti variables
-            "PEREGRINEL_LICENSE",
-            "REDSHIFT_MAYAEXTENSIONSPATH",
-            "VRAY_FOR_MAYA2018_PLUGINS_X64",
-            "VRAY_PLUGINS_X64",
-            "VRAY_USE_THREAD_AFFINITY",
-            "MAYA_MODULE_PATH"
-        ]
-        environment = dict({key: os.environ[key] for key in keys
-                            if key in os.environ}, **api.Session)
-
-        PATHS = os.environ["PATH"].split(";")
-        environment["PATH"] = ";".join([p for p in PATHS
-                                        if p.startswith("P:")])
-
+        # Ingest session in job environment
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(
                 key=key,
-                value=environment[key]
-            ) for index, key in enumerate(environment)
+                value=env[key]
+            ) for index, key in enumerate(env)
         })
 
         # Include optional render globals
@@ -254,7 +235,30 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
             if int(value) == value:
                 continue
 
-            self.log.warning(
-                "%f=%d was rounded off to nearest integer"
-                % (value, int(value))
-            )
+            self.log.warning("%f=%d was rounded off to nearest integer" %
+                             (value, int(value)))
+
+    def find_loaded_tools(self):
+        """Temp function, remove after AVALON_TOOLS has been implemented
+
+        Returns:
+            str
+        """
+
+        _maya_version = "maya" + cmds.about(version=True)
+
+        # Check if Yeti is loaded
+        has_yeti = cmds.pluginInfo("pgYetiMaya", query=True, loaded=True)
+        if has_yeti:
+            # Get version and make it compatible with env_prototype
+            version = cmds.pluginInfo("pgYetiMaya", query=True, version=True)
+            yeti_version = "yeti{}".format(version)
+        else:
+            yeti_version = ""
+
+        # Filter out empty strings
+        collected = ["global", _maya_version, yeti_version]
+        tool_names = [t for t in collected if t != ""]
+        tools = ";".join(tool_names)
+
+        return tools
