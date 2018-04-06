@@ -24,10 +24,8 @@ def launch(tools, executable, args):
 
     # Search for the executable within the tool's environment
     # by temporarily taking on its `PATH` settings
-    original = os.environ["PATH"]
-    os.environ["PATH"] = env.get("PATH", os.environ.get("PATH", ""))
-    exe = lib.which(executable)
-    os.environ["PATH"] = original
+    paths = env.get("PATH", os.environ.get("PATH", "")).split(os.pathsep)
+    exe = lib.which(executable, paths=paths)
 
     if not exe:
         raise ValueError("Unable to find executable: %s" % executable)
