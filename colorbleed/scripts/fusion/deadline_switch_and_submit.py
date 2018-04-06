@@ -33,12 +33,16 @@ within `process()` can find `fusion`.
 
 """
 
-import subprocess
 import traceback
 import logging
 import time
+import site
 import sys
 import os
+
+
+site.addsitedir(r"P:\pipeline\dev\git\env_prototype")
+import env_prototype.api as env_api
 
 log = logging.getLogger(__name__)
 
@@ -53,13 +57,9 @@ key = "FUSION_PYTHON{0}_HOME".format(version)
 print("Setting %s to Python executable directory.." % key)
 os.environ[key] = os.path.dirname(sys.executable)
 
-# TODO: define these paths somewhere else
-FUSCRIPT_EXE = r"C:/Program Files/Blackmagic Design/Fusion9/FuScript.exe"
-FUSION_CONSOLE_EXE = r"C:/Program Files/Blackmagic Design/Fusion Render Node 9/FusionConsoleNode.exe"
-
 # Pipeline and config imports
+from avalon import io, api, pipeline, lib
 import avalon.fusion
-from avalon import io, api, pipeline
 
 import colorbleed.lib as cblib
 import colorbleed.fusion.lib as fusionlib
@@ -222,11 +222,19 @@ def process(file_path, asset_name, deadline=False):
 
     """
 
-    # Build the session to switch to
-    api.update_current_task(task="comp", asset=asset_name, app="fusion")
-
     # Start a fusion console node in "listen" mode
-    proc = subprocess.Popen([FUSION_CONSOLE_EXE, "/listen"])
+    tools_env = env_api.get_tools(["global", "fusionnode9"])
+    env = env_api.compute(tools_env)
+    env = env_api.merge(env, current_env=dict(os.environ))
+
+    # Search for the executable within the tool's environment
+    # by temporarily taking on its `PATH` settings
+    original = os.environ["PATH"]
+    os.environ["PATH"] = env.get("PATH", os.environ.get("PATH", ""))
+    exe = lib.which("fusionconsolenode")
+    os.environ["PATH"] = original
+
+    proc = lib.launch(exe, environment=env, args=["/listen"])
 
     srv = get_server()
     if not srv:
@@ -241,6 +249,9 @@ def process(file_path, asset_name, deadline=False):
 
     api.install(avalon.fusion)
     from avalon.fusion import pipeline
+
+    # Build the session to switch to
+    api.update_current_task(task="comp", asset=asset_name, app="fusion")
 
     # This does not set
     loaded_comp = fusion.LoadComp(file_path)
