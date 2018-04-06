@@ -145,7 +145,7 @@ def switch(asset_name):
     log.info("Switched %i Loaders of the %i\n" % (len(representations),
                                                   len(containers)))
     # Updating frame range
-    log.debug("\nUpdating frame range ..")
+    log.debug("Updating frame range ..\n")
     version_ids = [r["parent"] for r in representations]
     versions = io.find({"type": "version", "_id": {"$in": version_ids}})
     versions = list(versions)
