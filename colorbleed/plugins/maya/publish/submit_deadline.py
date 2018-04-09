@@ -195,9 +195,12 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
         }
 
         # Collects tools setup
-        # TODO: AVALON_TOOLS to be set at application launch, this is temp
+
+        AVALON_TOOLS = os.getenv("AVALON_TOOLS")
+        assert AVALON_TOOLS, "No environment setup found"
+
         env = api.Session.copy()
-        env["AVALON_TOOLS"] = self.find_loaded_tools()
+        env["AVALON_TOOLS"] = AVALON_TOOLS
 
         # Ingest session in job environment
         payload["JobInfo"].update({
@@ -222,7 +225,7 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
         if not response.ok:
             raise Exception(response.text)
 
-        # Store output dir for unified publisher (filesequence)
+        # Store output dir for unified publisher (file sequence)
         instance.data["outputDir"] = os.path.dirname(output_filename_0)
         instance.data["deadlineSubmissionJob"] = response.json()
 
@@ -237,28 +240,3 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
 
             self.log.warning("%f=%d was rounded off to nearest integer" %
                              (value, int(value)))
-
-    def find_loaded_tools(self):
-        """Temp function, remove after AVALON_TOOLS has been implemented
-
-        Returns:
-            str
-        """
-
-        _maya_version = "maya" + cmds.about(version=True)
-
-        # Check if Yeti is loaded
-        has_yeti = cmds.pluginInfo("pgYetiMaya", query=True, loaded=True)
-        if has_yeti:
-            # Get version and make it compatible with env_prototype
-            version = cmds.pluginInfo("pgYetiMaya", query=True, version=True)
-            yeti_version = "yeti{}".format(version)
-        else:
-            yeti_version = ""
-
-        # Filter out empty strings
-        collected = ["global", _maya_version, yeti_version]
-        tool_names = [t for t in collected if t != ""]
-        tools = ";".join(tool_names)
-
-        return tools
