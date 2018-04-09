@@ -35,7 +35,7 @@ class FusionRenderNode(avalon.Action):
         tools_env = api.get_tools(["global", "fusionnode9"])
 
         env = api.compute(tools_env)
-        env = api.merge(env, current_env=session.copy())
+        env = api.merge(env, current_env=dict(os.environ))
         print("Environment %s" % pprint.pformat(env))
 
         paths = env.get("PATH", os.environ.get("PATH", "")).split(os.pathsep)
