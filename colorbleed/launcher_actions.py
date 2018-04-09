@@ -38,9 +38,7 @@ class FusionRenderNode(avalon.Action):
         env = api.merge(env, current_env=dict(os.environ))
         print("Environment %s" % pprint.pformat(env))
 
-        paths = env.get("PATH", os.environ.get("PATH", "")).split(os.pathsep)
-        exe = api.which(self.name, paths=paths)
-
+        exe = api.which(self.name, env)
         if not exe:
             raise ValueError("Unable to find executable: %s" % self.name)
 
