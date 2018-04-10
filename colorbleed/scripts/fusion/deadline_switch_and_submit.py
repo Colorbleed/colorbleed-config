@@ -42,7 +42,7 @@ import os
 
 
 site.addsitedir(r"P:\pipeline\dev\git\env_prototype")
-import env_prototype.api as env_api
+import acre
 
 log = logging.getLogger(__name__)
 
@@ -223,9 +223,9 @@ def process(file_path, asset_name, deadline=False):
     """
 
     # Start a fusion console node in "listen" mode
-    tools_env = env_api.get_tools(["global", "fusionnode9"])
-    env = env_api.compute(tools_env)
-    env = env_api.merge(env, current_env=dict(os.environ))
+    tools_env = acre.get_tools(["global", "fusionnode9"])
+    env = acre.compute(tools_env)
+    env = acre.merge(env, current_env=dict(os.environ))
 
     # Search for the executable within the tool's environment
     # by temporarily taking on its `PATH` settings
