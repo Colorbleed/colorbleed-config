@@ -1,9 +1,10 @@
 import os
 
 try:
-    from env_prototype import api
+    import acre
 except ImportError as exc:
-    raise RuntimeError("EnvPrototype seems not to be available, this is a bug")
+    # todo: nice error message
+    print(exc)
 
 
 def __main__(deadlinePlugin):
@@ -22,11 +23,11 @@ def __main__(deadlinePlugin):
 
     deadlinePlugin.LogInfo("Setting environment for tools: %s" % tools)
 
-    tools_env = api.get_tools(tools.split(";"))
-    env = api.compute(tools_env)
+    tools_env = acre.get_tools(tools.split(";"))
+    env = acre.compute(tools_env)
 
     # Get the merged environment for the local machine
-    merged = api.merge(env, current_env=os.environ.copy())
+    merged = acre.merge(env, current_env=os.environ.copy())
 
     # Keep only the changed variables
     env = {key: value for key, value in merged.items() if key in env}
