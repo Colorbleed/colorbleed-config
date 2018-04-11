@@ -3,8 +3,7 @@ import os
 try:
     import acre
 except ImportError as exc:
-    # todo: nice error message
-    print(exc)
+    raise ImportError("Module 'acre' cannot be found in the environment")
 
 
 def __main__(deadlinePlugin):
