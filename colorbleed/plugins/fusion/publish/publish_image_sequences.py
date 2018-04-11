@@ -8,22 +8,19 @@ import pyblish.api
 from colorbleed.action import get_errored_plugins_from_data
 
 
-def _get_script():
+def _get_script_dir():
     """Get path to the image sequence script"""
-
-    # todo: use a more elegant way to get the python script
-
     try:
-        from colorbleed.scripts import publish_filesequence
-    except Exception:
-        raise RuntimeError("Expected module 'publish_imagesequence'"
-                           "to be available")
+        import colorbleed
+        config_dir = os.path.dirname(colorbleed.__file__)
+        script_dir = os.path.join(config_dir, "scripts")
+    except ImportError:
+        raise RuntimeError("This is a bug")
 
-    module_path = publish_filesequence.__file__
-    if module_path.endswith(".pyc"):
-        module_path = module_path[:-len(".pyc")] + ".py"
+    assert os.path.isdir(script_dir), "Config is incomplete"
+    script_dir = script_dir.replace(os.sep, "/")
 
-    return module_path
+    return script_dir
 
 
 class PublishImageSequence(pyblish.api.InstancePlugin):
@@ -73,7 +70,13 @@ class PublishImageSequence(pyblish.api.InstancePlugin):
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startupinfo.wShowWindow = subprocess.SW_HIDE
 
-        process = subprocess.Popen(["python", _get_script(),
+        # Get script
+        script_dir = _get_script_dir()
+        script = os.path.join(script_dir, "publish_imagesequence.py")
+        assert os.path.isfile(script), ("Config incomplete, missing "
+                                        "`script/publish_imagesequence.py`")
+
+        process = subprocess.Popen(["python", script,
                                     "--paths", path],
                                    bufsize=1,
                                    stdout=subprocess.PIPE,

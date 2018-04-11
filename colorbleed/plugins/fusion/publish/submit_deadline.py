@@ -39,7 +39,7 @@ class FusionSubmitDeadline(pyblish.api.InstancePlugin):
 
         # Collect all saver instances in context that are to be rendered
         saver_instances = []
-        for instance in context[:]:
+        for instance in list(context):
             if not self.families[0] in instance.data.get("families"):
                 # Allow only saver family instances
                 continue
@@ -117,22 +117,17 @@ class FusionSubmitDeadline(pyblish.api.InstancePlugin):
             payload["JobInfo"]["OutputFilename%d" % index] = filename
 
         # Include critical variables with submission
-        keys = [
-            # TODO: This won't work if the slaves don't have accesss to
-            # these paths, such as if slaves are running Linux and the
-            # submitter is on Windows.
-            "PYTHONPATH",
-            "OFX_PLUGIN_PATH",
-            "FUSION9_MasterPrefs"
-        ]
-        environment = dict({key: os.environ[key] for key in keys
-                            if key in os.environ}, **api.Session)
+        AVALON_TOOLS = os.getenv("AVALON_TOOLS")
+        assert AVALON_TOOLS, "No environment setup found"
+
+        env = api.Session.copy()
+        env["AVALON_TOOLS"] = AVALON_TOOLS
 
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(
                 key=key,
-                value=environment[key]
-            ) for index, key in enumerate(environment)
+                value=env[key]
+            ) for index, key in enumerate(env)
         })
 
         self.log.info("Submitting..")

@@ -2,13 +2,15 @@ import os
 import glob
 import logging
 
-import avalon.io as io
-import avalon.api as api
-import avalon.pipeline as pipeline
+from avalon import io, api, pipeline
 import avalon.fusion
+
 import avalon.style as style
 from avalon.vendor.Qt import QtWidgets, QtCore
 from avalon.vendor import qtawesome as qta
+
+import colorbleed.lib as cblib
+import colorbleed.fusion.lib as flib
 
 
 log = logging.getLogger("Fusion Switch Shot")
@@ -125,7 +127,7 @@ class App(QtWidgets.QWidget):
 
         start_dir = self._get_context_directory()
         comp_file, _ = QtWidgets.QFileDialog.getOpenFileName(
-                            self, "Choose comp", start_dir)
+                            self, "Choose comp", start_dir, "*.comp")
 
         if not comp_file:
             return
@@ -146,16 +148,22 @@ class App(QtWidgets.QWidget):
 
     def _on_switch(self):
 
+        asset = self._assets.currentText()
+        _comp = avalon.fusion.get_current_comp()
         if not self._use_current.isChecked():
             file_name = self._comps.itemData(self._comps.currentIndex())
+            # Get the current comp's App (FusionUI)
+            _fusion = _comp.GetApp()
+            # Open the selected comp
+            loaded_comp = _fusion.LoadComp(file_name)
+            if not loaded_comp:
+                raise RuntimeError("Invalid file: '%s'" % file_name)
         else:
-            comp = avalon.fusion.get_current_comp()
-            file_name = comp.GetAttrs("COMPS_FileName")
+            file_name = _comp.GetAttrs("COMPS_FileName")
 
-        asset = self._assets.currentText()
-
-        import colorbleed.scripts.fusion_switch_shot as switch_shot
-        switch_shot.switch(asset_name=asset, filepath=file_name, new=True)
+        switched_comp = flib.switch(asset)
+        new_filename = cblib.version_up(file_name)
+        switched_comp.Save(new_filename)
 
     def _get_context_directory(self):
 

@@ -194,36 +194,20 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
             "AuxFiles": []
         }
 
-        # Include critical environment variables with submission
-        keys = [
-            # This will trigger `userSetup.py` on the slave
-            # such that proper initialisation happens the same
-            # way as it does on a local machine.
-            # TODO(marcus): This won't work if the slaves don't
-            # have accesss to these paths, such as if slaves are
-            # running Linux and the submitter is on Windows.
-            "PYTHONPATH",
+        # Collects tools setup
 
-            # todo: This is a temporary fix for yeti variables
-            "PEREGRINEL_LICENSE",
-            "REDSHIFT_MAYAEXTENSIONSPATH",
-            "VRAY_FOR_MAYA2018_PLUGINS_X64",
-            "VRAY_PLUGINS_X64",
-            "VRAY_USE_THREAD_AFFINITY",
-            "MAYA_MODULE_PATH"
-        ]
-        environment = dict({key: os.environ[key] for key in keys
-                            if key in os.environ}, **api.Session)
+        AVALON_TOOLS = os.getenv("AVALON_TOOLS")
+        assert AVALON_TOOLS, "No environment setup found"
 
-        PATHS = os.environ["PATH"].split(";")
-        environment["PATH"] = ";".join([p for p in PATHS
-                                        if p.startswith("P:")])
+        env = api.Session.copy()
+        env["AVALON_TOOLS"] = AVALON_TOOLS
 
+        # Ingest session in job environment
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(
                 key=key,
-                value=environment[key]
-            ) for index, key in enumerate(environment)
+                value=env[key]
+            ) for index, key in enumerate(env)
         })
 
         # Include optional render globals
@@ -241,7 +225,7 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
         if not response.ok:
             raise Exception(response.text)
 
-        # Store output dir for unified publisher (filesequence)
+        # Store output dir for unified publisher (file sequence)
         instance.data["outputDir"] = os.path.dirname(output_filename_0)
         instance.data["deadlineSubmissionJob"] = response.json()
 
@@ -254,7 +238,5 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
             if int(value) == value:
                 continue
 
-            self.log.warning(
-                "%f=%d was rounded off to nearest integer"
-                % (value, int(value))
-            )
+            self.log.warning("%f=%d was rounded off to nearest integer" %
+                             (value, int(value)))
