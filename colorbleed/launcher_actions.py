@@ -1,10 +1,13 @@
 import os
-from avalon import api, lib, pipeline
+
+from avalon import api, pipeline, lib
+
+import acre
 
 
 class FusionRenderNode(api.Action):
 
-    name = "fusionrendernode9"
+    name = "fusionrendernode"
     label = "F9 Render Node"
     icon = "object-group"
     order = 997
@@ -26,16 +29,17 @@ class FusionRenderNode(api.Action):
 
         """
 
-        # Update environment with session
-        env = os.environ.copy()
-        env.update(session)
+        # Update environment with session and the current environment
+        tools_env = acre.get_tools(["global", "fusionnode9"])
+        env = acre.compute(tools_env)
+        env = acre.merge(env, current_env=dict(os.environ))
 
         # Get executable by name
-        app = lib.get_application(self.name)
-        env.update(app["environment"])
-        executable = lib.which(app["executable"])
+        executable = acre.which(self.name, env)
+        if not executable:
+            raise ValueError("Unable to find executable %s" % self.name)
 
-        return lib.launch(executable=executable, args=[], environment=env)
+        return acre.launch(executable=executable, args=[], environment=env)
 
 
 class VrayRenderSlave(api.Action):
@@ -63,20 +67,16 @@ class VrayRenderSlave(api.Action):
         """
 
         # Update environment with session
-        env = os.environ.copy()
-        env.update(session)
+        tools_env = acre.get_tools(["global", "maya2018", "vrayrenderslave"])
+        env = acre.compute(tools_env)
+        env = acre.merge(env, current_env=dict(os.environ))
 
         # Get executable by name
-        app = lib.get_application(self.name)
-        env.update(app["environment"])
-        executable = lib.which(app["executable"])
+        executable = acre.which("vray", env)
 
         # Run as server
-        arguments = ["-server", "-portNumber=20207"]
-
-        return lib.launch(executable=executable,
-                          args=arguments,
-                          environment=env)
+        args = ["-server", "-portNumber=20207"]
+        return acre.launch(executable=executable, args=args, environment=env)
 
 
 def register_launcher_actions():
