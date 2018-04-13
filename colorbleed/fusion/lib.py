@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import traceback
 
 import avalon.fusion
 from avalon import api, io, pipeline
@@ -140,7 +141,8 @@ def switch(asset_name):
             representations.append(representation)
             log.debug(str(representation["_id"]) + "\n")
         except Exception as e:
-            log.debug("Error in switching! %s\n" % e.message)
+            msg = traceback.format_stack(e)
+            log.debug("Error in switching! %s\n" % msg)
 
     log.info("Switched %i Loaders of the %i\n" % (len(representations),
                                                   len(containers)))
