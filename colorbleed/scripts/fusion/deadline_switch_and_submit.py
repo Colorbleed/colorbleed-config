@@ -36,13 +36,13 @@ within `process()` can find `fusion`.
 import traceback
 import logging
 import time
-import site
 import sys
 import os
 
-
-site.addsitedir(r"P:\pipeline\dev\git\env_prototype")
-import acre
+try:
+    import acre
+except ImportError:
+    raise ImportError("Module 'acre' cannot be found in the environment")
 
 log = logging.getLogger(__name__)
 
@@ -160,7 +160,7 @@ def create_new_filepath(session):
                                             session["AVALON_ASSET"])
     new_filepath = os.path.join(comp_dir, new_filename)
 
-    # Create new unqiue filepath
+    # Create new unique file path
     if os.path.exists(new_filepath):
         new_filepath = cblib.version_up(new_filepath)
 
@@ -229,12 +229,8 @@ def process(file_path, asset_name, deadline=False):
 
     # Search for the executable within the tool's environment
     # by temporarily taking on its `PATH` settings
-    original = os.environ["PATH"]
-    os.environ["PATH"] = env.get("PATH", os.environ.get("PATH", ""))
-    exe = lib.which("fusionconsolenode")
-    os.environ["PATH"] = original
-
-    proc = lib.launch(exe, environment=env, args=["/listen"])
+    exe = acre.which("fusionconsolenode", env)
+    proc = acre.launch(exe, environment=env, args=["/listen"])
 
     srv = get_server()
     if not srv:
@@ -268,6 +264,7 @@ def process(file_path, asset_name, deadline=False):
         # Execute script in comp
         fusionlib.switch(asset_name=asset_name)
         new_file_path = create_new_filepath(api.Session)
+        print("Saving comp as: %s" % new_file_path)
         current_comp.Save(new_file_path)
         if deadline:
             submit(current_comp, source=file_path)
