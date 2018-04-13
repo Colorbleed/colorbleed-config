@@ -184,7 +184,7 @@ def submit(current_comp, source=""):
     # Set comp render mode to deadline
     current_comp.SetData("colorbleed.rendermode", "deadline")
 
-    error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
+    error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}\n"
     comment = "slapped using: {}".format(os.path.basename(source))
 
     # Publish
@@ -198,9 +198,10 @@ def submit(current_comp, source=""):
     # Collect errors, {plugin name: error}, if any
     error_results = [r for r in results.data["results"] if r["error"]]
     if error_results:
+        custom_traceback = ""
         for result in error_results:
-            log.error(error_format.format(**result))
-        raise RuntimeError("Errors occured")
+            custom_traceback += error_format.format(**result)
+        raise RuntimeError("Errors occured:\n%s" % custom_traceback)
 
     return True
 
@@ -234,14 +235,17 @@ def process(file_path, asset_name, deadline=False):
 
     srv = get_server()
     if not srv:
-        log.info("No server found, starting server ..")
+        print("No server found, starting server ..")
         srv = start_server()
+
+    print("Found server: %s" % srv)
 
     # Force fusion into main magical module so that host.ls() works
     fusion = get_fusion_instance(proc.pid, srv)
     assert fusion
-    log.info("Connected to: %s" % fusion)
     setattr(sys.modules["__main__"], "fusion", fusion)
+
+    print("Connected to: %s" % fusion)
 
     api.install(avalon.fusion)
     from avalon.fusion import pipeline
