@@ -21,6 +21,18 @@ def _get_script_dir():
     return fusion_scripts
 
 
+def _get_acre_path():
+
+    import acre
+    moduledir = os.path.dirname(acre.__file__)
+    if not os.path.isdir(moduledir):
+        raise ValueError("Could not find 'acre'")
+
+    package_dir = os.path.abspath(os.path.join(moduledir, ".."))
+
+    return package_dir
+
+
 class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
     """Run Switch Shot on specified comp as depending job
 
@@ -81,8 +93,13 @@ class SubmitDependentSwitchJobDeadline(pyblish.api.ContextPlugin):
         machine_limit = self.get_machine_limit(instance)
         payload["JobInfo"].update(machine_limit)
 
+        TOOL_ENV = os.getenv("TOOL_ENV")
+        assert TOOL_ENV, "No environment directory found"
+
         environment = api.Session.copy()
+        environment["PYTHONPATH"] = _get_acre_path()
         environment["AVALON_TOOLS"] = "global;python36"
+        environment["TOOL_ENV"] = TOOL_ENV
 
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(

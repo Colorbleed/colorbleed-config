@@ -196,11 +196,14 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
 
         # Collects tools setup
 
+        TOOL_ENV = os.getenv("TOOL_ENV")
+        assert TOOL_ENV, "No environment directory found"
         AVALON_TOOLS = os.getenv("AVALON_TOOLS")
         assert AVALON_TOOLS, "No environment setup found"
 
         env = api.Session.copy()
         env["AVALON_TOOLS"] = AVALON_TOOLS
+        env["TOOL_ENV"] = TOOL_ENV
 
         # Ingest session in job environment
         payload["JobInfo"].update({

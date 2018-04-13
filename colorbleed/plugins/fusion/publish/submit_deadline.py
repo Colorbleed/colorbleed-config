@@ -117,11 +117,12 @@ class FusionSubmitDeadline(pyblish.api.InstancePlugin):
             payload["JobInfo"]["OutputFilename%d" % index] = filename
 
         # Include critical variables with submission
-        AVALON_TOOLS = os.getenv("AVALON_TOOLS")
-        assert AVALON_TOOLS, "No environment setup found"
+        TOOL_ENV = os.getenv("TOOL_ENV")
+        assert TOOL_ENV, "No environment directory found"
 
         env = api.Session.copy()
-        env["AVALON_TOOLS"] = AVALON_TOOLS
+        env["AVALON_TOOLS"] = "global;fusion9"
+        env["TOOL_ENV"] = TOOL_ENV
 
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(
