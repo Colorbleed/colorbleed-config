@@ -72,16 +72,6 @@ def override_event(event, callback):
 def on_init(_):
     avalon.logger.info("Running callback on init..")
 
-    def force_load_deferred(plugin):
-        """Load a plug-in deferred so it runs after UI has initialized"""
-        try:
-            utils.executeDeferred(partial(cmds.loadPlugin,
-                                          plugin,
-                                          quiet=True))
-        except RuntimeError, e:
-            log.warning("Can't load plug-in: "
-                        "{0} - {1}".format(plugin, e))
-
     def safe_deferred(fn):
         """Execute deferred the function in a try-except"""
 
@@ -99,7 +89,6 @@ def on_init(_):
 
     cmds.loadPlugin("AbcImport", quiet=True)
     cmds.loadPlugin("AbcExport", quiet=True)
-    force_load_deferred("mtoa")
 
     from .customize import override_component_mask_commands
     safe_deferred(override_component_mask_commands)
