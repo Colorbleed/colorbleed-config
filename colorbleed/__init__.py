@@ -4,6 +4,7 @@ from avalon import api as avalon
 
 from .launcher_actions import register_launcher_actions
 
+
 PACKAGE_DIR = os.path.dirname(__file__)
 PLUGINS_DIR = os.path.join(PACKAGE_DIR, "plugins")
 
@@ -22,4 +23,12 @@ def uninstall():
     print("Deregistering global plug-ins..")
     pyblish.deregister_plugin_path(PUBLISH_PATH)
     avalon.deregister_plugin_path(avalon.Loader, LOAD_PATH)
+
+
+def register_launcher_actions():
+    """Register specific actions which should be accessible in the launcher"""
+
+    # Register fusion actions
+    from .fusion import rendernode
+    pipeline.register_plugin(api.Action, rendernode.FusionRenderNode)
 
