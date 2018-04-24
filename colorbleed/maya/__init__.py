@@ -66,7 +66,7 @@ def override_event(event, callback):
     ref = weakref.WeakSet()
     ref.add(callback)
 
-    pipeline._registered_event_handlers[event] = callback
+    pipeline._registered_event_handlers[event] = ref
 
 
 def on_init(_):
@@ -157,7 +157,7 @@ def on_open(_):
             dialog.show()
 
 
-def on_task_changed():
+def on_task_changed(*args):
     """Wrapped function of app initialize and maya's on task changed"""
 
     # Inputs (from the switched session and running app)
