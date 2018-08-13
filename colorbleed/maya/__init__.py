@@ -5,6 +5,7 @@ import weakref
 from maya import utils, cmds, mel
 
 from avalon import api as avalon, pipeline, maya
+from avalon.tools import workfiles
 from pyblish import api as pyblish
 
 from ..lib import (
@@ -95,6 +96,16 @@ def on_init(_):
 
     from .customize import override_component_mask_commands
     safe_deferred(override_component_mask_commands)
+    safe_deferred(show_workfiles)
+
+
+def show_workfiles():
+    workfiles.show(
+        os.path.join(
+            cmds.workspace(query=True, rootDirectory=True),
+            cmds.workspace(fileRuleEntry="scene")
+        )
+    )
 
 
 def on_before_save(return_code, _):
