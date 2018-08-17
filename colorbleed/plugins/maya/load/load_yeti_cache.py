@@ -50,7 +50,6 @@ class YetiCacheLoader(api.Loader):
         group_node = cmds.group(nodes, name=group_name)
 
         nodes.append(group_node)
-
         self[:] = nodes
 
         return pipeline.containerise(name=name,
@@ -81,6 +80,23 @@ class YetiCacheLoader(api.Loader):
 
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 
+    def load_new_node_data(self, representation):
+        # Get JSON
+        path = api.get_representation_path(representation)
+        fname, ext = os.path.splitext(path)
+        settings_fname = "{}.fursettings".format(fname)
+        with open(settings_fname, "r") as fp:
+            fursettings = json.load(fp)
+
+        # Check if resources map exists
+        # Get node name from JSON
+        if "nodes" not in fursettings:
+            raise RuntimeError("Encountered invalid data, expect 'nodes' in "
+                               "fursettings.")
+
+        node_data = fursettings["nodes"]
+        return node_data
+
     def update(self, container, representation):
 
         path = api.get_representation_path(representation)
@@ -91,7 +107,36 @@ class YetiCacheLoader(api.Loader):
         # TODO: Count the amount of nodes cached
         # To ensure new nodes get created or old nodes get destroyed
 
+        # Load the new fur settings file
+        new_node_data = self.load_new_node_data(representation)
+
+        pg_nodes = []
+        nodes_to_add = []
+        nodes = []
+
+        # Construct a bunch of lists we can use for checking what must be
+        # removed, added, or updated
+        for node in new_node_data:
+            pg_original_node = node["name"]
+            pg_node_name = "{}{}".format(namespace, pg_original_node)
+            pg_nodes.append(pg_node_name)
+            if pg_node_name not in yeti_node:
+                nodes_to_add.append(node)
+            nodes.append(node)
+
+        # add new nodes
+        # We need to have an updated self.fname for the path to solve correctly
+        # But that name updates after this method has run, and we also don't
+        # want to screw with Avalon's internal workings, so we need a workaround
+        new_nodes = self.create_additional_nodes(namespace, nodes_to_add, path)
+
         for node in yeti_node:
+            if node not in pg_nodes:
+                # This node needs to be removed
+                parent = [cmds.listRelatives(node, parent=True) or node][0]
+                cmds.delete(parent)
+                continue
+
             # Remove local given namespace
             node_name = node.split(namespace, 1)[-1]
             file_name = node_name.replace(":", "_")
@@ -102,6 +147,17 @@ class YetiCacheLoader(api.Loader):
 
             # Update the attribute
             cmds.setAttr("{}.cacheFileName".format(node), fpath, type="string")
+
+            nodes.append(node)
+
+        # add new nodes to existing container
+        cmds.sets(new_nodes, add=container["objectName"])
+
+        # Add new nodes to group (reconstruct group name)
+        # TODO: There's probably a much easier way to do this through Avalon?
+        cont = container["objectName"].replace(container["namespace"], '').lstrip('_')[:-4] # Making a bunch of assumptions here
+        for node in cmds.ls(new_nodes, tr=True, s=False):
+            cmds.parent(node, "{}:{}".format(container["namespace"], cont))
 
         # Update the container
         cmds.setAttr("{}.representation".format(container["objectName"]),
@@ -156,7 +212,6 @@ class YetiCacheLoader(api.Loader):
         # Get node name from JSON
         nodes = []
         for node_settings in settings:
-
             # Create transform node
             transform = node_settings["transform"]
             transform_name = "{}:{}".format(namespace, transform["name"])
@@ -223,5 +278,80 @@ class YetiCacheLoader(api.Loader):
 
             nodes.append(yeti_node)
             nodes.append(transform_node)
+
+        return nodes
+
+    def create_additional_nodes(self, namespace, settings, path):
+        """ Lots of duplicate code, but screw it for now """
+        # Get node name from JSON
+        nodes = []
+        for node_settings in settings:
+            # Create transform node
+            transform = node_settings["transform"]
+            transform_name = "{}:{}".format(namespace, transform["name"])
+            transform_node = cmds.createNode("transform", name=transform_name)
+
+            lib.set_id(transform_node, transform["cbId"])
+
+            # Create pgYetiMaya node
+            original_node = node_settings["name"]
+            node_name = "{}:{}".format(namespace, original_node)
+            yeti_node = cmds.createNode("pgYetiMaya",
+                                        name=node_name,
+                                        parent=transform_node)
+
+            # Fix for : YETI-6
+            # Fixes the render stats (this is literally taken from Perigrene's
+            # ../scripts/pgYetiNode.mel script)
+            cmds.setAttr(yeti_node + ".visibleInReflections", 1)
+            cmds.setAttr(yeti_node + ".visibleInRefractions", 1)
+
+            lib.set_id(yeti_node, node_settings["cbId"])
+
+            nodes.append(transform_node)
+            nodes.append(yeti_node)
+
+            # Apply attributes to pgYetiMaya node
+            kwargs = {}
+            for attr, value in node_settings["attrs"].items():
+                if value is None:
+                    continue
+
+                attribute = "%s.%s" % (yeti_node, attr)
+                if isinstance(value, (str, unicode)):
+                    cmds.setAttr(attribute, value, type="string")
+                    continue
+
+                cmds.setAttr(attribute, value, **kwargs)
+
+            # Ensure the node has no namespace identifiers
+            node_name = original_node.replace(":", "_")
+
+            # Create full cache path
+            cache = os.path.join(path, "{}.%04d.fur".format(node_name))
+            cache = os.path.normpath(cache)
+            cache_fname = self.validate_cache(cache)
+            cache_path = os.path.join(path, cache_fname)
+
+            # Preset the viewport density
+            cmds.setAttr("%s.viewportDensity" % yeti_node, 0.1)
+
+            # Add filename to `cacheFileName` attribute
+            cmds.setAttr("%s.cacheFileName" % yeti_node,
+                         cache_path,
+                         type="string")
+
+            # Set verbosity for debug purposes
+            cmds.setAttr("%s.verbosity" % yeti_node, 2)
+
+            # Enable the cache by setting the file mode
+            cmds.setAttr("%s.fileMode" % yeti_node, 1)
+
+            # Connect to the time node
+            cmds.connectAttr("time1.outTime", "%s.currentTime" % yeti_node)
+
+            # Added twice?
+            # nodes.append(yeti_node)
+            # nodes.append(transform_node)
 
         return nodes
