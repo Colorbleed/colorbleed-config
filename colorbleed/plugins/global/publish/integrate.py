@@ -259,7 +259,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         hardlinks = instance.data.get("hardlinks", list())
         for src, dest in hardlinks:
             self.log.info("Hardlinking file .. {} -> {}".format(src, dest))
-            filelink.create(src, dest, filelink.HARDLINK)
+            self.hardlink_file(src, dest)
 
     def copy_file(self, src, dst):
         """ Copy given source to destination
@@ -282,6 +282,20 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 raise
 
         shutil.copy(src, dst)
+
+    def hardlink_file(self, src, dst):
+
+        dirname = os.path.dirname(dst)
+        try:
+            os.makedirs(dirname)
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                pass
+            else:
+                self.log.critical("An unexpected error occurred.")
+                raise
+
+        filelink.create(src, dst, filelink.HARDLINK)
 
     def get_subset(self, asset, instance):
 
@@ -360,7 +374,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                         "fps": context.data.get("fps")}
 
         # Include optional data if present in
-        optionals = ["startFrame", "endFrame", "step", "handles"]
+        optionals = ["startFrame",
+                     "endFrame",
+                     "step",
+                     "handles",
+                     "sourceHashes"]
         for key in optionals:
             if key in instance.data:
                 version_data[key] = instance.data[key]
