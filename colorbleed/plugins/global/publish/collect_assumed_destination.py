@@ -1,5 +1,4 @@
 import pyblish.api
-import os
 
 from avalon import io, api
 
@@ -11,60 +10,12 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.499
 
     def process(self, instance):
-
-        self.create_destination_template(instance)
-
-        template_data = instance.data["assumedTemplateData"]
-        template = instance.data["template"]
-
-        mock_template = template.format(**template_data)
-
-        # For now assume resources end up in a "resources" folder in the
-        # published folder
-        mock_destination = os.path.join(os.path.dirname(mock_template),
-                                        "resources")
-
-        # Clean the path
-        mock_destination = os.path.abspath(os.path.normpath(mock_destination))
-
-        # Define resource destination and transfers
-        resources = instance.data.get("resources", list())
-        transfers = instance.data.get("transfers", list())
-        for resource in resources:
-
-            # Add destination to the resource
-            source_filename = os.path.basename(resource["source"])
-            destination = os.path.join(mock_destination, source_filename)
-
-            # Force forward slashes to fix issue with software unable
-            # to work correctly with backslashes in specific scenarios
-            # (e.g. escape characters in PLN-151 V-Ray UDIM)
-            destination = destination.replace("\\", "/")
-
-            resource['destination'] = destination
-
-            # Collect transfers for the individual files of the resource
-            # e.g. all individual files of a cache or UDIM textures.
-            files = resource['files']
-            for fsrc in files:
-                fname = os.path.basename(fsrc)
-                fdest = os.path.join(mock_destination, fname)
-                transfers.append([fsrc, fdest])
-
-        instance.data["resources"] = resources
-        instance.data["transfers"] = transfers
-
-    def create_destination_template(self, instance):
-        """Create a filepath based on the current data available
+        """Create a destination filepath based on the current data available
 
         Example template:
             {root}/{project}/{silo}/{asset}/publish/{subset}/v{version:0>3}/
             {subset}.{representation}
-        Args:
-            instance: the instance to publish
 
-        Returns:
-            file path (str)
         """
 
         # get all the stuff from the database
@@ -110,5 +61,6 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
                          "version": version_number,
                          "representation": "TEMP"}
 
-        instance.data["assumedTemplateData"] = template_data
         instance.data["template"] = template
+        instance.data["assumedTemplateData"] = template_data
+        instance.data["assumedDestination"] = template.format(**template_data)
