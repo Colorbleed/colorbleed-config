@@ -4,7 +4,9 @@ import shutil
 
 import errno
 import pyblish.api
+
 from avalon import api, io
+from avalon.vendor import filelink
 
 
 log = logging.getLogger(__name__)
@@ -240,11 +242,20 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             instance: the instance to integrate
         """
 
-        transfers = instance.data["transfers"]
-
+        transfers = instance.data.get("transfers", list())
         for src, dest in transfers:
             self.log.info("Copying file .. {} -> {}".format(src, dest))
             self.copy_file(src, dest)
+
+        # Produce hardlinked copies
+        # Note: hardlink can only be produced between two files on the same
+        # server/disk and editing one of the two will edit both files at once.
+        # As such it is recommended to only make hardlinks between static files
+        # to ensure publishes remain safe and non-edited.
+        hardlinks = instance.data.get("hardlinks", list())
+        for src, dest in hardlinks:
+            self.log.info("Hardlinking file .. {} -> {}".format(src, dest))
+            filelink.create(src, dest, filelink.HARDLINK)
 
     def copy_file(self, src, dst):
         """ Copy given source to destination
