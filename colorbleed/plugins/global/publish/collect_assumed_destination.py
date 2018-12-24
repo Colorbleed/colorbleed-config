@@ -1,3 +1,4 @@
+import os
 import pyblish.api
 
 from avalon import io, api
@@ -63,4 +64,8 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
 
         instance.data["template"] = template
         instance.data["assumedTemplateData"] = template_data
-        instance.data["assumedDestination"] = template.format(**template_data)
+
+        # We take the parent folder of representation 'filepath'
+        instance.data["assumedDestination"] = os.path.dirname(
+            template.format(**template_data)
+        )
