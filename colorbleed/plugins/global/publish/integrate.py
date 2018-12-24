@@ -80,10 +80,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         stagingdir = instance.data.get("stagingDir")
         assert stagingdir, ("Incomplete instance \"%s\": "
                             "Missing reference to staging area." % instance)
-
-        # extra check if stagingDir actually exists and is available
-
         self.log.debug("Establishing staging directory @ %s" % stagingdir)
+
+        # Ensure at least one file is set up for transfer in staging dir.
+        files = instance.data.get("files", [])
+        assert files, "Instance has no files to transfer"
+        assert isinstance(files, (list, tuple)), (
+            "Instance 'files' must be a list, got: {0}".format(files)
+        )
 
         project = io.find_one({"type": "project"},
                               projection={"config.template.publish": True})
