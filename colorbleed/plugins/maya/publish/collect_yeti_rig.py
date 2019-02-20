@@ -111,9 +111,10 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
         Returns:
             list
         """
-        resources = []
 
-        image_search_paths = cmds.getAttr("{}.imageSearchPath".format(node))
+        # Get the image search path value (this can return None if not set)
+        attr = "{}.imageSearchPath".format(node)
+        image_search_paths = cmds.getAttr(attr) or ""
 
         # TODO: Somehow this uses OS environment path separator, `:` vs `;`
         # Later on check whether this is pipeline OS cross-compatible.
@@ -132,10 +133,10 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
 
         if texture_filenames and not image_search_paths:
             raise ValueError("pgYetiMaya node '%s' is missing the path to the "
-                             "files in the 'imageSearchPath "
-                             "atttribute'" % node)
+                             "files in the 'imageSearchPath attribute'" % node)
 
         # Collect all texture files
+        resources = []
         for texture in texture_filenames:
 
             files = []
