@@ -2,6 +2,7 @@ import colorbleed.maya.plugin
 
 
 class YetiRigLoader(colorbleed.maya.plugin.ReferenceLoader):
+    """Load a Yeti Rig for simulations"""
 
     families = ["colorbleed.yetiRig"]
     representations = ["ma"]

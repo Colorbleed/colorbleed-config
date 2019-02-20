@@ -12,6 +12,7 @@ from colorbleed.maya import lib
 
 
 class YetiCacheLoader(api.Loader):
+    """Load a Yeti Cache"""
 
     families = ["colorbleed.yeticache", "colorbleed.yetiRig"]
     representations = ["fur"]

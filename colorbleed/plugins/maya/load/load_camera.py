@@ -2,7 +2,7 @@ import colorbleed.maya.plugin
 
 
 class CameraLoader(colorbleed.maya.plugin.ReferenceLoader):
-    """Specific loader of Alembic for the colorbleed.camera family"""
+    """Reference Camera"""
 
     families = ["colorbleed.camera"]
     label = "Reference camera"

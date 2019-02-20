@@ -7,7 +7,7 @@ from avalon import api, maya
 class RigLoader(colorbleed.maya.plugin.ReferenceLoader):
     """Specific loader for rigs
 
-    This automatically creates an instance for animators upon load.
+    This automatically creates an animation publish instance upon load.
 
     """
 
