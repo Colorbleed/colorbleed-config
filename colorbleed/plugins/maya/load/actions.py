@@ -6,7 +6,7 @@ from avalon import api
 
 
 class SetFrameRangeLoader(api.Loader):
-    """Specific loader of Alembic for the avalon.animation family"""
+    """Set Maya frame range"""
 
     families = ["colorbleed.animation",
                 "colorbleed.camera",
@@ -40,7 +40,7 @@ class SetFrameRangeLoader(api.Loader):
 
 
 class SetFrameRangeWithHandlesLoader(api.Loader):
-    """Specific loader of Alembic for the avalon.animation family"""
+    """Set Maya frame range including pre- and post-handles"""
 
     families = ["colorbleed.animation",
                 "colorbleed.camera",
@@ -125,7 +125,7 @@ class ImportMayaLoader(api.Loader):
         return
 
     def display_warning(self):
-        """Show warning to ensure the user can't import models by accident
+        """Show warning to ensure the user won't import models by accident
 
         Returns:
             bool
@@ -139,9 +139,9 @@ class ImportMayaLoader(api.Loader):
 
         message = "Are you sure you want import this"
         state = QtWidgets.QMessageBox.warning(None,
-                                               "Are you sure?",
-                                               message,
-                                               buttons=buttons,
-                                               defaultButton=accept)
+                                              "Are you sure?",
+                                              message,
+                                              buttons=buttons,
+                                              defaultButton=accept)
 
         return state == accept

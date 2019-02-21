@@ -2,7 +2,7 @@ import colorbleed.maya.plugin
 
 
 class AbcLoader(colorbleed.maya.plugin.ReferenceLoader):
-    """Specific loader of Alembic for the colorbleed.animation family"""
+    """Reference Alembic"""
 
     families = ["colorbleed.animation",
                 "colorbleed.pointcache"]

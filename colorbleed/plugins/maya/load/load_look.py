@@ -2,7 +2,7 @@ import colorbleed.maya.plugin
 
 
 class LookLoader(colorbleed.maya.plugin.ReferenceLoader):
-    """Specific loader for lookdev"""
+    """Reference look .ma file without assigning shaders."""
 
     families = ["colorbleed.look"]
     representations = ["ma"]
@@ -13,17 +13,6 @@ class LookLoader(colorbleed.maya.plugin.ReferenceLoader):
     color = "orange"
 
     def process_reference(self, context, name, namespace, data):
-        """
-        Load and try to ssign Lookdev to nodes based on relationship data
-        Args:
-            name:
-            namespace:
-            context:
-            data:
-
-        Returns:
-
-        """
 
         import maya.cmds as cmds
         from avalon import maya

@@ -2,6 +2,7 @@ from avalon import api
 
 
 class LoadVDBtoVRay(api.Loader):
+    """Load OpenVDB for V-Ray in VRayVolumeGrid"""
 
     families = ["colorbleed.vdbcache"]
     representations = ["vdb"]
