@@ -407,6 +407,11 @@ class CollectLook(pyblish.api.InstancePlugin):
         files = get_file_node_files(node)
         if len(files) == 0:
             self.log.error("No valid files found from node `%s`" % node)
+        elif len(files) == 1 and not os.path.isfile(files[0]):
+            # Collected only a folder, this can happen with a file node that
+            # has not been set to a filepath
+            self.log.error("Resource collected only a folder for "
+                           "node %s: %s" % (node, files[0]))
 
         # Define the resource
         return {"node": node,
