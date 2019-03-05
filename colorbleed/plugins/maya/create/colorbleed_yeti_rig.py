@@ -5,7 +5,7 @@ import avalon.maya
 
 
 class CreateYetiRig(avalon.maya.Creator):
-    """Output for procedural plugin nodes ( Yeti / XGen / etc)"""
+    """Create a Yeti Rig"""
 
     label = "Yeti Rig"
     family = "colorbleed.yetiRig"

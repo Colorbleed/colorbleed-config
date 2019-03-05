@@ -5,7 +5,6 @@ from colorbleed.maya import lib
 class CreateLook(avalon.maya.Creator):
     """Shader connections defining shape look"""
 
-    name = "look"
     label = "Look"
     family = "colorbleed.look"
     icon = "paint-brush"

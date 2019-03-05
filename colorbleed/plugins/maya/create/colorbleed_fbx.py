@@ -5,7 +5,6 @@ from colorbleed.maya import lib
 class CreateFBX(avalon.maya.Creator):
     """FBX Export"""
 
-    name = "fbxDefault"
     label = "FBX"
     family = "colorbleed.fbx"
     icon = "plug"

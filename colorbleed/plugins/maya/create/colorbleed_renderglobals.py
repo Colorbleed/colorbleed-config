@@ -8,6 +8,7 @@ from avalon import api
 
 
 class CreateRenderGlobals(avalon.maya.Creator):
+    """Submit Mayabatch renderlayers to Deadline"""
 
     label = "Render Globals"
     family = "colorbleed.renderglobals"

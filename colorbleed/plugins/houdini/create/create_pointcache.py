@@ -4,7 +4,6 @@ from avalon import houdini
 class CreatePointCache(houdini.Creator):
     """Alembic ROP to pointcache"""
 
-    name = "pointcache"
     label = "Point Cache"
     family = "colorbleed.pointcache"
     icon = "gears"

@@ -2,9 +2,8 @@ import avalon.maya
 
 
 class CreateVrayProxy(avalon.maya.Creator):
-    """Alembic pointcache for animated data"""
+    """Export a VRayMesh Proxy for meshes"""
 
-    name = "vrayproxy"
     label = "VRay Proxy"
     family = "colorbleed.vrayproxy"
     icon = "gears"

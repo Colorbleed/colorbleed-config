@@ -5,7 +5,6 @@ from colorbleed.maya import lib
 class CreateAnimation(avalon.maya.Creator):
     """Animation output for character rigs"""
 
-    name = "animationDefault"
     label = "Animation"
     family = "colorbleed.animation"
     icon = "male"

@@ -1,13 +1,10 @@
-from collections import OrderedDict
-
 import avalon.maya
 from colorbleed.maya import lib
 
 
 class CreateYetiCache(avalon.maya.Creator):
-    """Output for procedural plugin nodes of Yeti """
+    """Yeti Cache output for Yeti nodes"""
 
-    name = "yetiDefault"
     label = "Yeti Cache"
     family = "colorbleed.yeticache"
     icon = "pagelines"

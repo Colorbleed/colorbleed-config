@@ -4,7 +4,6 @@ from avalon import houdini
 class CreateAlembicCamera(houdini.Creator):
     """Single baked camera from Alembic ROP"""
 
-    name = "camera"
     label = "Camera (Abc)"
     family = "colorbleed.camera"
     icon = "camera"
