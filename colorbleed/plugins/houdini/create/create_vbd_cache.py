@@ -4,7 +4,6 @@ from avalon import houdini
 class CreateVDBCache(houdini.Creator):
     """OpenVDB from Geometry ROP"""
 
-    name = "vbdcache"
     label = "VDB Cache"
     family = "colorbleed.vdbcache"
     icon = "cloud"

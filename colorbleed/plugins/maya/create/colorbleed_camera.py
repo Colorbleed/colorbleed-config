@@ -5,7 +5,6 @@ from colorbleed.maya import lib
 class CreateCamera(avalon.maya.Creator):
     """Single baked camera"""
 
-    name = "cameraDefault"
     label = "Camera"
     family = "colorbleed.camera"
     icon = "video-camera"

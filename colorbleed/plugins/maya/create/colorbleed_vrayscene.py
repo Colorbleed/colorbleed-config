@@ -2,6 +2,7 @@ import avalon.maya
 
 
 class CreateVRayScene(avalon.maya.Creator):
+    """Submit VRayScene to Deadline"""
 
     label = "VRay Scene"
     family = "colorbleed.vrayscene"

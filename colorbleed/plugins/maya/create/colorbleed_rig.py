@@ -7,7 +7,6 @@ import avalon.maya
 class CreateRig(avalon.maya.Creator):
     """Artist-friendly rig with controls to direct motion"""
 
-    name = "rigDefault"
     label = "Rig"
     family = "colorbleed.rig"
     icon = "wheelchair"

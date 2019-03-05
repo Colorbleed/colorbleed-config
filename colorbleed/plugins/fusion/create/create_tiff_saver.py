@@ -6,7 +6,6 @@ from avalon import fusion
 
 class CreateTiffSaver(avalon.api.Creator):
 
-    name = "tiffDefault"
     label = "Create Tiff Saver"
     hosts = ["fusion"]
     family = "colorbleed.saver"
