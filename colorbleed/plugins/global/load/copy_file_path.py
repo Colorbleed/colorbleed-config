@@ -9,9 +9,9 @@ class CopyFilePath(api.Loader):
     families = ["*"]
 
     label = "Copy File Path"
-    order = 20
+    order = 98
     icon = "clipboard"
-    color = "#999999"
+    color = "#888888"
 
     def load(self, context, name=None, namespace=None, data=None):
         self.log.info("Added file path to clipboard: {0}".format(self.fname))

@@ -1,4 +1,4 @@
-from avalon import api, style
+from avalon import api
 
 
 class CopyFile(api.Loader):
@@ -8,9 +8,9 @@ class CopyFile(api.Loader):
     families = ["*"]
 
     label = "Copy File"
-    order = 10
+    order = 99
     icon = "copy"
-    color = style.colors.default
+    color = "#666666"
 
     def load(self, context, name=None, namespace=None, data=None):
         self.log.info("Added copy to clipboard: {0}".format(self.fname))
