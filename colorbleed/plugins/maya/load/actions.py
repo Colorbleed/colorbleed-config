@@ -139,9 +139,14 @@ class ImportMayaLoader(api.Loader):
         accept = QtWidgets.QMessageBox.Ok
         buttons = accept | QtWidgets.QMessageBox.Cancel
 
-        message = "Are you sure you want import this"
+        title = "Are you sure you want to import this model?"
+        message = (
+            "This will import the object unmanaged and will not\n"
+            "show up in the Avalon Scene Inventory. It will become\n"
+            "local to your scene."
+        )
         state = QtWidgets.QMessageBox.warning(None,
-                                              "Are you sure?",
+                                              title,
                                               message,
                                               buttons=buttons,
                                               defaultButton=accept)
