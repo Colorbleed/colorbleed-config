@@ -141,9 +141,9 @@ class ImportMayaLoader(api.Loader):
 
         title = "Are you sure you want to import this model?"
         message = (
-            "This will import the object unmanaged and will not\n"
-            "show up in the Avalon Scene Inventory. It will become\n"
-            "local to your scene."
+            "This will import the object in an unmanaged state.\n\n"
+            "It will become local to your scene and will not remain\n"
+            "actively linked to the Avalon pipeline."
         )
         state = QtWidgets.QMessageBox.warning(None,
                                               title,
