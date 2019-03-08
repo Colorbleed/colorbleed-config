@@ -9,6 +9,7 @@ class LoadVDBtoVRay(api.Loader):
     representations = ["vdb"]
 
     label = "Load VDB to VRay"
+    order = -10
     icon = "cloud"
     color = "orange"
 
@@ -58,7 +59,7 @@ class LoadVDBtoVRay(api.Loader):
 
         # Create VRayVolumeGrid
         grid_node = cmds.createNode("VRayVolumeGrid",
-                                    name="{}VVGShape".format(label),
+                                    name="{}Shape".format(root),
                                     parent=root)
 
         self._apply_settings(grid_node,

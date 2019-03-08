@@ -16,6 +16,7 @@ class LoadVDBtoRedShift(api.Loader):
     representations = ["vdb"]
 
     label = "Load VDB to RedShift"
+    order = -9
     icon = "cloud"
     color = "orange"
 
@@ -63,7 +64,7 @@ class LoadVDBtoRedShift(api.Loader):
 
         # Create VR
         volume_node = cmds.createNode("RedshiftVolumeShape",
-                                      name="{}RVSShape".format(label),
+                                      name="{}Shape".format(root),
                                       parent=root)
 
         self._apply_settings(volume_node, path=self.fname)
