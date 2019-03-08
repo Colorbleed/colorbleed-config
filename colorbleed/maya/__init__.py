@@ -175,7 +175,7 @@ def on_open(_):
             dialog.setWindowTitle("Maya scene has outdated content")
             dialog.setMessage("There are outdated containers in "
                               "your Maya scene.")
-            dialog.on_show.connect(_on_show_inventory)
+            dialog.on_clicked.connect(_on_show_inventory)
             dialog.show()
 
 

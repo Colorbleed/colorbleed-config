@@ -10,8 +10,9 @@ class SetFrameRangeLoader(api.Loader):
 
     families = ["colorbleed.animation",
                 "colorbleed.camera",
-                "colorbleed.pointcache"]
-    representations = ["abc"]
+                "colorbleed.pointcache",
+                "colorbleed.vdbcache"]
+    representations = ["abc", "vdb"]
 
     label = "Set frame range"
     order = 11
@@ -44,8 +45,9 @@ class SetFrameRangeWithHandlesLoader(api.Loader):
 
     families = ["colorbleed.animation",
                 "colorbleed.camera",
-                "colorbleed.pointcache"]
-    representations = ["abc"]
+                "colorbleed.pointcache",
+                "colorbleed.vdbcache"]
+    representations = ["abc", "vdb"]
 
     label = "Set frame range (with handles)"
     order = 12
@@ -137,9 +139,14 @@ class ImportMayaLoader(api.Loader):
         accept = QtWidgets.QMessageBox.Ok
         buttons = accept | QtWidgets.QMessageBox.Cancel
 
-        message = "Are you sure you want import this"
+        title = "Are you sure you want to import this model?"
+        message = (
+            "This will import the object in an unmanaged state.\n\n"
+            "It will become local to your scene and will not remain\n"
+            "actively linked to the Avalon pipeline."
+        )
         state = QtWidgets.QMessageBox.warning(None,
-                                              "Are you sure?",
+                                              title,
                                               message,
                                               buttons=buttons,
                                               defaultButton=accept)

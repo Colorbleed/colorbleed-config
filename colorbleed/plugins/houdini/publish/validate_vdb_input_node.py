@@ -31,6 +31,10 @@ class ValidateVDBInputNode(pyblish.api.InstancePlugin):
     def get_invalid(cls, instance):
 
         node = instance.data["output_node"]
+        if node is None:
+            cls.log.error("SOP path is not correctly set on "
+                          "ROP node '%s'." % instance[0].path())
+            return [instance]
 
         prims = node.geometry().prims()
         nr_of_prims = len(prims)

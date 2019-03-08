@@ -1,15 +1,17 @@
 import os
 from avalon import api, io
 
+# TODO aiVolume doesn't automatically set velocity fps correctly, set manual?
 
-class LoadVDBtoVRay(api.Loader):
-    """Load OpenVDB for V-Ray in VRayVolumeGrid"""
+
+class LoadVDBtoArnold(api.Loader):
+    """Load OpenVDB for Arnold in aiVolume"""
 
     families = ["colorbleed.vdbcache"]
     representations = ["vdb"]
 
-    label = "Load VDB to VRay"
-    order = -10
+    label = "Load VDB to Arnold"
+    order = -8
     icon = "cloud"
     color = "orange"
 
@@ -24,28 +26,10 @@ class LoadVDBtoVRay(api.Loader):
         )
 
         # Ensure V-ray is loaded
-        if not cmds.pluginInfo("vrayformaya", query=True, loaded=True):
-            cmds.loadPlugin("vrayformaya")
-
-        # When V-Ray version 4+ (V-Ray Next) then ensure the separate
-        # "vrayvolumegrid" plug-in gets loaded too.
-        if cmds.pluginInfo("vrayformaya", query=True, version=True) == "Next":
-            if not cmds.pluginInfo("vrayvolumegrid", query=True, loaded=True):
-                cmds.loadPlugin("vrayvolumegrid")
-
-        # Check if viewport drawing engine is Open GL Core (compat)
-        render_engine = None
-        compatible = "OpenGLCoreProfileCompat"
-        if cmds.optionVar(exists="vp2RenderingEngine"):
-            render_engine = cmds.optionVar(query="vp2RenderingEngine")
-
-        if not render_engine or render_engine != compatible:
-            raise RuntimeError("Current scene's settings are incompatible."
-                               "See Preferences > Display > Viewport 2.0 to "
-                               "set the render engine to '%s'" % compatible)
+        if not cmds.pluginInfo("mtoa", query=True, loaded=True):
+            cmds.loadPlugin("mtoa")
 
         asset = context['asset']
-
         asset_name = asset["name"]
         namespace = namespace or lib.unique_namespace(
             asset_name + "_",
@@ -58,13 +42,12 @@ class LoadVDBtoVRay(api.Loader):
         root = cmds.group(name=label, empty=True)
 
         # Create VRayVolumeGrid
-        grid_node = cmds.createNode("VRayVolumeGrid",
+        grid_node = cmds.createNode("aiVolume",
                                     name="{}Shape".format(root),
                                     parent=root)
 
         self._apply_settings(grid_node,
-                             path=self.fname,
-                             show_preset_popup=True)
+                             path=self.fname)
 
         nodes = [root, grid_node]
         self[:] = nodes
@@ -78,17 +61,14 @@ class LoadVDBtoVRay(api.Loader):
 
     def _apply_settings(self,
                         grid_node,
-                        path,
-                        show_preset_popup=True):
+                        path):
         """Apply the settings for the VDB path to the VRayVolumeGrid"""
-
-        from colorbleed.maya.lib import attribute_values
         from maya import cmds
 
         # The path is either a single file or sequence in a folder.
-        if os.path.isfile(path):
+        is_single_file = os.path.isfile(path)
+        if is_single_file:
             filename = path
-
         else:
             # The path points to the publish .vdb sequence folder so we
             # find the first file in there that ends with .vdb
@@ -99,12 +79,11 @@ class LoadVDBtoVRay(api.Loader):
                                    "sequence in: %s" % path)
             filename = os.path.join(path, first)
 
-        # Suppress preset pop-up if we want.
-        popup_attr = "{0}.inDontOfferPresets".format(grid_node)
-        popup = {popup_attr: not show_preset_popup}
+        # Tell Redshift whether it should load as sequence or single file
+        cmds.setAttr(grid_node + ".useFrameExtension", not is_single_file)
 
-        with attribute_values(popup):
-            cmds.setAttr(grid_node + ".inPath", filename, type="string")
+        # Set file path
+        cmds.setAttr(grid_node + ".filename", filename, type="string")
 
     def update(self, container, representation):
 
@@ -114,13 +93,12 @@ class LoadVDBtoVRay(api.Loader):
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)
-        grid_nodes = cmds.ls(members, type="VRayVolumeGrid", long=True)
+        grid_nodes = cmds.ls(members, type="aiVolume", long=True)
         assert len(grid_nodes) == 1, "This is a bug"
 
         # Update the VRayVolumeGrid
         self._apply_settings(grid_nodes[0],
-                             path=path,
-                             show_preset_popup=False)
+                             path=path)
 
         # Update container representation
         cmds.setAttr(container["objectName"] + ".representation",

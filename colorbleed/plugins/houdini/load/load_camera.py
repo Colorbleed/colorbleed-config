@@ -26,20 +26,11 @@ class CameraLoader(api.Loader):
         # Get the root node
         obj = hou.node("/obj")
 
-        # Create a unique name
-        counter = 1
-        asset_name = context["asset"]["name"]
+        # Define node name
+        namespace = namespace if namespace else context["asset"]["name"]
+        node_name = "{}_{}".format(namespace, name) if namespace else name
 
-        namespace = namespace if namespace else asset_name
-        formatted = "{}_{}".format(namespace, name) if namespace else name
-        node_name = "{0}_{1:03d}".format(formatted, counter)
-
-        children = lib.children_as_string(hou.node("/obj"))
-        while node_name in children:
-            counter += 1
-            node_name = "{0}_{1:03d}".format(formatted, counter)
-
-        # Create a archive node
+        # Create alembic archive node
         container = self.create_and_connect(obj, "alembicarchive", node_name)
 
         # TODO: add FPS of project / asset
@@ -59,7 +50,8 @@ class CameraLoader(api.Loader):
                                      namespace,
                                      nodes,
                                      context,
-                                     self.__class__.__name__)
+                                     self.__class__.__name__,
+                                     suffix="")
 
     def update(self, container, representation):
 

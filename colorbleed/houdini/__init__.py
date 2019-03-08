@@ -15,6 +15,8 @@ from colorbleed.lib import (
     update_task_from_path
 )
 
+from ..lib import get_asset_fps
+
 
 PARENT_DIR = os.path.dirname(__file__)
 PACKAGE_DIR = os.path.dirname(PARENT_DIR)
@@ -34,19 +36,19 @@ def install():
     avalon.register_plugin_path(avalon.Creator, CREATE_PATH)
 
     log.info("Installing callbacks ... ")
-    avalon.on("init", on_init)
     avalon.before("save", before_save)
     avalon.on("save", on_save)
     avalon.on("open", on_open)
+    avalon.on("new", on_new)
 
     pyblish.register_callback("instanceToggled", on_pyblish_instance_toggled)
 
     log.info("Setting default family states for loader..")
     avalon.data["familiesStateToggled"] = ["colorbleed.imagesequence"]
 
-
-def on_init(*args):
-    houdini.on_houdini_initialize()
+    # Set asset FPS for the empty scene directly after launch of Houdini
+    # so it initializes into the correct scene FPS
+    _set_asset_fps()
 
 
 def before_save(*args):
@@ -70,6 +72,10 @@ def on_open(*args):
 
     update_task_from_path(hou.hipFile.path())
 
+    # Validate FPS after update_task_from_path to
+    # ensure it is using correct FPS for the asset
+    lib.validate_fps()
+
     if any_outdated():
         from ..widgets import popup
 
@@ -88,11 +94,26 @@ def on_open(*args):
                 tool.show(parent=parent)
 
             dialog = popup.Popup(parent=parent)
-            dialog.setWindowTitle("Maya scene has outdated content")
+            dialog.setWindowTitle("Houdini scene has outdated content")
             dialog.setMessage("There are outdated containers in "
-                              "your Maya scene.")
-            dialog.on_show.connect(_on_show_inventory)
+                              "your Houdini scene.")
+            dialog.on_clicked.connect(_on_show_inventory)
             dialog.show()
+
+
+def on_new(_):
+    """Set project resolution and fps when create a new file"""
+    avalon.logger.info("Running callback on new..")
+    _set_asset_fps()
+
+
+def _set_asset_fps():
+    """Set Houdini scene FPS to the default required for current asset"""
+
+    # Set new scene fps
+    fps = get_asset_fps()
+    print("Setting scene FPS to %i" % fps)
+    lib.set_scene_fps(fps)
 
 
 def on_pyblish_instance_toggled(instance, new_value, old_value):

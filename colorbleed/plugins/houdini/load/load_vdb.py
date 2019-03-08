@@ -1,28 +1,23 @@
+import os
+import re
 from avalon import api
 
 from avalon.houdini import pipeline, lib
 
 
-class AbcLoader(api.Loader):
+class VdbLoader(api.Loader):
     """Specific loader of Alembic for the avalon.animation family"""
 
-    families = ["colorbleed.model",
-                "colorbleed.animation",
-                "colorbleed.pointcache"]
-    label = "Load Alembic"
-    representations = ["abc"]
+    families = ["colorbleed.vdbcache"]
+    label = "Load VDB"
+    representations = ["vdb"]
     order = -10
     icon = "code-fork"
     color = "orange"
 
     def load(self, context, name=None, namespace=None, data=None):
 
-        import os
         import hou
-
-        # Format file name, Houdini only wants forward slashes
-        file_path = os.path.normpath(self.fname)
-        file_path = file_path.replace("\\", "/")
 
         # Get the root node
         obj = hou.node("/obj")
@@ -40,35 +35,14 @@ class AbcLoader(api.Loader):
         if file_node:
             file_node.destroy()
 
-        # Create an alembic node (supports animation)
-        alembic = container.createNode("alembic", node_name=node_name)
-        alembic.setParms({"fileName": file_path})
-
-        # Add unpack node
-        unpack_name = "unpack_{}".format(name)
-        unpack = container.createNode("unpack", node_name=unpack_name)
-        unpack.setInput(0, alembic)
-        unpack.setParms({"transfer_attributes": "path"})
-
-        # Add normal to points
-        # Order of menu ['point', 'vertex', 'prim', 'detail']
-        normal_name = "normal_{}".format(name)
-        normal_node = container.createNode("normal", node_name=normal_name)
-        normal_node.setParms({"type": 0})
-
-        normal_node.setInput(0, unpack)
-
-        null = container.createNode("null", node_name="OUT".format(name))
-        null.setInput(0, normal_node)
+        # Explicitly create a file node
+        file_node = container.createNode("file", node_name=node_name)
+        file_node.setParms({"file": self.format_path(self.fname)})
 
         # Set display on last node
-        null.setDisplayFlag(True)
+        file_node.setDisplayFlag(True)
 
-        # Set new position for unpack node else it gets cluttered
-        nodes = [container, alembic, unpack, normal_node, null]
-        for nr, node in enumerate(nodes):
-            node.setPosition([0, (0 - nr)])
-
+        nodes = [container, file_node]
         self[:] = nodes
 
         return pipeline.containerise(node_name,
@@ -78,21 +52,50 @@ class AbcLoader(api.Loader):
                                      self.__class__.__name__,
                                      suffix="")
 
+    def format_path(self, path):
+        """Format file path correctly for single vdb or vdb sequence"""
+
+        if not os.path.exists(path):
+            raise RuntimeError("Path does not exist: %s" % path)
+
+        # The path is either a single file or sequence in a folder.
+        is_single_file = os.path.isfile(path)
+        if is_single_file:
+            filename = path
+        else:
+            # The path points to the publish .vdb sequence folder so we
+            # find the first file in there that ends with .vdb
+            files = sorted(os.listdir(path))
+            first = next((x for x in files if x.endswith(".vdb")), None)
+            if first is None:
+                raise RuntimeError("Couldn't find first .vdb file of "
+                                   "sequence in: %s" % path)
+
+            # Set <frame>.vdb to $F.vdb
+            first = re.sub(r"\.(\d+)\.vdb$", ".$F.vdb", first)
+
+            filename = os.path.join(path, first)
+
+        filename = os.path.normpath(filename)
+        filename = filename.replace("\\", "/")
+
+        return filename
+
     def update(self, container, representation):
 
         node = container["node"]
         try:
-            alembic_node = next(n for n in node.children() if
-                                n.type().name() == "alembic")
+            file_node = next(n for n in node.children() if
+                             n.type().name() == "file")
         except StopIteration:
             self.log.error("Could not find node of type `alembic`")
             return
 
         # Update the file path
         file_path = api.get_representation_path(representation)
-        file_path = file_path.replace("\\", "/")
+        file_path = self.format_path(file_path)
 
-        alembic_node.setParms({"fileName": file_path})
+        file_node.setParms({"fileName": file_path})
 
         # Update attribute
         node.setParms({"representation": str(representation["_id"])})

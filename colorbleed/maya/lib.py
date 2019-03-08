@@ -1762,7 +1762,8 @@ def set_scene_fps(fps, update=True):
 
     current_frame = cmds.currentTime(query=True)
 
-    log.info("Setting scene FPS to: '{}'".format(unit))
+    log.info("Setting scene FPS to: '{}' "
+             "(update keys: {})".format(unit, update))
     cmds.currentUnit(time=unit, updateAnimation=update)
 
     # Set time slider data back to previous state
@@ -1867,15 +1868,16 @@ def validate_fps():
         if parent is None:
             pass
         else:
-            dialog = popup.Popup2(parent=parent)
+            dialog = popup.PopupUpdateKeys(parent=parent)
             dialog.setModal(True)
-            dialog.setWindowTitle("Maya scene not in line with project")
-            dialog.setMessage("The FPS is out of sync, please fix")
+            dialog.setWindowTitle("Maya scene does not match project FPS")
+            dialog.setMessage("Scene %i FPS does not match project %i FPS" %
+                              (current_fps, fps))
+            dialog.setButtonText("Fix")
 
-            # Set new text for button (add optional argument for the popup?)
-            toggle = dialog.widgets["toggle"]
-            update = toggle.isChecked()
-            dialog.on_show.connect(lambda: set_scene_fps(fps, update))
+            # on_show is the Fix button clicked callback
+            callback = lambda update: set_scene_fps(fps, update)
+            dialog.on_clicked_state.connect(callback)
 
             dialog.show()
 

@@ -22,7 +22,7 @@ class PlayImageSequence(api.Loader):
     representations = ["*"]
 
     label = "Play sequence"
-    order = -10
+    order = 30
     icon = "play-circle"
     color = "orange"
 
