@@ -3,10 +3,10 @@ import pyblish.api
 from colorbleed.houdini import lib
 
 
-class ValidateAnimationSettings(pyblish.api.InstancePlugin):
+class ValidateFrameToken(pyblish.api.InstancePlugin):
     """Validate if the unexpanded string contains the frame ('$F') token
 
-    This validator will only check the output parameter of the node if
+    This validator will *only* check the output parameter of the node if
     the Valid Frame Range is not set to 'Render Current Frame'
 
     Rules:
@@ -22,7 +22,7 @@ class ValidateAnimationSettings(pyblish.api.InstancePlugin):
     """
 
     order = pyblish.api.ValidatorOrder
-    label = "Validate Frame Settings"
+    label = "Validate Frame Token"
     families = ["colorbleed.vdbcache"]
 
     def process(self, instance):
