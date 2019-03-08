@@ -36,7 +36,6 @@ def install():
     avalon.register_plugin_path(avalon.Creator, CREATE_PATH)
 
     log.info("Installing callbacks ... ")
-    avalon.on("init", on_init)
     avalon.before("save", before_save)
     avalon.on("save", on_save)
     avalon.on("open", on_open)
@@ -46,10 +45,6 @@ def install():
 
     log.info("Setting default family states for loader..")
     avalon.data["familiesStateToggled"] = ["colorbleed.imagesequence"]
-
-
-def on_init(*args):
-    houdini.on_houdini_initialize()
 
 
 def before_save(*args):
