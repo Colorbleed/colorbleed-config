@@ -88,10 +88,10 @@ def on_open(*args):
                 tool.show(parent=parent)
 
             dialog = popup.Popup(parent=parent)
-            dialog.setWindowTitle("Maya scene has outdated content")
+            dialog.setWindowTitle("Houdini scene has outdated content")
             dialog.setMessage("There are outdated containers in "
-                              "your Maya scene.")
-            dialog.on_show.connect(_on_show_inventory)
+                              "your Houdini scene.")
+            dialog.on_clicked.connect(_on_show_inventory)
             dialog.show()
 
 
