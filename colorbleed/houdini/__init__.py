@@ -46,6 +46,10 @@ def install():
     log.info("Setting default family states for loader..")
     avalon.data["familiesStateToggled"] = ["colorbleed.imagesequence"]
 
+    # Set asset FPS for the empty scene directly after launch of Houdini
+    # so it initializes into the correct scene FPS
+    _set_asset_fps()
+
 
 def before_save(*args):
     return lib.validate_fps()
