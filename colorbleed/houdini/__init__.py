@@ -15,6 +15,8 @@ from colorbleed.lib import (
     update_task_from_path
 )
 
+from ..lib import get_asset_fps
+
 
 PARENT_DIR = os.path.dirname(__file__)
 PACKAGE_DIR = os.path.dirname(PARENT_DIR)
@@ -38,6 +40,7 @@ def install():
     avalon.before("save", before_save)
     avalon.on("save", on_save)
     avalon.on("open", on_open)
+    avalon.on("new", on_new)
 
     pyblish.register_callback("instanceToggled", on_pyblish_instance_toggled)
 
@@ -70,6 +73,10 @@ def on_open(*args):
 
     update_task_from_path(hou.hipFile.path())
 
+    # Validate FPS after update_task_from_path to
+    # ensure it is using correct FPS for the asset
+    lib.validate_fps()
+
     if any_outdated():
         from ..widgets import popup
 
@@ -93,6 +100,21 @@ def on_open(*args):
                               "your Houdini scene.")
             dialog.on_clicked.connect(_on_show_inventory)
             dialog.show()
+
+
+def on_new(_):
+    """Set project resolution and fps when create a new file"""
+    avalon.logger.info("Running callback on new..")
+    _set_asset_fps()
+
+
+def _set_asset_fps():
+    """Set Houdini scene FPS to the default required for current asset"""
+
+    # Set new scene fps
+    fps = get_asset_fps()
+    print("Setting scene FPS to %i" % fps)
+    lib.set_scene_fps(fps)
 
 
 def on_pyblish_instance_toggled(instance, new_value, old_value):
