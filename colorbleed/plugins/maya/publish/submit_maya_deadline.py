@@ -109,6 +109,7 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
 
         context = instance.context
         workspace = context.data["workspaceDir"]
+        code = context.data["code"]
         filepath = context.data["currentFile"]
         filename = os.path.basename(filepath)
         comment = context.data.get("comment", "")
@@ -120,6 +121,11 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
         legacy_layers = renderlayer_globals["UseLegacyRenderLayers"]
         deadline_user = context.data.get("deadlineUser", getpass.getuser())
         jobname = "%s - %s" % (filename, instance.name)
+
+        # Support code prefix label for batch name
+        batch_name = filename
+        if code:
+            batch_name = "{0} - {1}".format(code, batch_name)
 
         # Get the variables depending on the renderer
         render_variables = get_renderer_variables(renderlayer)
@@ -142,7 +148,7 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
         payload = {
             "JobInfo": {
                 # Top-level group name
-                "BatchName": filename,
+                "BatchName": batch_name,
 
                 # Job name, as seen in Monitor
                 "Name": jobname,
