@@ -37,11 +37,14 @@ class VraySubmitDeadline(pyblish.api.InstancePlugin):
         deadline_url = "{}/api/jobs".format(AVALON_DEADLINE)
         deadline_user = context.data.get("deadlineUser", getpass.getuser())
 
+        code = context.data["code"]
         filepath = context.data["currentFile"]
         filename = os.path.basename(filepath)
         task_name = "{} - {}".format(filename, instance.name)
 
         batch_name = "{} - (vrscene)".format(filename)
+        if code:
+            batch_name = "{0} - {1}".format(code, batch_name)
 
         # Get the output template for vrscenes
         vrscene_output = instance.data["vrsceneOutput"]

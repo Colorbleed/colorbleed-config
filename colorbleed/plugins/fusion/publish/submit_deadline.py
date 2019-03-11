@@ -59,6 +59,11 @@ class FusionSubmitDeadline(pyblish.api.InstancePlugin):
         comment = context.data.get("comment", "")
         deadline_user = context.data.get("deadlineUser", getpass.getuser())
 
+        # Support code prefix label for batch name
+        batch_name = filename
+        if code:
+            batch_name = "{0} - {1}".format(code, batch_name)
+
         # Documentation for keys available at:
         # https://docs.thinkboxsoftware.com
         #    /products/deadline/8.0/1_User%20Manual/manual
@@ -66,7 +71,7 @@ class FusionSubmitDeadline(pyblish.api.InstancePlugin):
         payload = {
             "JobInfo": {
                 # Top-level group name
-                "BatchName": filename,
+                "BatchName": batch_name,
 
                 # Job name, as seen in Monitor
                 "Name": filename,
