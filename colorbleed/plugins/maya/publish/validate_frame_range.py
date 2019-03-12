@@ -34,7 +34,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin):
             raise ValueError("No time values for this instance. "
                              "(Missing `startFrame` or `endFrame`)")
 
-        self.log.info("Comparing start (%s) and end (%s)" % (start, end))
+        self.log.info("Comparing start %s and end %s" % (start, end))
         if start > end:
             raise RuntimeError("The start frame is a higher value "
                                "than the end frame: "
