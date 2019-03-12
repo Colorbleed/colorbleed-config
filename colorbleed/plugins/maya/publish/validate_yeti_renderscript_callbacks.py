@@ -46,7 +46,13 @@ class ValidateYetiRenderScriptCallbacks(pyblish.api.InstancePlugin):
     @classmethod
     def get_invalid(cls, instance):
 
+        yeti_needed = False
         yeti_loaded = cmds.pluginInfo("pgYetiMaya", query=True, loaded=True)
+        if yeti_loaded:
+            # The pre and post render MEL scripts are only needed whenever
+            # there is a pgYetiMaya node present in the scene
+            if cmds.ls(type="pgYetiMaya"):
+                yeti_needed = True
 
         renderer = instance.data["renderer"]
         if renderer == "redshift":
@@ -77,7 +83,7 @@ class ValidateYetiRenderScriptCallbacks(pyblish.api.InstancePlugin):
 
         # If Yeti is not loaded
         invalid = False
-        if not yeti_loaded:
+        if not yeti_needed:
             if pre_script and pre_script in pre_callbacks:
                 cls.log.error("Found pre render callback '%s' which is not "
                               "uses!" % pre_script)
