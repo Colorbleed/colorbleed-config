@@ -137,18 +137,18 @@ class YetiCacheLoader(api.Loader):
             # Update cache file name
             file_name = data["name"].replace(":", "_")
             cache_file_path = "{}.%04d.fur".format(file_name)
-            data["attrs"]["cacheFileName"] = os.path.join(path, cache_file_path)
+            data["attrs"]["cacheFileName"] = os.path.join(path,
+                                                          cache_file_path)
 
             if cb_id not in scene_lookup:
-
-                self.log.info("Creating new nodes ..")
-
+                # Create new nodes
+                self.log.info("Creating new Yeti nodes ..")
                 new_nodes = self.create_nodes(namespace, [data])
                 cmds.sets(new_nodes, addElement=container_node)
                 cmds.parent(new_nodes, container_root)
 
             else:
-                # Update the matching nodes
+                # Update existing matching nodes
                 scene_nodes = scene_lookup[cb_id]
                 lookup_result = meta_data_lookup[cb_id]["name"]
 
@@ -175,13 +175,13 @@ class YetiCacheLoader(api.Loader):
                                 new_trans_name,
                                 ignoreShape=False)
 
-                    # Get the newly named shape node
+                    # Get the newly named pgYetiMaya shape node
                     yeti_nodes = cmds.listRelatives(new_trans_name,
-                                                    children=True)
+                                                    children=True,
+                                                    type="pgYetiMaya")
                     yeti_node = yeti_nodes[0]
-
-                    for attr, value in data["attrs"].items():
-                        lib.set_attribute(attr, value, yeti_node)
+                    attributes = data["attrs"]
+                    self._set_attributes(yeti_node, attributes)
 
         cmds.setAttr("{}.representation".format(container_node),
                      str(representation["_id"]),
@@ -191,7 +191,6 @@ class YetiCacheLoader(api.Loader):
         self.update(container, representation)
 
     # helper functions
-
     def create_namespace(self, asset):
         """Create a unique namespace
         Args:
@@ -284,6 +283,8 @@ class YetiCacheLoader(api.Loader):
                                "fileMode": 1})
 
             # Apply attributes to pgYetiMaya node
+            self._set_attributes(yeti_node, attributes)
+
             for attr, value in attributes.items():
                 if value is None:
                     continue
@@ -299,3 +300,16 @@ class YetiCacheLoader(api.Loader):
             cmds.connectAttr("time1.outTime", "%s.currentTime" % yeti_node)
 
         return nodes
+
+    def _set_attributes(self, node, attributes):
+        """Helper function to set attributes on a node from attr,value dict"""
+
+        for attr, value in attributes.items():
+
+            # Ignore values that were stored with value None
+            # as there is no meaningful way to apply that.
+            # e.g. "imageSearchPath" attribute not being used.
+            if value is None:
+                continue
+
+            lib.set_attribute(attr, value, node)
