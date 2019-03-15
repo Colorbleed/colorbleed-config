@@ -28,6 +28,7 @@ class ExtractCameraAlembic(colorbleed.api.Extractor):
         handles = instance.data.get("handles", 0)
         step = instance.data.get("step", 1.0)
         bake_to_worldspace = instance.data("bakeToWorldSpace", True)
+        euler_filter = instance.data("eulerFilter", False)
 
         # get cameras
         members = instance.data['setMembers']
@@ -63,6 +64,9 @@ class ExtractCameraAlembic(colorbleed.api.Extractor):
                                                parent=True,
                                                fullPath=True)[0]
                 job_str += ' -worldSpace -root {0}'.format(transform)
+
+            if euler_filter:
+                job_str += ' -eulerFilter'
 
             job_str += ' -file "{0}"'.format(path)
 

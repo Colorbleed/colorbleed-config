@@ -21,3 +21,6 @@ class CreateCamera(avalon.maya.Creator):
         # include the parent hierarchy in the baked results
         self.data['bakeToWorldSpace'] = True
 
+        # Apply Euler filter to rotations for alembic
+        self.data["eulerFilter"] = True
+
