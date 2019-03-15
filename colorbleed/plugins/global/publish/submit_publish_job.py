@@ -273,6 +273,7 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
             "JobInfo": {
                 "Plugin": "Python",
                 "BatchName": job["Props"]["Batch"],
+                "Priority": job["Props"]["Pri"],        # priority
                 "Name": job_name,
                 "JobType": "Normal",
                 "JobDependency0": job["_id"],

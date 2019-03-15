@@ -838,7 +838,7 @@ def extract_alembic(file,
                     endFrame=None,
                     selection=True,
                     uvWrite= True,
-                    eulerFilter= True,
+                    eulerFilter=True,
                     dataFormat="ogawa",
                     verbose=False,
                     **kwargs):
