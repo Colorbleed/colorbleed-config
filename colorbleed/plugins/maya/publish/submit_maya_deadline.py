@@ -214,7 +214,7 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
             # Yeti licensing
             "PEREGRINEL_LICENSE",
             # Arnold licensing and plug-ins
-            "ADSKFLEX_LICENSE_FILE"
+            "ADSKFLEX_LICENSE_FILE",
             "MTOA_EXTENSIONS_PATH",
             "ARNOLD_PLUGIN_PATH",
             # Redshift plug-ins
