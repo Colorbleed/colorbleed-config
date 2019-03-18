@@ -210,10 +210,17 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
             # running Linux and the submitter is on Windows.
             "PYTHONPATH",
 
-            # todo: This is a temporary fix for yeti variables
+            # todo: These are temporary fixes for render plug-ins
+            # Yeti licensing
             "PEREGRINEL_LICENSE",
+            # Arnold licensing and plug-ins
+            "ADSKFLEX_LICENSE_FILE",
+            "MTOA_EXTENSIONS_PATH",
+            "ARNOLD_PLUGIN_PATH",
+            # Redshift plug-ins
             "REDSHIFT_MAYAEXTENSIONSPATH",
             "REDSHIFT_DISABLEOUTPUTLOCKFILES",
+            # V-Ray plug-ins and settings
             "VRAY_FOR_MAYA2018_PLUGINS",
             "VRAY_PLUGINS",
             "VRAY_USE_THREAD_AFFINITY",
