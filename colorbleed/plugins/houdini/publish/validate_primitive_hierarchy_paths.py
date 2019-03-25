@@ -28,7 +28,6 @@ class ValidatePrimitiveHierarchyPaths(pyblish.api.InstancePlugin):
         import hou
 
         output = instance.data["output_node"]
-        prims = output.geometry().prims()
 
         rop = instance[0]
         build_from_path = rop.parm("build_from_path").eval()
@@ -46,30 +45,34 @@ class ValidatePrimitiveHierarchyPaths(pyblish.api.InstancePlugin):
 
         cls.log.debug("Checking for attribute: %s" % path_attr)
 
-        missing_attr = []
-        invalid_attr = []
-        for prim in prims:
+        # Check if the primitive attribute exists
+        geo = output.geometry()
+        attrib = geo.findPrimAttrib("path")
+        if not attrib:
+            cls.log.info("Geometry Primitives are missing "
+                         "path attribute: `%s`" % path_attr)
+            return [output.path()]
 
-            try:
-                path = prim.stringAttribValue(path_attr)
-            except hou.OperationFailed:
-                # Attribute does not exist.
-                missing_attr.append(prim)
-                continue
+        # Ensure at least a single string value is present
+        if not attrib.strings():
+            cls.log.info("Primitive path attribute has no "
+                         "string values: %s" % path_attr)
+            return [output.path()]
 
+        # Ensure all primitives are set to a valid path
+        # Collect all invalid primitive numbers
+        invalid_prims = []
+        paths = geo.primStringAttribValues(path_attr)
+        for i, path in enumerate(paths):
             if not path:
                 # Empty path value is invalid.
-                invalid_attr.append(prim)
+                invalid_prims.append(i)
                 continue
 
-        if missing_attr:
-            cls.log.info("Prims are missing attribute `%s`" % path_attr)
-
-        if invalid_attr:
+        if invalid_prims:
+            num_prims = len(geo.iterPrims())  # faster than len(geo.prims())
             cls.log.info("Prims have no value for attribute `%s` "
                          "(%s of %s prims)" % (path_attr,
-                                      len(invalid_attr),
-                                      len(prims)))
-
-        if missing_attr or invalid_attr:
+                                               len(invalid_prims),
+                                               num_prims))
             return [output.path()]

@@ -19,19 +19,22 @@ class ValidateAlembicInputNode(pyblish.api.InstancePlugin):
     def process(self, instance):
         invalid = self.get_invalid(instance)
         if invalid:
-            raise RuntimeError("Node connected to the output node incorrect")
+            raise RuntimeError("Primitive types found that are not supported"
+                               "for Alembic output.")
 
     @classmethod
     def get_invalid(cls, instance):
 
-        invalid_nodes = ["VDB", "Volume"]
+        invalid_prim_types = ["VDB", "Volume"]
         node = instance.data["output_node"]
 
-        prims = node.geometry().prims()
-
-        for prim in prims:
-            prim_type = prim.type().name()
-            if prim_type in invalid_nodes:
+        geo = node.geometry()
+        invalid = False
+        for prim_type in invalid_prim_types:
+            if geo.countPrimType(prim_type) > 0:
                 cls.log.error("Found a primitive which is of type '%s' !"
                               % prim_type)
-                return [instance]
+                invalid = True
+
+        if invalid:
+            return [instance]
