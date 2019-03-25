@@ -34,7 +34,10 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
     actions = [colorbleed.api.RepairAction]
 
     DEFAULT_PADDING = 4
-    RENDERER_PREFIX = {"vray": "<Scene>/<Scene>_<Layer>/<Layer>"}
+    RENDERER_PREFIX = {
+        "vray": "<Scene>/<Scene>_<Layer>/<Layer>",
+        "arnold": "<Scene>/<Scene>_<RenderLayer>/<RenderLayer>.<RenderPass>"
+    }
     DEFAULT_PREFIX = "<Scene>/<Scene>_<RenderLayer>/<RenderLayer>"
 
     def process(self, instance):
