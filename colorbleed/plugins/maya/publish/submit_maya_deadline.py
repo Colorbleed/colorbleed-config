@@ -200,38 +200,15 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
             "AuxFiles": []
         }
 
-        # Include critical environment variables with submission
+        # Include critical environment variables with submission + api.Session
         keys = [
-            # This will trigger `userSetup.py` on the slave
-            # such that proper initialisation happens the same
-            # way as it does on a local machine.
-            # TODO(marcus): This won't work if the slaves don't
-            # have accesss to these paths, such as if slaves are
-            # running Linux and the submitter is on Windows.
-            "PYTHONPATH",
-
-            # todo: These are temporary fixes for render plug-ins
-            # Yeti licensing
-            "PEREGRINEL_LICENSE",
-            # Arnold licensing and plug-ins
-            "ADSKFLEX_LICENSE_FILE",
-            "MTOA_EXTENSIONS_PATH",
-            "ARNOLD_PLUGIN_PATH",
-            # Redshift plug-ins
-            "REDSHIFT_MAYAEXTENSIONSPATH",
-            "REDSHIFT_DISABLEOUTPUTLOCKFILES",
-            # V-Ray plug-ins and settings
-            "VRAY_FOR_MAYA2018_PLUGINS",
-            "VRAY_PLUGINS",
-            "VRAY_USE_THREAD_AFFINITY",
-            "MAYA_MODULE_PATH"
+            # Submit along the current Avalon tool setup that we launched
+            # this application with so the Render Slave can build its own
+            # similar environment using it, e.g. "maya2018;vray4.x;yeti3.1.9"
+            "AVALON_TOOLS",
         ]
         environment = dict({key: os.environ[key] for key in keys
                             if key in os.environ}, **api.Session)
-
-        PATHS = os.environ["PATH"].split(";")
-        environment["PATH"] = ";".join([p for p in PATHS
-                                        if p.startswith("P:")])
 
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(

@@ -103,8 +103,22 @@ class VraySubmitDeadline(pyblish.api.InstancePlugin):
             "AuxFiles": []
         }
 
-        environment = dict(AVALON_TOOLS="global;python36;maya2018")
-        environment.update(api.Session.copy())
+        # Include critical environment variables with submission + api.Session
+        keys = [
+            # Submit along the current Avalon tool setup that we launched
+            # this application with so the Render Slave can build its own
+            # similar environment using it, e.g. "maya2018;vray4.x;yeti3.1.9"
+            "AVALON_TOOLS",
+        ]
+        environment = dict({key: os.environ[key] for key in keys
+                            if key in os.environ}, **api.Session)
+
+        payload["JobInfo"].update({
+            "EnvironmentKeyValue%d" % index: "{key}={value}".format(
+                key=key,
+                value=environment[key]
+            ) for index, key in enumerate(environment)
+        })
 
         jobinfo_environment = self.build_jobinfo_environment(environment)
 
