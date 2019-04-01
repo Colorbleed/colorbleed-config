@@ -114,7 +114,7 @@ class BaseProjectAction(api.Action):
 
 class FusionRenderNode(BaseProjectAction):
 
-    name = "fusionrendernode"
+    name = "fusion9rendernode"
     label = "F9 Render Node"
     icon = "object-group"
     order = 997
