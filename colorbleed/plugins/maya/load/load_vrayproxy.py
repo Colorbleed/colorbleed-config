@@ -59,7 +59,7 @@ class VRayProxyLoader(api.Loader):
         filename = api.get_representation_path(representation)
 
         for vray_mesh in vraymeshes:
-            cmds.setAttr("{}.fileName".format(vray_mesh),
+            cmds.setAttr("{}.fileName2".format(vray_mesh),
                          filename,
                          type="string")
 
@@ -108,7 +108,7 @@ class VRayProxyLoader(api.Loader):
                                 renderable=True,
                                 noSurfaceShader=True)
 
-        cmds.setAttr("{}.fileName".format(vray_mesh),
+        cmds.setAttr("{}.fileName2".format(vray_mesh),
                      filename,
                      type="string")
 
