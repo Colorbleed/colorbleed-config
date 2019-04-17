@@ -171,9 +171,9 @@ class YetiCacheLoader(api.Loader):
                     new_trans_name = new_shape_name.rsplit("Shape", 1)[0]
 
                     transform_node = transforms[0]
-                    cmds.rename(transform_node,
-                                new_trans_name,
-                                ignoreShape=False)
+                    new_trans_name = cmds.rename(transform_node,
+                                                 new_trans_name,
+                                                 ignoreShape=False)
 
                     # Get the newly named pgYetiMaya shape node
                     yeti_nodes = cmds.listRelatives(new_trans_name,
