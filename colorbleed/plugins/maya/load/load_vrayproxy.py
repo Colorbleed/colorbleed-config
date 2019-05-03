@@ -7,11 +7,11 @@ import maya.cmds as cmds
 class VRayProxyLoader(api.Loader):
     """Load VRayMesh proxy"""
 
-    families = ["colorbleed.vrayproxy"]
-    representations = ["vrmesh"]
+    families = ["colorbleed.vrayproxy", "colorbleed.pointcache"]
+    representations = ["vrmesh", "abc"]
 
     label = "Import VRay Proxy"
-    order = -10
+    order = -8
     icon = "code-fork"
     color = "orange"
 
