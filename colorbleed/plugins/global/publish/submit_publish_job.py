@@ -306,6 +306,9 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
         payload["JobInfo"]["Pool"] = "none"
         payload["JobInfo"].pop("SecondaryPool", None)
 
+        # Force "publish" group
+        payload["JobInfo"]["Group"] = "publish"
+
         self.log.info("Submitting..")
         self.log.info(json.dumps(payload, indent=4, sort_keys=True))
 
