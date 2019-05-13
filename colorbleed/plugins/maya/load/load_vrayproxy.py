@@ -111,6 +111,10 @@ class VRayProxyLoader(api.Loader):
         cmds.setAttr("{}.fileName2".format(vray_mesh),
                      filename,
                      type="string")
+                     
+        # Enable Use alembic animation offset by default when loading .abc
+        if filename.endswith(".abc"):
+            cmds.setAttr("{}.useAlembicOffset".format(vray_mesh), 1)
 
         # Create important connections
         cmds.connectAttr("time1.outTime",
