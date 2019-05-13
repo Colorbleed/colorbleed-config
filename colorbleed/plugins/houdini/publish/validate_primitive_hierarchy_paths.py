@@ -47,6 +47,17 @@ class ValidatePrimitiveHierarchyPaths(pyblish.api.InstancePlugin):
 
         # Check if the primitive attribute exists
         geo = output.geometry()
+
+        # If there are no primitives on the current frame then we can't
+        # check whether the path names are correct. So we'll just issue a
+        # warning that the check can't be done consistently and skip
+        # validation.
+        if len(geo.iterPrims()) == 0:
+            cls.log.warning("No primitives found on current frame. Validation"
+                            " for primitive hierarchy paths will be skipped,"
+                            " thus can't be validated.")
+
+        # Check if there are any values for the primitives
         attrib = geo.findPrimAttrib(path_attr)
         if not attrib:
             cls.log.info("Geometry Primitives are missing "
