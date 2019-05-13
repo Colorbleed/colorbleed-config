@@ -61,8 +61,9 @@ class AbcLoader(api.Loader):
         null = container.createNode("null", node_name="OUT".format(name))
         null.setInput(0, normal_node)
 
-        # Set display on last node
-        null.setDisplayFlag(True)
+        # Ensure display flag is on the Alembic input node and not on the OUT
+        # node to optimize "debug" displaying in the viewport.
+        alembic.setDisplayFlag(True)
 
         # Set new position for unpack node else it gets cluttered
         nodes = [container, alembic, unpack, normal_node, null]
