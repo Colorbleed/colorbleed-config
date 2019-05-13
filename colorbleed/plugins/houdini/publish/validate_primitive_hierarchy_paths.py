@@ -47,7 +47,7 @@ class ValidatePrimitiveHierarchyPaths(pyblish.api.InstancePlugin):
 
         # Check if the primitive attribute exists
         geo = output.geometry()
-        attrib = geo.findPrimAttrib("path")
+        attrib = geo.findPrimAttrib(path_attr)
         if not attrib:
             cls.log.info("Geometry Primitives are missing "
                          "path attribute: `%s`" % path_attr)
