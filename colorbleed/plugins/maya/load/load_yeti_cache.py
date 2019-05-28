@@ -89,13 +89,13 @@ class YetiCacheLoader(api.Loader):
         container_node = container["objectName"]
         path = api.get_representation_path(representation)
 
-        # Get all node data
+        # Parse .fursettings JSON file
         fname, ext = os.path.splitext(path)
         settings_fname = "{}.fursettings".format(fname)
         with open(settings_fname, "r") as fp:
             settings = json.load(fp)
 
-        # Collect scene information of asset
+        # Collect current scene information of asset
         set_members = cmds.sets(container["objectName"], query=True)
         container_root = lib.get_container_transforms(container,
                                                       members=set_members,
@@ -111,7 +111,7 @@ class YetiCacheLoader(api.Loader):
         # Re-assemble metadata with cbId as keys
         meta_data_lookup = {n["cbId"]: n for n in settings["nodes"]}
 
-        # Compare look ups and get the nodes which ar not relevant any more
+        # Compare look ups and get the nodes which are not relevant any more
         to_delete_lookup = {cb_id for cb_id in scene_lookup.keys() if
                             cb_id not in meta_data_lookup}
         if to_delete_lookup:
@@ -136,9 +136,10 @@ class YetiCacheLoader(api.Loader):
 
             # Update cache file name
             file_name = data["name"].replace(":", "_")
-            cache_file_path = "{}.%04d.fur".format(file_name)
-            data["attrs"]["cacheFileName"] = os.path.join(path,
-                                                          cache_file_path)
+            cache_filename = "{}.%04d.fur".format(file_name)
+            cache_filepath = os.path.join(path, cache_filename)
+            cache_filepath = self.convert_cache_filepath(cache_filepath)
+            data["attrs"]["cacheFileName"] = cache_filepath
 
             if cb_id not in scene_lookup:
                 # Create new nodes
@@ -171,9 +172,9 @@ class YetiCacheLoader(api.Loader):
                     new_trans_name = new_shape_name.rsplit("Shape", 1)[0]
 
                     transform_node = transforms[0]
-                    new_trans_name = cmds.rename(transform_node,
-                                                 new_trans_name,
-                                                 ignoreShape=False)
+                    cmds.rename(transform_node,
+                                new_trans_name,
+                                ignoreShape=False)
 
                     # Get the newly named pgYetiMaya shape node
                     yeti_nodes = cmds.listRelatives(new_trans_name,
@@ -206,7 +207,7 @@ class YetiCacheLoader(api.Loader):
 
         return namespace
 
-    def validate_cache(self, filename, pattern="%04d"):
+    def convert_cache_filepath(self, filename, pattern="%04d"):
         """Check if the cache has more than 1 frame
 
         All caches with more than 1 frame need to be called with `%04d`
@@ -268,14 +269,19 @@ class YetiCacheLoader(api.Loader):
             # Ensure the node has no namespace identifiers
             attributes = node_settings["attrs"]
 
-            # Check if cache file name is stored
+            # Backwards compatibility: check if cache file name is stored
+            # In the original implementation the cacheFileName was stored with
+            # the published file which was changed later.
             if "cacheFileName" not in attributes:
                 file_name = original_node.replace(":", "_")
                 cache_name = "{}.%04d.fur".format(file_name)
                 cache = os.path.join(self.fname, cache_name)
-
-                self.validate_cache(cache)
                 attributes["cacheFileName"] = cache
+
+            # Always ensure correctly formatted cacheFileName
+            attributes["cacheFileName"] = self.convert_cache_filepath(
+                attributes["cacheFileName"]
+            )
 
             # Update attributes with requirements
             attributes.update({"viewportDensity": 0.1,
