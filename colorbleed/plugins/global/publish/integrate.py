@@ -5,6 +5,7 @@ import shutil
 import errno
 import pyblish.api
 from avalon import api, io
+import colorbleed.vendor.speedcopy as speedcopy
 
 
 log = logging.getLogger(__name__)
@@ -266,7 +267,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 self.log.critical("An unexpected error occurred.")
                 raise
 
-        shutil.copy(src, dst)
+        speedcopy.copyfile(src, dst)
 
     def get_subset(self, asset, instance):
 
