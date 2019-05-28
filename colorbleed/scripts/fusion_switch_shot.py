@@ -137,6 +137,11 @@ def update_frame_range(comp, representations):
     version_ids = [r["parent"] for r in representations]
     versions = io.find({"type": "version", "_id": {"$in": version_ids}})
     versions = list(versions)
+    
+    versions = [v for v in versions if v["data"].get("startFrame", None) is not None]
+    if not versions:
+        log.warning("No versions loaded to match frame range to.\n")
+        return
 
     start = min(v["data"]["startFrame"] for v in versions)
     end = max(v["data"]["endFrame"] for v in versions)
@@ -195,7 +200,7 @@ def switch(asset_name, filepath=None, new=True):
         except Exception as e:
             current_comp.Print("Error in switching! %s\n" % e.message)
 
-    message = "Switched %i Loaders of the %i\n" % (len(representations),
+    message = "Switched %i out of %i Loaders\n" % (len(representations),
                                                    len(containers))
     current_comp.Print(message)
 
@@ -213,7 +218,7 @@ def switch(asset_name, filepath=None, new=True):
 
     current_comp.Print(comp_path)
 
-    current_comp.Print("\nUpdating frame range")
+    current_comp.Print("Updating frame range\n")
     update_frame_range(current_comp, representations)
 
     current_comp.Save(comp_path)

@@ -7,11 +7,11 @@ import maya.cmds as cmds
 class VRayProxyLoader(api.Loader):
     """Load VRayMesh proxy"""
 
-    families = ["colorbleed.vrayproxy"]
-    representations = ["vrmesh"]
+    families = ["colorbleed.vrayproxy", "colorbleed.pointcache"]
+    representations = ["vrmesh", "abc"]
 
     label = "Import VRay Proxy"
-    order = -10
+    order = -8
     icon = "code-fork"
     color = "orange"
 
@@ -59,7 +59,7 @@ class VRayProxyLoader(api.Loader):
         filename = api.get_representation_path(representation)
 
         for vray_mesh in vraymeshes:
-            cmds.setAttr("{}.fileName".format(vray_mesh),
+            cmds.setAttr("{}.fileName2".format(vray_mesh),
                          filename,
                          type="string")
 
@@ -108,9 +108,13 @@ class VRayProxyLoader(api.Loader):
                                 renderable=True,
                                 noSurfaceShader=True)
 
-        cmds.setAttr("{}.fileName".format(vray_mesh),
+        cmds.setAttr("{}.fileName2".format(vray_mesh),
                      filename,
                      type="string")
+                     
+        # Enable Use alembic animation offset by default when loading .abc
+        if filename.endswith(".abc"):
+            cmds.setAttr("{}.useAlembicOffset".format(vray_mesh), 1)
 
         # Create important connections
         cmds.connectAttr("time1.outTime",

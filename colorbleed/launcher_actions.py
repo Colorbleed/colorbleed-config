@@ -55,11 +55,12 @@ class BaseProjectAction(api.Action):
 
     def launch(self, environment):
 
-        executable = lib.which(self.config["executable"])
+        executable = lib.which(self.config["executable"],
+                               env=environment)
         if executable is None:
             raise ValueError(
                 "'%s' not found on your PATH\n%s"
-                % (self.config["executable"], os.getenv("PATH"))
+                % (self.config["executable"], environment.get("PATH"))
             )
 
         args = self.config.get("args", [])
@@ -75,6 +76,22 @@ class BaseProjectAction(api.Action):
         environment = self.environ(session)
 
         if kwargs.get("launch", True):
+        
+            # todo(roy): Push this elsewhere
+            # This is temporarily done here so it just directly works with
+            # the current launcher's get_apps() function discovery upon
+            # entering
+            # a project.
+            tools = environment.get("AVALON_TOOLS", "").split(";")
+            if tools:
+                # Launch through acre when AVALON TOOLS is provided.
+                import acre
+
+                # Build Application environment using Acre
+                tools_env = acre.get_tools(tools)
+                env = acre.compute(tools_env)
+                environment = acre.merge(env, current_env=environment)
+        
             return self.launch(environment)
 
     def _format(self, original, **kwargs):
@@ -97,7 +114,7 @@ class BaseProjectAction(api.Action):
 
 class FusionRenderNode(BaseProjectAction):
 
-    name = "fusionrendernode9"
+    name = "fusion9rendernode"
     label = "F9 Render Node"
     icon = "object-group"
     order = 997

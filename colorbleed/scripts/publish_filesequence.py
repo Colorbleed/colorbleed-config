@@ -28,6 +28,10 @@ def publish(paths, gui=False):
     assert any(paths), "No paths found in the list"
     # Set the paths to publish for the collector if any provided
     if paths:
+    
+        # Fix backward slashes on Linux and force normpath
+        paths = [os.path.normpath(path.replace("\\", "/")) for path in paths]
+        
         os.environ["FILESEQUENCE"] = os.pathsep.join(paths)
 
     # Install Avalon with shell as current host

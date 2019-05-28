@@ -60,12 +60,6 @@ class ValidateOutputNode(pyblish.api.InstancePlugin):
             output_node.path()
         )
 
-        # Check if output node has incoming connections
-        if not output_node.inputConnections():
-            cls.log.error("Output node `%s` has no incoming connections"
-                          % output_node.path())
-            return [output_node.path()]
-
         # Ensure the output node has at least Geometry data
         if not output_node.geometry():
             cls.log.error("Output node `%s` has no geometry data."
