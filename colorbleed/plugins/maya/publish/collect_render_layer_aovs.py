@@ -82,10 +82,19 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
 
             # Support V-Ray extratex explicit name (if set by user)
             if pass_type == "extratex":
+            
                 explicit_attr = "{}.vray_explicit_name_extratex".format(node)
                 explicit_name = cmds.getAttr(explicit_attr)
                 if explicit_name:
                     return explicit_name
+                
+                # Somehow V-Ray appends the Texture node's name to the filename
+                connected_texture = cmds.listConnections(node + ".vray_texture_extratex",
+                                                         source=True,
+                                                         destination=False)
+                if connected_texture:
+                    basename = cmds.getAttr("{}.{}".format(node, vray_node_attr))
+                    return "{}_{}".format(basename, connected_texture[0])
 
             # Node type is in the attribute name but we need to check if value
             # of the attribute as it can be changed
