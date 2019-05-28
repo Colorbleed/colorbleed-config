@@ -176,7 +176,11 @@ class CollectFileSequences(pyblish.api.ContextPlugin):
                     "stagingDir": root,
                     "files": [list(collection)],
                     "startFrame": start,
-                    "endFrame": end
+                    "endFrame": end,
+
+                    # Store the current file for each instance as multiple
+                    # 'roots' could be published in a single context
+                    "currentFile": path
                 })
                 instance.append(collection)
 
