@@ -171,10 +171,10 @@ def get_output_parameter(node):
     node_type = node.type().name()
     if node_type == "geometry":
         return node.parm("sopoutput")
-
     elif node_type == "alembic":
         return node.parm("filename")
-
+    elif node_type == "comp":
+        return node.parm("copoutput")
     else:
         raise TypeError("Node type '%s' not supported" % node_type)
 

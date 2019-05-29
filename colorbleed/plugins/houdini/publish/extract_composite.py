@@ -4,12 +4,12 @@ import pyblish.api
 import colorbleed.api
 
 
-class ExtractVDBCache(colorbleed.api.Extractor):
+class ExtractComposite(colorbleed.api.Extractor):
 
-    order = pyblish.api.ExtractorOrder + 0.1
-    label = "Extract VDB Cache"
-    families = ["colorbleed.vdbcache"]
+    order = pyblish.api.ExtractorOrder
+    label = "Extract Composite (Image Sequence)"
     hosts = ["houdini"]
+    families = ["colorbleed.imagesequence"]
 
     def process(self, instance):
 
@@ -17,14 +17,14 @@ class ExtractVDBCache(colorbleed.api.Extractor):
 
         ropnode = instance[0]
 
-        # Get the filename from the filename parameter
+        # Get the filename from the copoutput parameter
         # `.evalParm(parameter)` will make sure all tokens are resolved
-        sop_output = ropnode.evalParm("sopoutput")
-        staging_dir = os.path.normpath(os.path.dirname(sop_output))
+        output = ropnode.evalParm("copoutput")
+        staging_dir = os.path.dirname(output)
         instance.data["stagingDir"] = staging_dir
-        file_name = os.path.basename(sop_output)
+        file_name = os.path.basename(output)
 
-        self.log.info("Writing VDB '%s' to '%s'" % (file_name, staging_dir))
+        self.log.info("Writing comp '%s' to '%s'" % (file_name, staging_dir))
         
         # Render
         try:

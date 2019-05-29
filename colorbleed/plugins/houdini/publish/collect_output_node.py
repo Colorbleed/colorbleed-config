@@ -1,14 +1,15 @@
 import pyblish.api
 
 
-class CollectOutputSOPPath(pyblish.api.InstancePlugin):
-    """Collect the out node's SOP Path value."""
+class CollectOutputNodePath(pyblish.api.InstancePlugin):
+    """Collect the out node's SOP/COP Path value."""
 
     order = pyblish.api.CollectorOrder
     families = ["colorbleed.pointcache",
-                "colorbleed.vdbcache"]
+                "colorbleed.vdbcache",
+                "colorbleed.imagesequence"]
     hosts = ["houdini"]
-    label = "Collect Output SOP Path"
+    label = "Collect Output Node Path"
 
     def process(self, instance):
 
@@ -17,12 +18,17 @@ class CollectOutputSOPPath(pyblish.api.InstancePlugin):
         node = instance[0]
 
         # Get sop path
-        if node.type().name() == "alembic":
-            sop_path_parm = "sop_path"
+        node_type = node.type().name()
+        if node_type == "geometry":
+            path_parm = "soppath"
+        elif node_type == "alembic":
+            path_parm = "sop_path"
+        elif node_type == "comp":
+            path_parm = "coppath"
         else:
-            sop_path_parm = "soppath"
+            raise ValueError("ROP node type '%s' is not supported." % node_type)
 
-        sop_path = node.parm(sop_path_parm).eval()
-        out_node = hou.node(sop_path)
+        path = node.parm(path_parm).eval()
+        out_node = hou.node(path)
 
         instance.data["output_node"] = out_node
