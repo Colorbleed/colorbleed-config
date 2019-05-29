@@ -24,6 +24,7 @@ class CreatePointCache(houdini.Creator):
                  "path_attrib": "path",  # Pass path attribute for output
                  "prim_to_detail_pattern": "cbId",
                  "format": 2,  # Set format to Ogawa
+                 "facesets": 0,  # No face sets (by default exclude them)
                  "filename": "$HIP/pyblish/%s.abc" % self.name}
 
         if self.nodes:
