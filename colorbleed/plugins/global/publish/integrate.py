@@ -335,7 +335,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Allow current file to also be set per instance if they have the data
         # otherwise it *must* be present in the context. This way we can e.g.
         # per image sequence instance store the original source location.
-        current_file = instance.get("currentFile", None)
+        current_file = instance.data.get("currentFile", None)
         if current_file is None:
             current_file = context.data["currentFile"]
 
