@@ -1,7 +1,7 @@
 import pyblish.api
 
 
-class ValidateOutputNode(pyblish.api.InstancePlugin):
+class ValidateSopOutputNode(pyblish.api.InstancePlugin):
     """Validate the instance SOP Output Node.
 
     This will ensure:
