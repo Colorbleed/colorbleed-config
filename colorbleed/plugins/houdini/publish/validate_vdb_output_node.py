@@ -2,7 +2,7 @@ import pyblish.api
 import colorbleed.api
 
 
-class ValidateVDBInputNode(pyblish.api.InstancePlugin):
+class ValidateVDBOutputNode(pyblish.api.InstancePlugin):
     """Validate that the node connected to the output node is of type VDB
 
     Regardless of the amount of VDBs create the output will need to have an
@@ -19,13 +19,13 @@ class ValidateVDBInputNode(pyblish.api.InstancePlugin):
     order = colorbleed.api.ValidateContentsOrder + 0.1
     families = ["colorbleed.vdbcache"]
     hosts = ["houdini"]
-    label = "Validate Input Node (VDB)"
+    label = "Validate Output Node (VDB)"
 
     def process(self, instance):
         invalid = self.get_invalid(instance)
         if invalid:
             raise RuntimeError("Node connected to the output node is not"
-                               "of type VDB!")
+                               " of type VDB!")
 
     @classmethod
     def get_invalid(cls, instance):
@@ -36,10 +36,17 @@ class ValidateVDBInputNode(pyblish.api.InstancePlugin):
                           "ROP node '%s'." % instance[0].path())
             return [instance]
 
-        prims = node.geometry().prims()
+        geometry = node.geometry()
+        if geometry is None:
+            # No geometry data on this node, maybe the node hasn't cooked?
+            cls.log.error("SOP node has no geometry data. "
+                          "Is it cooked? %s" % node.path())
+            return [node]
+
+        prims = geometry.prims()
         nr_of_prims = len(prims)
 
-        nr_of_points = len(node.geometry().points())
+        nr_of_points = len(geometry.points())
         if nr_of_points != nr_of_prims:
             cls.log.error("The number of primitives and points do not match")
             return [instance]

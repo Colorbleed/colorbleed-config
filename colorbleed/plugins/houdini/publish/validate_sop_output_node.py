@@ -60,6 +60,17 @@ class ValidateSopOutputNode(pyblish.api.InstancePlugin):
             output_node.path()
         )
 
+        # Ensure the node is cooked and succeeds to cook so we can correctly
+        # check for its geometry data.
+        if output_node.needsToCook():
+            cls.log.debug("Cooking node: %s" % output_node.path())
+            try:
+                output_node.cook()
+            except hou.Error as exc:
+                cls.log.error("Cook failed: %s" % exc)
+                cls.log.error(output_node.errors()[0])
+                return [output_node.path()]
+
         # Ensure the output node has at least Geometry data
         if not output_node.geometry():
             cls.log.error("Output node `%s` has no geometry data."
