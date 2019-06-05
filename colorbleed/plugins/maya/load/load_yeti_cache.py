@@ -301,6 +301,13 @@ class YetiCacheLoader(api.Loader):
             # ../scripts/pgYetiNode.mel script)
             cmds.setAttr("{}.visibleInReflections".format(yeti_node), True)
             cmds.setAttr("{}.visibleInRefractions".format(yeti_node), True)
+            
+            # Assign lambert1 (initialShadingGroup) because without
+            # any shader assigned some renderers will not output any fur
+            # in the render, without raising a warning. As such, we mimic
+            # behavior from `pgYetiCreate` in `pgYetiNode.mel` to assign
+            # default shader on creation.
+            cmds.sets(yeti_node, add="initialShadingGroup")
 
             # Connect to the time node
             cmds.connectAttr("time1.outTime", "%s.currentTime" % yeti_node)
