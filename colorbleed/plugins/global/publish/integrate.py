@@ -213,7 +213,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "parent": version_id,
                 "name": ext[1:],
                 "data": {},
-                "dependencies": instance.data.get("dependencies", "").split(),
+                "dependencies": instance.data.get("dependencies", []),
 
                 # Imprint shortcut to context
                 # for performance reasons.
@@ -226,6 +226,20 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                     "representation": ext[1:]
                 }
             }
+
+            # Insert dependencies data when present and
+            # containing at least some content
+            inputs = instance.data.get("inputs", None)
+            if inputs:
+                # Ensure the inputs are what we expect of them, list of ids
+                # This is a bit verbose and should be validated earlier,
+                # however this is purely intended to ensure this newly
+                # supported input tracking is consistently created for now.
+                # todo(roy): Remove these redundant assertions
+                assert isinstance(inputs, (list, tuple))
+                assert all(isinstance(x, io.ObjectId) for x in inputs)
+                representation["data"]["inputs"] = inputs
+
             representations.append(representation)
 
         self.log.info("Registering {} items".format(len(representations)))

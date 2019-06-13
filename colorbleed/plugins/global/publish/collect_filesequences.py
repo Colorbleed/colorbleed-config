@@ -178,10 +178,14 @@ class CollectFileSequences(pyblish.api.ContextPlugin):
                     "startFrame": start,
                     "endFrame": end,
 
+                    # Store the upstream inputs if provided in .json file
+                    "inputs": data.get("inputs"),
+
                     # Store the current file for each instance as multiple
                     # 'roots' could be published in a single context
                     "currentFile": path
                 })
+
                 instance.append(collection)
 
                 self.log.debug("Collected instance:\n"
