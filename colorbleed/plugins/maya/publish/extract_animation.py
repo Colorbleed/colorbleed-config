@@ -52,6 +52,7 @@ class ExtractColorbleedAnimation(colorbleed.api.Extractor):
         options = {
             "step": instance.data.get("step", 1.0),
             "attr": ["cbId"],
+            "attrPrefix": ["cb_"],
             "writeVisibility": True,
             "writeCreases": True,
             "uvWrite": True,
