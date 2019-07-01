@@ -106,7 +106,7 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
         # Collect containers for the given set of nodes
         containers = collect_input_containers(nodes)
 
-        inputs = [io.ObjectId(c["representation"]) for c in containers]
+        inputs = [c["representation"] for c in containers]
         instance.data["inputs"] = inputs
 
         self.log.info("Collected inputs: %s" % inputs)

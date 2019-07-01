@@ -188,6 +188,8 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
         # Add upstream inputs tracking when data is present in instance
         inputs = instance.data.get("inputs")
         if inputs:
+            # Note that we are collecting the representation ids as 
+            # strings so they can safely be converted to JSON
             metadata["inputs"] = inputs
 
         # Ensure output dir exists
