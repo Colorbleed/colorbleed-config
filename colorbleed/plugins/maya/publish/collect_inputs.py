@@ -84,6 +84,10 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
             members = cmds.editRenderLayerMembers(renderlayer,
                                                   query=True,
                                                   fullNames=True) or []
+                                                  
+            # In some cases invalid objects are returned from
+            # `editRenderLayerMembers` so we filter them out
+            members = cmds.ls(members, long=True)
 
             # Include all children
             children = cmds.listRelatives(members,
