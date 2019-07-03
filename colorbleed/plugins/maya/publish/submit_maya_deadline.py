@@ -12,7 +12,7 @@ import pyblish.api
 import colorbleed.maya.lib as lib
 
 
-def get_renderer_variables(renderlayer=None):
+def get_renderer_variables(renderlayer):
     """Retrieve the extension which has been set in the VRay settings
 
     Will return None if the current renderer is not VRay
@@ -26,11 +26,12 @@ def get_renderer_variables(renderlayer=None):
         dict
     """
 
-    renderer = lib.get_renderer(renderlayer or lib.get_current_renderlayer())
+    renderer = lib.get_renderer(renderlayer)
     render_attrs = lib.RENDER_ATTRS.get(renderer, lib.RENDER_ATTRS["default"])
 
-    padding = cmds.getAttr("{}.{}".format(render_attrs["node"],
-                                          render_attrs["padding"]))
+    # Get render settings (for the active renderer)
+    padding = cmds.getAttr("{node}.{padding}".format(**render_attrs))
+    filename_prefix = cmds.getAttr("{node}.{prefix}".format(**render_attrs))
 
     filename_0 = cmds.renderSettings(fullPath=True, firstImageName=True)[0]
 
@@ -45,47 +46,16 @@ def get_renderer_variables(renderlayer=None):
         if extension is None:
             extension = "png"
 
-        filename_prefix = "<Scene>/<Scene>_<Layer>/<Layer>"
     else:
         # Get the extension, getAttr defaultRenderGlobals.imageFormat
         # returns an index number.
         filename_base = os.path.basename(filename_0)
         extension = os.path.splitext(filename_base)[-1].strip(".")
-        filename_prefix = "<Scene>/<Scene>_<RenderLayer>/<RenderLayer>"
 
     return {"ext": extension,
             "filename_prefix": filename_prefix,
             "padding": padding,
             "filename_0": filename_0}
-
-
-def preview_fname(folder, scene, layer, padding, ext):
-    """Return output file path with #### for padding.
-
-    Deadline requires the path to be formatted with # in place of numbers.
-    For example `/path/to/render.####.png`
-
-    Args:
-        folder (str): The root output folder (image path)
-        scene (str): The scene name
-        layer (str): The layer name to be rendered
-        padding (int): The padding length
-        ext(str): The output file extension
-
-    Returns:
-        str
-
-    """
-
-    # Following hardcoded "<Scene>/<Scene>_<Layer>/<Layer>"
-    output = "{scene}/{scene}_{layer}/{layer}.{number}.{ext}".format(
-        scene=scene,
-        layer=layer,
-        number="#" * padding,
-        ext=ext
-    )
-
-    return os.path.join(folder, output)
 
 
 class MayaSubmitDeadline(pyblish.api.InstancePlugin):
@@ -113,14 +83,21 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
         filepath = context.data["currentFile"]
         filename = os.path.basename(filepath)
         comment = context.data.get("comment", "")
-        scene = os.path.splitext(filename)[0]
         dirname = os.path.join(workspace, "renders")
         renderlayer = instance.data['setMembers']       # rs_beauty
-        renderlayer_name = instance.data['subset']      # beauty
         renderlayer_globals = instance.data["renderGlobals"]
         legacy_layers = renderlayer_globals["UseLegacyRenderLayers"]
         deadline_user = context.data.get("deadlineUser", getpass.getuser())
         jobname = "%s - %s" % (filename, instance.name)
+
+        # If multiple cameras include the camera in the job's name
+        camera = instance.data["camera"]
+        if len(instance.data["cameras"]) > 1:
+            # Get shortest unique path to camera transform
+            transform = cmds.ls(cmds.listRelatives(camera,
+                                                   parent=True,
+                                                   fullPath=True))[0]
+            jobname += " - " + transform
 
         # Support code prefix label for batch name
         batch_name = filename
@@ -129,11 +106,6 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
 
         # Get the variables depending on the renderer
         render_variables = get_renderer_variables(renderlayer)
-        output_filename_0 = preview_fname(folder=dirname,
-                                          scene=scene,
-                                          layer=renderlayer_name,
-                                          padding=render_variables["padding"],
-                                          ext=render_variables["ext"])
 
         try:
             # Ensure render folder exists
@@ -163,11 +135,7 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
                     step=int(instance.data["byFrameStep"]),
                 ),
 
-                "Comment": comment,
-
-                # Optional, enable double-click to preview rendered
-                # frames from Deadline Monitor
-                "OutputFilename0": output_filename_0.replace("\\", "/"),
+                "Comment": comment
             },
             "PluginInfo": {
                 # Input
@@ -194,6 +162,12 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
 
                 # Resolve relative references
                 "ProjectPath": workspace,
+
+                # We are splitting renderlayer instances to a single renderable
+                # camera on collection so just take the first one. However,
+                # we still need to explicitly pass the render camera to
+                # Deadline to ensure this task only renders that camera.
+                "Camera": camera
             },
 
             # Mandatory for Deadline, may be empty
@@ -217,6 +191,14 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
             ) for index, key in enumerate(environment)
         })
 
+        # Include OutputFilename entries
+        # The first entry also enables double-click to preview rendered
+        # frames from Deadline Monitor
+        payload["JobInfo"].update({
+            "OutputFilename%d" % index: path.replace("\\", "/")
+            for index, path in enumerate(instance.data["filenames"])
+        })
+
         # Include optional render globals
         render_globals = instance.data.get("renderGlobals", {})
         payload["JobInfo"].update(render_globals)
@@ -236,7 +218,8 @@ class MayaSubmitDeadline(pyblish.api.InstancePlugin):
             raise Exception(response.text)
 
         # Store output dir for unified publisher (filesequence)
-        instance.data["outputDir"] = os.path.dirname(output_filename_0)
+        output_dir = os.path.dirname(instance.data["filenames"][0])
+        instance.data["outputDir"] = output_dir
         instance.data["deadlineSubmissionJob"] = response.json()
 
     def preflight_check(self, instance):

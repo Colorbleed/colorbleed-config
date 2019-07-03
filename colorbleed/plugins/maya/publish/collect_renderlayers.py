@@ -1,3 +1,4 @@
+import copy
 from maya import cmds
 
 import pyblish.api
@@ -7,7 +8,13 @@ import colorbleed.maya.lib as lib
 
 
 class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
-    """Gather instances by active render layers"""
+    """Gather instances by active render layers
+
+    Whenever a renderlayer has multiple renderable cameras then each
+    camera will get its own instance. As such, the amount of instances
+    will be "renderable cameras (in layer) x layers".
+
+    """
 
     order = pyblish.api.CollectorOrder
     hosts = ["maya"]
@@ -58,7 +65,6 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
 
             # Get layer specific settings, might be overrides
             data = {
-                "subset": layername,
                 "setMembers": layer,
                 "publish": True,
                 "startFrame": self.get_render_attribute("startFrame",
@@ -71,7 +77,7 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
                                                       layer=layer),
 
                 # instance subset
-                "family": "Render Layers",
+                "family": "colorbleed.renderlayer",
                 "families": ["colorbleed.renderlayer"],
                 "asset": asset,
                 "time": api.time(),
@@ -96,19 +102,53 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
                 data[attr] = value
 
             # Include (optional) global settings
-            # TODO(marcus): Take into account layer overrides
+            # todo: Take into account layer overrides
             # Get global overrides and translate to Deadline values
             overrides = self.parse_options(render_globals)
             data.update(**overrides)
 
-            # Define nice label
-            label = "{0} ({1})".format(layername, data["asset"])
-            label += "  [{0}-{1}]".format(int(data["startFrame"]),
-                                          int(data["endFrame"]))
+            # Collect renderable cameras and create an instance
+            # per camera per renderlayer.
+            renderable = [c for c in cmds.ls(type="camera", long=True) if
+                          lib.get_attr_in_layer("%s.renderable" % c,
+                                                layer=layer)]
+            if not renderable:
+                self.log.warning("No renderable camera in renderlayer: %s, "
+                                 "skipped collecting.." % layer)
 
-            instance = context.create_instance(layername)
-            instance.data["label"] = label
-            instance.data.update(data)
+            # Keep track of the amount of all renderable cameras in the
+            # layer so we can use this information elsewhere, however note
+            # that we split instances per camera below as `data["camera"]`
+            data["cameras"] = renderable
+
+            for camera in renderable:
+
+                # Define nice label
+                label = "{0} ({1})".format(layername, data["asset"])
+                if len(renderable) > 1:
+                    # If more than one camera, include camera name in label
+                    name = cmds.ls(cmds.listRelatives(camera,
+                                                      parent=True,
+                                                      fullPath=True))[0]
+                    label += " - {0}".format(name)
+
+                    # Prefix the camera before the layername
+                    nice_name = name.replace(":", "_").replace("|", "_")
+                    subset = "{0}_{1}".format(nice_name, layername)
+                    self.log.info(subset)
+                else:
+                    subset = layername
+
+                # Always end with start frame and end frame in label
+                label += "  [{0}-{1}]".format(int(data["startFrame"]),
+                                              int(data["endFrame"]))
+
+                instance = context.create_instance(layername)
+                instance.data["subset"] = subset
+                instance.data["label"] = label
+                instance.data["camera"] = camera
+                instance.data["layername"] = layername
+                instance.data.update(data)
 
     def get_render_attribute(self, attr, layer):
         return lib.get_attr_in_layer("defaultRenderGlobals.{}".format(attr),
