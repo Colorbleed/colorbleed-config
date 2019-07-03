@@ -28,10 +28,15 @@ class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):
     actions = [colorbleed.maya.action.SelectInvalidAction]
 
     def process(self, instance):
+
+        if not instance.data("extendFrames", False):
+            # This check is only relevant when extendFrames is enabled.
+            return
+
         invalid = self.get_invalid(instance)
         if invalid:
             raise RuntimeError("Found unregistered subsets: {}".format(invalid))
-    
+
     @classmethod
     def get_invalid(cls, instance):
 

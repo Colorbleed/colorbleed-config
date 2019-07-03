@@ -4,15 +4,7 @@ import colorbleed.maya.action
 
 
 class ValidateRenderSingleCamera(pyblish.api.InstancePlugin):
-    """Only one camera may be renderable in a layer.
-
-    Currently the pipeline supports only a single camera per layer.
-    This is because when multiple cameras are rendered the output files
-    automatically get different names because the <Camera> render token
-    is not in the output path. As such the output files conflict with how
-    our pipeline expects the output.
-
-    """
+    """Ensure at least a single camera is renderable."""
 
     order = colorbleed.api.ValidateContentsOrder
     label = "Render Single Camera"
@@ -33,9 +25,8 @@ class ValidateRenderSingleCamera(pyblish.api.InstancePlugin):
         cameras = instance.data.get("cameras", [])
 
         if len(cameras) > 1:
-            cls.log.error("Multiple renderable cameras found for %s: %s " %
-                          (instance.data["setMembers"], cameras))
-            return [instance.data["setMembers"]] + cameras
+            cls.log.warning("Multiple renderable cameras found for %s: %s " %
+                            (instance.data["setMembers"], cameras))
 
         elif len(cameras) < 1:
             cls.log.error("No renderable cameras found for %s " %
