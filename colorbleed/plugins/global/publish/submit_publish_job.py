@@ -142,9 +142,10 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
         data = instance.data.copy()
         subset = data["subset"]
         state = data.get("publishJobState", "Suspended")
-        job_name = "{batch} - {subset} [publish image sequence]".format(
-            batch=job["Props"]["Name"],
-            subset=subset
+
+        # Construct job name based on Render Job name and data.
+        job_name = "{name} [publish image sequence]".format(
+            name=job["Props"]["Name"],
         )
 
         # Get start/end frame from instance, if not available get from context
@@ -188,7 +189,7 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
         # Add upstream inputs tracking when data is present in instance
         inputs = instance.data.get("inputs")
         if inputs:
-            # Note that we are collecting the representation ids as 
+            # Note that we are collecting the representation ids as
             # strings so they can safely be converted to JSON
             metadata["inputs"] = inputs
 
