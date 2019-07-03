@@ -6,12 +6,7 @@ import colorbleed.maya.lib as lib
 
 
 class ValidateRenderSettings(pyblish.api.InstancePlugin):
-    """Validates the global render settings
-
-    * File Name Prefix must be as followed:
-        * vray: <Scene>/<Layer>/<Layer>
-        * arnold: <Scene>/<RenderLayer>/<RenderLayer>
-        * default: <Scene>/<RenderLayer>/<RenderLayer>
+    """Validates the global render settings for frame padding and animation.
 
     * Frame Padding must be:
         * default: 4
@@ -34,11 +29,6 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
     actions = [colorbleed.api.RepairAction]
 
     DEFAULT_PADDING = 4
-    RENDERER_PREFIX = {
-        "vray": "<Scene>/<Scene>_<Layer>/<Layer>",
-        "arnold": "<Scene>/<Scene>_<RenderLayer>/<RenderLayer>.<RenderPass>"
-    }
-    DEFAULT_PREFIX = "<Scene>/<Scene>_<RenderLayer>/<RenderLayer>"
 
     def process(self, instance):
 
@@ -57,8 +47,6 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
 
         # Get the node attributes for current renderer
         attrs = lib.RENDER_ATTRS.get(renderer, lib.RENDER_ATTRS['default'])
-        prefix = lib.get_attr_in_layer("{node}.{prefix}".format(**attrs),
-                                       layer=layer)
         padding = lib.get_attr_in_layer("{node}.{padding}".format(**attrs),
                                         layer=layer)
 
@@ -68,13 +56,6 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
             invalid = True
             cls.log.error("Animation needs to be enabled. Use the same "
                           "frame for start and end to render single frame")
-
-        fname_prefix = cls.RENDERER_PREFIX.get(renderer,
-                                               cls.DEFAULT_PREFIX)
-        if prefix != fname_prefix:
-            invalid = True
-            cls.log.error("Wrong file name prefix: %s (expected: %s)"
-                          % (prefix, fname_prefix))
 
         if padding != cls.DEFAULT_PADDING:
             invalid = True
@@ -93,15 +74,6 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
             default = lib.RENDER_ATTRS['default']
             render_attrs = lib.RENDER_ATTRS.get(renderer, default)
 
-            # Repair prefix
-            node = render_attrs["node"]
-            prefix_attr = render_attrs["prefix"]
-
-            fname_prefix = cls.RENDERER_PREFIX.get(renderer, cls.DEFAULT_PREFIX)
-            cmds.setAttr("{}.{}".format(node, prefix_attr),
-                         fname_prefix, type="string")
-
             # Repair padding
-            padding_attr = render_attrs["padding"]
-            cmds.setAttr("{}.{}".format(node, padding_attr),
+            cmds.setAttr("{node}.{padding}".format(**render_attrs),
                          cls.DEFAULT_PADDING)
