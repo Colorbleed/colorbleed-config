@@ -44,7 +44,10 @@ def install():
     pyblish.register_callback("instanceToggled", on_pyblish_instance_toggled)
 
     log.info("Setting default family states for loader..")
-    avalon.data["familiesStateToggled"] = ["colorbleed.imagesequence"]
+    avalon.data["familiesStateToggled"] = [
+        "colorbleed.imagesequence",
+        "colorbleed.review"
+    ]
 
     # Set asset FPS for the empty scene directly after launch of Houdini
     # so it initializes into the correct scene FPS
