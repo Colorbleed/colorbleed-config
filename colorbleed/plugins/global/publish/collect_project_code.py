@@ -1,6 +1,7 @@
 import pyblish.api
 import avalon.io as io
 
+
 class CollectProjectCode(pyblish.api.ContextPlugin):
     """Collect the Project code from database project.data["config"]
 
