@@ -19,8 +19,14 @@ def install():
     pyblish.register_plugin_path(PUBLISH_PATH)
     avalon.register_plugin_path(avalon.Loader, LOAD_PATH)
 
+    # Register default "local" target
+    print("Registering pyblish target: local")
+    pyblish.register_target("local")
+
 
 def uninstall():
     print("Deregistering global plug-ins..")
     pyblish.deregister_plugin_path(PUBLISH_PATH)
     avalon.deregister_plugin_path(avalon.Loader, LOAD_PATH)
+
+    pyblish.deregister_target("local")

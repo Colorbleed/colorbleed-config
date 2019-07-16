@@ -20,6 +20,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin):
     families = ["colorbleed.animation",
                 "colorbleed.pointcache",
                 "colorbleed.camera",
+                "colorbleed.review",
                 "colorbleed.renderlayer",
                 "oolorbleed.vrayproxy"]
 

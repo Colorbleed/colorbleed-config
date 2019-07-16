@@ -92,12 +92,25 @@ class LoadVDBtoVRay(api.Loader):
         else:
             # The path points to the publish .vdb sequence folder so we
             # find the first file in there that ends with .vdb
-            files = sorted(os.listdir(path))
-            first = next((x for x in files if x.endswith(".vdb")), None)
-            if first is None:
-                raise RuntimeError("Couldn't find first .vdb file of "
-                                   "sequence in: %s" % path)
-            filename = os.path.join(path, first)
+            files = sorted(x for x in os.listdir(path) if x.endswith(".vdb"))
+            if not files:
+                raise RuntimeError("Couldn't find .vdb files in: %s" % path)
+
+            if len(files) == 1:
+                # Ensure check for single file is also done in folder
+                fname = files[0]
+            else:
+                # Sequence
+                from avalon.vendor import clique
+                # todo: check support for negative frames as input
+                collections, remainder = clique.assemble(files)
+                assert len(collections) == 1, (
+                    "Must find a single image sequence, "
+                    "found: %s" % (collections,)
+                )
+                fname = collections[0].format('{head}{padding}{tail}')
+
+            filename = os.path.join(path, fname)
 
         # Suppress preset pop-up if we want.
         popup_attr = "{0}.inDontOfferPresets".format(grid_node)

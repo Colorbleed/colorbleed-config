@@ -18,6 +18,7 @@ class Extractor(pyblish.api.InstancePlugin):
     """
 
     order = 2.0
+    targets = ["local"]  # Only extract when target is "local"
 
     def staging_dir(self, instance):
         """Provide a temporary directory in which to store extracted files
