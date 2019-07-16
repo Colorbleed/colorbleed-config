@@ -20,6 +20,7 @@ def install():
     avalon.register_plugin_path(avalon.Loader, LOAD_PATH)
 
     # Register default "local" target
+    print("Registering pyblish target: local")
     pyblish.register_target("local")
 
 

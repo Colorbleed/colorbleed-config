@@ -58,18 +58,24 @@ def get_renderer_variables(renderlayer):
             "filename_0": filename_0}
 
 
-class MayaSubmitDeadline(pyblish.api.InstancePlugin):
+class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
     """Submit available render layers to Deadline
 
     Renders are submitted to a Deadline Web Service as
-    supplied via the environment variable AVALON_DEADLINE
+    supplied via the environment variable AVALON_DEADLINE.
+
+    Target "local":
+        Even though this does *not* render locally this is seen as
+        a 'local' submission as it is the regular way of submitting
+        a Maya render locally.
 
     """
 
-    label = "Submit to Deadline"
+    label = "Submit Render to Deadline"
     order = pyblish.api.IntegratorOrder
     hosts = ["maya"]
     families = ["colorbleed.renderlayer"]
+    targets = ["local"]
 
     def process(self, instance):
 

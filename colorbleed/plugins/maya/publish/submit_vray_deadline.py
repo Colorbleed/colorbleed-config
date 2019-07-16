@@ -17,7 +17,7 @@ class VraySubmitDeadline(pyblish.api.InstancePlugin):
     vrscene files will be written out based on the following template:
         <project>/vrayscene/<Scene>/<Scene>_<Layer>/<Layer>
 
-    A dependency job will be added for each layer to render the framer
+    A dependency job will be added for each layer to render the frames
     through VRay Standalone
 
     """
@@ -25,6 +25,7 @@ class VraySubmitDeadline(pyblish.api.InstancePlugin):
     order = pyblish.api.IntegratorOrder
     hosts = ["maya"]
     families = ["colorbleed.vrayscene"]
+    targets = ["local"]
 
     def process(self, instance):
 

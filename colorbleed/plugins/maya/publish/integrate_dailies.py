@@ -17,6 +17,7 @@ class IntegrateDailies(pyblish.api.InstancePlugin):
     label = "Integrate Dailies"
     order = pyblish.api.IntegratorOrder + 0.05
     families = ["colorbleed.review"]
+    targets = ["local"]
 
     def process(self, instance):
 
