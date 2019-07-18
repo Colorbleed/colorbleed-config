@@ -115,6 +115,12 @@ class ExtractQuicktime(colorbleed.api.Extractor):
 
         # Collect playblasted frames
         collected_frames = os.listdir(stagingdir)
+
+        # Exclude a potential audio track that we might have encoded.
+        # todo: remove this hardcoded exclusion of audio file
+        collected_frames = [x for x in collected_frames
+                            if not x.endswith(".mp3")]
+
         # todo: support negative frames as input
         collections, remainder = clique.assemble(collected_frames)
         assert not remainder, (
@@ -136,6 +142,10 @@ class ExtractQuicktime(colorbleed.api.Extractor):
 
         self.log.info("output {}".format(full_movie_path))
 
+        # Audio track created by "extract_audio_track.py"
+        audio_track = instance.data.get("review_audio_file", None)
+        self.log.info("Audio track: %s" % audio_track)
+
         with avalon.maya.suspended_refresh():
 
             # Render ffmpeg without burnin
@@ -146,6 +156,7 @@ class ExtractQuicktime(colorbleed.api.Extractor):
                              start=start,   # for image sequence start frame
                              logo=False,
                              include_alpha=include_alpha,
+                             audio_track=audio_track,
                              # Hide the subprocess window
                              create_no_window=True,
                              verbose=True)
@@ -164,6 +175,7 @@ class ExtractQuicktime(colorbleed.api.Extractor):
                                                                    end),
                                     fps=fps,
                                     include_alpha=include_alpha,
+                                    audio_track=audio_track,
                                     # Hide the subprocess window
                                     create_no_window=True,
                                     verbose=True)
