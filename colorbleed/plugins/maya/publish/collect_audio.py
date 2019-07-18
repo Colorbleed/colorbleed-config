@@ -1,3 +1,4 @@
+import re
 from maya import cmds, mel
 
 import pyblish.api
