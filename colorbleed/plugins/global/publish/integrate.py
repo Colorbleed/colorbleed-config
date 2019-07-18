@@ -12,14 +12,21 @@ log = logging.getLogger(__name__)
 
 
 class IntegrateAsset(pyblish.api.InstancePlugin):
-    """Resolve any dependency issies
+    """Integrate the instance into the database and to published location.
 
-    This plug-in resolves any paths which, if not updated might break
-    the published file.
+    This will register the new publish version into the database and generate
+    the destination location with the files on the server.
 
-    The order of families is important, when working with lookdev you want to
-    first publish the texture, update the texture paths in the nodes and then
-    publish the shading network. Same goes for file dependent assets.
+    Integration will only happen when *NO* errors occurred whatsoever during
+    the publish, otherwise it will abort with "Atomicity not held"
+
+    The files that will be transferred are:
+        - instance.data["files"]: relative filenames in staging dir that will
+            be transferred along with the publish. The extension of the file
+            will be the resulting representation (os.path.splitext) without
+            the dot (.) prefix.
+        - instance.data["transfer"]: straight per file copy src -> dst
+
     """
 
     label = "Integrate Asset"

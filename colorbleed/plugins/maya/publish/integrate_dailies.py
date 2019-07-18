@@ -37,8 +37,8 @@ class IntegrateDailies(pyblish.api.InstancePlugin):
             "Atomicity not held, aborting.")
 
         # Define filepath for dailies
-        root = "{AVALON_PROJECTS}/{AVALON_PROJECT}/" \
-               "resources/dailies".format(**api.Session)
+        root = "{AVALON_PROJECTS}/{AVALON_PROJECT}/resources/dailies"
+        root = root.format(**api.Session)
         prefix = "{AVALON_ASSET}_{AVALON_TASK}".format(**api.Session)
 
         for filename in instance.data["files"]:
