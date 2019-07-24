@@ -9,7 +9,7 @@ from maya import mel
 from colorbleed.maya import lib
 
 
-def get_renderer_variables(renderlayer):
+def get_renderer_variables(renderer):
     """Retrieve the extension and padding from render settings.
 
     Args:
@@ -18,8 +18,8 @@ def get_renderer_variables(renderlayer):
     Returns:
         dict
     """
+    # todo: this function should get value in renderlayer to allow overrides
 
-    renderer = lib.get_renderer(renderlayer)
     render_attrs = lib.RENDER_ATTRS.get(renderer, lib.RENDER_ATTRS["default"])
     padding = cmds.getAttr("{node}.{padding}".format(**render_attrs))
 
@@ -92,7 +92,7 @@ class CollectRenderlayerFilenames(pyblish.api.InstancePlugin):
         camera_name = transform.replace(":", "_").replace("|", "_")
 
         # Get the variables depending on the renderer
-        render_variables = get_renderer_variables(layer)
+        render_variables = get_renderer_variables(renderer)
 
         data = {
             "scene": scene,
