@@ -65,7 +65,11 @@ class CollectRenderlayerFilenames(pyblish.api.InstancePlugin):
         # Get the filename prefix attribute for current renderer
         attrs = lib.RENDER_ATTRS.get(renderer, lib.RENDER_ATTRS["default"])
         prefix_attr = "{node}.{prefix}".format(**attrs)
-        prefix = lib.get_attr_in_layer(prefix_attr, layer=layer)
+
+        # For some renderers when filename prefix has not been set the
+        # returned value is not a string but it returns None so we enforce
+        # an empty string for that case
+        prefix = lib.get_attr_in_layer(prefix_attr, layer=layer) or ""
 
         # Use this mapping to resolve variables (case insensitive)
         tokens = {
