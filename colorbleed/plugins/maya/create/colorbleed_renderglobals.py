@@ -48,6 +48,11 @@ class CreateRenderGlobals(avalon.maya.Creator):
         # We add a string "-" to allow the user to not set any secondary pools
         self.data["secondaryPool"] = ["-"] + pools
 
+        # Custom frame list so one can submit e.g. specific ranges
+        # of frames in one go: 1-100, 300-500
+        self.data["useCustomFrameList"] = False
+        self.data["frameList"] = ""
+
         self.options = {"useSelection": False}  # Force no content
 
     def process(self):
