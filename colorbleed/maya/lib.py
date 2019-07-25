@@ -478,8 +478,8 @@ class delete_after(object):
 
 
 def get_renderer(layer):
-    with renderlayer(layer):
-        return cmds.getAttr("defaultRenderGlobals.currentRenderer")
+    return get_attr_in_layer("defaultRenderGlobals.currentRenderer",
+                             layer=layer)
 
 
 def get_current_renderlayer():
