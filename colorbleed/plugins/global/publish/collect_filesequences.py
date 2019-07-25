@@ -183,6 +183,12 @@ class CollectFileSequences(pyblish.api.ContextPlugin):
                     "currentFile": path
                 })
 
+                # When explicit frames are set from the custom frames list
+                # make sure we use those so we can validate explicitly
+                frames_explicit = data.get("frames", None)
+                if frames_explicit:
+                    instance.data["frames"] = frames_explicit
+
                 instance.append(collection)
 
                 self.log.debug("Collected instance:\n"

@@ -119,6 +119,18 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
         except OSError:
             pass
 
+        # Define the frame list
+        if instance.data.get("useCustomFrameList", False):
+            # Explicit custom frame list
+            frames = instance.data["frameList"]
+        else:
+            # StartFrame to EndFrame by byFrameStep
+            frames = "{start}-{end}x{step}".format(
+                    start=int(instance.data["startFrame"]),
+                    end=int(instance.data["endFrame"]),
+                    step=int(instance.data["byFrameStep"]),
+                )
+
         # Documentation for keys available at:
         # https://docs.thinkboxsoftware.com
         #    /products/deadline/8.0/1_User%20Manual/manual
@@ -135,11 +147,7 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
                 "UserName": deadline_user,
 
                 "Plugin": instance.data.get("mayaRenderPlugin", "MayaBatch"),
-                "Frames": "{start}-{end}x{step}".format(
-                    start=int(instance.data["startFrame"]),
-                    end=int(instance.data["endFrame"]),
-                    step=int(instance.data["byFrameStep"]),
-                ),
+                "Frames": frames,
 
                 "Comment": comment
             },
@@ -210,12 +218,12 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
         payload["JobInfo"].update(render_globals)
 
         plugin = payload["JobInfo"]["Plugin"]
-        self.log.info("using render plugin : {}".format(plugin))
+        self.log.info("Using render plugin : {}".format(plugin))
 
         self.preflight_check(instance)
 
         self.log.info("Submitting..")
-        self.log.info(json.dumps(payload, indent=4, sort_keys=True))
+        self.log.debug(json.dumps(payload, indent=4, sort_keys=True))
 
         # E.g. http://192.168.0.1:8082/api/jobs
         url = "{}/api/jobs".format(AVALON_DEADLINE)

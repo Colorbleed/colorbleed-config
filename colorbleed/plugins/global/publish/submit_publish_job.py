@@ -186,6 +186,11 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
             }
         }
 
+        # Include explicitly chosen frames (if set)
+        frames_explicit = instance.data.get("frames", None)
+        if frames_explicit is not None:
+            metadata["frames"] = frames_explicit
+
         # Add upstream inputs tracking when data is present in instance
         inputs = instance.data.get("inputs")
         if inputs:
@@ -318,7 +323,7 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
         payload["JobInfo"]["Group"] = "publish"
 
         self.log.info("Submitting..")
-        self.log.info(json.dumps(payload, indent=4, sort_keys=True))
+        self.log.debug(json.dumps(payload, indent=4, sort_keys=True))
 
         url = "{}/api/jobs".format(AVALON_DEADLINE)
         response = requests.post(url, json=payload)

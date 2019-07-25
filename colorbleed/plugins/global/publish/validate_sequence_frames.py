@@ -19,16 +19,24 @@ class ValidateSequenceFrames(pyblish.api.InstancePlugin):
         collection = instance[0]
         self.log.info(collection)
 
-        frames = list(collection.indexes)
+        frames_explicit = instance.data.get("frames", None)
+        if frames_explicit is None:
+            # Validate start-end with no holes
+            frames = list(collection.indexes)
+            current_range = (frames[0], frames[-1])
+            required_range = (instance.data["startFrame"],
+                              instance.data["endFrame"])
 
-        current_range = (frames[0], frames[-1])
-        required_range = (instance.data["startFrame"],
-                          instance.data["endFrame"])
+            if current_range != required_range:
+                raise ValueError("Invalid frame range: {0} - "
+                                 "expected: {1}".format(current_range,
+                                                        required_range))
 
-        if current_range != required_range:
-            raise ValueError("Invalid frame range: {0} - "
-                             "expected: {1}".format(current_range,
-                                                    required_range))
+            missing = collection.holes().indexes
+            assert not missing, "Missing frames: %s" % (missing,)
 
-        missing = collection.holes().indexes
-        assert not missing, "Missing frames: %s" % (missing,)
+        else:
+            # Explicit frames (custom frames list)
+            missing = set(frames_explicit) - collection.indexes
+            assert not missing, "Missing frames: %s" % (sorted(missing),)
+
