@@ -62,17 +62,29 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
             result.append(pass_name)
 
         self.log.debug("Found {} render elements / AOVs for "
-                       "'{}'".format(len(result), instance.data["subset"]))
+                       "'{}': {}".format(len(result), 
+                                         instance.data["subset"],
+                                         sorted(result)))
 
         instance.data["renderPasses"] = result
 
     def get_pass_name(self, renderer, node):
 
         if renderer == "vray":
+        
+            vray_class_type = cmds.getAttr(node + ".vrayClassType")
+            if vray_class_type == "velocityChannel":
+                # Somehow later versions of V-Ray don't have vray_name
+                # attributes for velocity passes. So we rely on 
+                # vray_filename_velocity
+                return cmds.getAttr(node + ".vray_filename_velocity")
 
             # Get render element pass type
-            vray_node_attr = next(attr for attr in cmds.listAttr(node)
-                                  if attr.startswith("vray_name"))
+            vray_node_attr = next((attr for attr in cmds.listAttr(node)
+                                  if attr.startswith("vray_name")), None)
+            if vray_node_attr is None:
+                raise RuntimeError("Failed to retrieve vray_name "
+                                   "attribute for: %s" % node)
             pass_type = vray_node_attr.rsplit("_", 1)[-1]
 
             # Support V-Ray extratex explicit name (if set by user)
