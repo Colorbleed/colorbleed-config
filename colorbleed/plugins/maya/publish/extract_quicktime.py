@@ -61,6 +61,7 @@ class ExtractQuicktime(colorbleed.api.Extractor):
 
         # Get settings
         include_alpha = instance.data.get("include_alpha", False)
+        pan_zoom_enabled = instance.data.get("allow_pan_zoom", False)
 
         # Define capture options
         # Override some preset defaults
@@ -90,6 +91,7 @@ class ExtractQuicktime(colorbleed.api.Extractor):
             "displayFilmPivot": False,
             "displayFilmOrigin": False,
             "overscan": 1.0,
+            "panZoomEnabled": pan_zoom_enabled,
             "depthOfField": cmds.getAttr("{0}.depthOfField".format(camera)),
         }
 
