@@ -83,7 +83,7 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
             batch_name = "{0} - {1}".format(code, batch_name)
 
         # Get the output filename prefix renderer
-        filename_prefix = get_renderer_variables(renderlayer, renderer)
+        filename_prefix = get_filename_prefix(renderlayer, renderer)
 
         try:
             # Ensure render folder exists
