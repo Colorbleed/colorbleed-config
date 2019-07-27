@@ -88,7 +88,7 @@ def on_open(*args):
         parent = hou.ui.mainQtWindow()
         if parent is None:
             log.info("Skipping outdated content pop-up "
-                     "because Maya window can't be found.")
+                     "because Houdini window can't be found.")
         else:
 
             # Show outdated pop-up
