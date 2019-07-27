@@ -23,20 +23,14 @@ class ValidateRenderIntegerFrames(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
-        start = instance.data.get("startFrame", None)
-        end = instance.data.get("endFrame", None)
-        handles = instance.data.get("handles", None)
-
         invalid = False
-        if start is not None and round(start) != start:
-            invalid = True
-            self.log.error("Start frame is not an integer value: %s" % start)
-        if end is not None and round(end) != end:
-            invalid = True
-            self.log.error("End frame is not an integer value: %s" % end)
-        if handles is not None and round(handles) != handles:
-            invalid = True
-            self.log.error("Handles is not an integer value: %s" % handles)
+
+        # Validate startFrame, endFrame, handles and byFrameStep
+        for key in ["startFrame", "endFrame", "handles", "byFrameStep"]:
+            value = instance.data.get(key, None)
+            if value is not None and round(value) != value:
+                invalid = True
+                self.log.error("%s is not an integer value: %s" % (key, value))
 
         # If explicit frames are provided they are all collected as integers
         # but for sake of sanity let's validate them all.
