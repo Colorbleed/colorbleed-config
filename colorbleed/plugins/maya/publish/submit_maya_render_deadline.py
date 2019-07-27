@@ -93,7 +93,7 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
 
         # Define the frame list
         if instance.data.get("useCustomFrameList", False):
-            # Explicit custom frame list
+            # Explicit custom frame list (should be list of integers)
             frames = instance.data["frameList"]
         else:
             # StartFrame to EndFrame by byFrameStep
@@ -190,9 +190,7 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
         payload["JobInfo"].update(render_globals)
 
         plugin = payload["JobInfo"]["Plugin"]
-        self.log.info("Using render plugin : {}".format(plugin))
-
-        self.preflight_check(instance)
+        self.log.info("Using Maya Render Plugin : {}".format(plugin))
 
         self.log.info("Submitting..")
         self.log.debug(json.dumps(payload, indent=4, sort_keys=True))
@@ -207,17 +205,3 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
         output_dir = os.path.dirname(instance.data["filenames"][0])
         instance.data["outputDir"] = output_dir
         instance.data["deadlineSubmissionJob"] = response.json()
-
-    def preflight_check(self, instance):
-        """Ensure the startFrame, endFrame and byFrameStep are integers"""
-
-        for key in ("startFrame", "endFrame", "byFrameStep"):
-            value = instance.data[key]
-
-            if int(value) == value:
-                continue
-
-            self.log.warning(
-                "%f=%d was rounded off to nearest integer"
-                % (value, int(value))
-            )
