@@ -12,50 +12,21 @@ import pyblish.api
 import colorbleed.maya.lib as lib
 
 
-def get_renderer_variables(renderlayer):
-    """Retrieve the extension which has been set in the VRay settings
-
-    Will return None if the current renderer is not VRay
-    For Maya 2016.5 and up the renderSetup creates renderSetupLayer node which
-    start with `rs`. Use the actual node name, do NOT use the `nice name`
+def get_filename_prefix(renderlayer, renderer):
+    """Return filename prefix as set in the renderlayer.
 
     Args:
-        renderlayer (str): the node name of the renderlayer.
+        renderlayer (str): The node name of the renderlayer.
+        renderer: (str): The renderer being used.
 
     Returns:
-        dict
+        str: Output render filename prefix
+
     """
 
-    renderer = lib.get_renderer(renderlayer)
     render_attrs = lib.RENDER_ATTRS.get(renderer, lib.RENDER_ATTRS["default"])
-
-    # Get render settings (for the active renderer)
-    padding = cmds.getAttr("{node}.{padding}".format(**render_attrs))
-    filename_prefix = cmds.getAttr("{node}.{prefix}".format(**render_attrs))
-
-    filename_0 = cmds.renderSettings(fullPath=True, firstImageName=True)[0]
-
-    if renderer == "vray":
-        # Maya's renderSettings function does not return V-Ray file extension
-        # so we get the extension from vraySettings
-        extension = cmds.getAttr("vraySettings.imageFormatStr")
-
-        # When V-Ray image format has not been switched once from default .png
-        # the getAttr command above returns None. As such we explicitly set
-        # it to `.png`
-        if extension is None:
-            extension = "png"
-
-    else:
-        # Get the extension, getAttr defaultRenderGlobals.imageFormat
-        # returns an index number.
-        filename_base = os.path.basename(filename_0)
-        extension = os.path.splitext(filename_base)[-1].strip(".")
-
-    return {"ext": extension,
-            "filename_prefix": filename_prefix,
-            "padding": padding,
-            "filename_0": filename_0}
+    return lib.get_attr_in_layer("{node}.{prefix}".format(**render_attrs),
+                                 layer=renderlayer)
 
 
 class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
@@ -92,6 +63,7 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
         dirname = os.path.join(workspace, "renders")
         renderlayer = instance.data['setMembers']       # rs_beauty
         renderlayer_globals = instance.data["renderGlobals"]
+        renderer = instance.data["renderer"]
         legacy_layers = renderlayer_globals["UseLegacyRenderLayers"]
         deadline_user = context.data.get("deadlineUser", getpass.getuser())
         jobname = "%s - %s" % (filename, instance.name)
@@ -110,8 +82,8 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
         if code:
             batch_name = "{0} - {1}".format(code, batch_name)
 
-        # Get the variables depending on the renderer
-        render_variables = get_renderer_variables(renderlayer)
+        # Get the output filename prefix renderer
+        filename_prefix = get_renderer_variables(renderlayer, renderer)
 
         try:
             # Ensure render folder exists
@@ -157,7 +129,7 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
 
                 # Output directory and filename
                 "OutputFilePath": dirname.replace("\\", "/"),
-                "OutputFilePrefix": render_variables["filename_prefix"],
+                "OutputFilePrefix": filename_prefix,
 
                 # Mandatory for Deadline
                 "Version": cmds.about(version=True),
@@ -172,7 +144,7 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
                 "RenderLayer": renderlayer,
 
                 # Determine which renderer to use from the file itself
-                "Renderer": instance.data["renderer"],
+                "Renderer": renderer,
 
                 # Resolve relative references
                 "ProjectPath": workspace,
