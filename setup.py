@@ -2,7 +2,7 @@
 
 import os
 from setuptools import setup, find_packages
-from colorbleed.version import version
+
 
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -26,6 +26,15 @@ exclude = [
 
 here = os.path.dirname(__file__)
 package_dir = os.path.join(here, "colorbleed")
+version = None
+
+# Read version from file, to avoid importing anything
+mod = {}
+with open(os.path.join(package_dir, "version.py")) as f:
+    exec(compile(f.read(), f.name, 'exec'), mod)
+    version = mod["version"]
+
+assert len(version.split(".")) == 3, version
 
 package_data = []
 for base, dirs, files in os.walk(package_dir):
