@@ -50,7 +50,7 @@ for base, dirs, files in os.walk(package_dir):
         package_data += [fname]
 
 setup(
-    name="colorbleed",
+    name="avalon-colorbleed",
     version=version,
     url="https://github.com/Colorbleed/colorbleed-config",
     author="Roy Nieterau",
@@ -64,7 +64,7 @@ setup(
     classifiers=classifiers,
     install_requires=[
         "pyblish-base>=1.8.0",
-        "avalon>=5.2",
+        "avalon-core>=5.2",
     ],
     python_requires=">2.7, <4",
 )
