@@ -63,7 +63,7 @@ setup(
     },
     classifiers=classifiers,
     install_requires=[
-        "pyblish-base>=1.8.0",
+        "pyblish-base>=1.5",
         "avalon-core>=5.2",
     ],
     python_requires=">2.7, <4",
