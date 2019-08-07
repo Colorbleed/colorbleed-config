@@ -1,4 +1,3 @@
-import pymel.core as pm
 import maya.cmds as cmds
 
 import pyblish.api
@@ -40,6 +39,11 @@ class ValidateNoNamespace(pyblish.api.InstancePlugin):
     @classmethod
     def repair(cls, instance):
         """Remove all namespaces from the nodes in the instance"""
+
+        # Only import pymel when we actually need it for repair
+        # since it's slow to initialize (this is only plug-in that
+        # needed it).
+        import pymel.core as pm
 
         invalid = cls.get_invalid(instance)
 
