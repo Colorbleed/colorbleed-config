@@ -1,13 +1,11 @@
 import os
 import errno
-import subprocess
-import contextlib
-import json
 
 import avalon.maya
 from avalon.vendor import clique
 
 import colorbleed.api
+from colorbleed.maya.lib import maintained_time
 
 from maya import cmds, mel
 import capture_gui.lib
@@ -210,12 +208,3 @@ class ExtractQuicktime(colorbleed.api.Extractor):
         # Store both the version without burnin and with burnin
         instance.data["files"].append(movie_file)
         instance.data["files"].append(movie_file_burnin)
-
-
-@contextlib.contextmanager
-def maintained_time():
-    ct = cmds.currentTime(query=True)
-    try:
-        yield
-    finally:
-        cmds.currentTime(ct, edit=True)
