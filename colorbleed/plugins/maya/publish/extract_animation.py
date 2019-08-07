@@ -34,6 +34,12 @@ class ExtractColorbleedAnimation(colorbleed.api.Extractor):
                                            allDescendents=True,
                                            fullPath=True) or []
 
+        # Exclude constraint nodes as they are useless data in the export.
+        # Somehow ls(excludeType) does not seem to work, so filter manually.
+        exclude = set(cmds.ls(nodes, type="constraint", long=True))
+        if exclude:
+            nodes = [node for node in nodes if node not in exclude]
+
         # Collect the start and end including handles
         start = instance.data["startFrame"]
         end = instance.data["endFrame"]
