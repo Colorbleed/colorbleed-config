@@ -29,6 +29,10 @@ class CreateAnimation(avalon.maya.Creator):
         # frame range.
         self.data["visibleOnly"] = False
 
+        # Include a more thorough check to ensure only nodes that are
+        # are at least visible once throughout the frame range are included
+        self.data["visibleOnlyInFrameRange"] = False
+
         # Include the groups above the out_SET content
         self.data["includeParentHierarchy"] = False  # Include parent groups
 

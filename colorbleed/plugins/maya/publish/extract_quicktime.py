@@ -1,18 +1,26 @@
 import os
-import subprocess
-import contextlib
-import json
+import errno
 
 import avalon.maya
 from avalon.vendor import clique
 
 import colorbleed.api
+from colorbleed.maya.lib import maintained_time
 
 from maya import cmds, mel
 import capture_gui.lib
 
 # todo: replace with ffmpeg-python so it's public
 import capture_gui_cb.ffmpeg as cb_ffmpeg
+
+
+def silentremove(filename):
+    try:
+        os.remove(filename)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            # if not "no such file or directory" then re-raise exception
+            raise
 
 
 def _get_focal_length(cam, start, end):
@@ -182,18 +190,21 @@ class ExtractQuicktime(colorbleed.api.Extractor):
                                     create_no_window=True,
                                     verbose=True)
 
+        # Delete intermediate image sequence files directly.
+        # Instead of waiting for cleanup remove the redundant remaining
+        # image sequence directly. This will make sure there is as much
+        # free space as possible for the next extraction in this same
+        # publish batch. (Especially useful very long shots)
+        debug = instance.data.get("debug", False)
+        if not debug:
+            # Remove image sequences
+            for item in collections[0]:
+                frame_image_path = os.path.join(stagingdir, item)
+                silentremove(frame_image_path)
+
         if "files" not in instance.data:
             instance.data["files"] = []
 
         # Store both the version without burnin and with burnin
         instance.data["files"].append(movie_file)
         instance.data["files"].append(movie_file_burnin)
-
-
-@contextlib.contextmanager
-def maintained_time():
-    ct = cmds.currentTime(query=True)
-    try:
-        yield
-    finally:
-        cmds.currentTime(ct, edit=True)
