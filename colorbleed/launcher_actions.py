@@ -114,5 +114,9 @@ class VrayRenderSlave(BaseProjectAction):
 def register_launcher_actions():
     """Register specific actions which should be accessible in the launcher"""
 
-    pipeline.register_plugin(api.Action, FusionRenderNode)
-    pipeline.register_plugin(api.Action, VrayRenderSlave)
+    try:
+        pipeline.register_plugin(api.Action, FusionRenderNode)
+        pipeline.register_plugin(api.Action, VrayRenderSlave)
+    except Exception:
+        # Optional
+        pass
