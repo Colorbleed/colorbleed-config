@@ -332,6 +332,11 @@ def get_asset_data(asset=None):
     document = io.find_one({"name": asset_name,
                             "type": "asset"})
 
-    data = document.get("data", {})
-
-    return data
+    try:
+        return document["data"]
+    except AttributeError:
+        log.warning("Asset '%s' could not be found" % asset_name)
+        return {}
+    except KeyError:
+        # The asset did not carry any data
+        return {}
