@@ -17,11 +17,10 @@ class CreatePointCache(avalon.maya.Creator):
 
         self.data["writeColorSets"] = False  # Vertex colors with the geometry.
         self.data["renderableOnly"] = False  # Only renderable visible shapes
-        self.data["visibleOnly"] = False     # only nodes that are visible
 
         # Include a more thorough check to ensure only nodes that are
         # are at least visible once throughout the frame range are included
-        self.data["visibleOnlyInFrameRange"] = False
+        self.data["visibleOnly"] = False
 
         self.data["includeParentHierarchy"] = False  # Include parent groups
         self.data["worldSpace"] = True       # Default to exporting world-space
