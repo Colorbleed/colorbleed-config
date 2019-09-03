@@ -77,7 +77,11 @@ class ExtractColorbleedAnimation(colorbleed.api.Extractor):
             # Since Maya 2017 alembic supports multiple uv sets - write them.
             options["writeUVSets"] = True
 
-        if instance.data.get("visibleOnlyInFrameRange", False):
+        visible_in_frame_range_only = instance.data.get(
+            "visibleOnlyInFrameRange",  # Backwards compatibility
+            instance.data.get("visibleOnly", False)
+        )
+        if visible_in_frame_range_only:
             # If we only want to include nodes that are visible in the frame
             # range then we need to do our own check. Alembic's `visibleOnly`
             # flag does not filter out those that are only hidden on some
