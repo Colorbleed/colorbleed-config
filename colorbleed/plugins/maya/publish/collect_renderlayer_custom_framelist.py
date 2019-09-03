@@ -88,7 +88,7 @@ class CollectRenderlayerCustomFramelist(pyblish.api.InstancePlugin):
         layer = instance.data["setMembers"]
 
         # Backwards compatibility for older instances
-        if not cmds.attributeQuery("userCustomFrameList",
+        if not cmds.attributeQuery("useCustomFrameList",
                                    node=node,
                                    exists=True):
             self.log.info("Old renderglobalsDefault instance detected without "
