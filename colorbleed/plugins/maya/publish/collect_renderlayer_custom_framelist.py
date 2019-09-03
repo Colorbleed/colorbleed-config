@@ -87,6 +87,14 @@ class CollectRenderlayerCustomFramelist(pyblish.api.InstancePlugin):
         # Get the renderlayer for this instance
         layer = instance.data["setMembers"]
 
+        # Backwards compatibility for older instances
+        if not cmds.attributeQuery("userCustomFrameList",
+                                   node=node,
+                                   exists=True):
+            self.log.info("Old renderglobalsDefault instance detected without "
+                          "`useCustomFrameList` attribute. Ignoring..")
+            return
+
         # Get settings from renderGlobalsDefault node in that layer
         use_frame_list = lib.get_attr_in_layer(node + ".useCustomFrameList",
                                                layer=layer)
