@@ -139,23 +139,19 @@ def _update_savers(comp, session):
 
             else:
                 # Else reuse the relative path
-                # Reset version folders in the relative path to v001
-                version_folder_pattern = r"/v[0-9]+/"
-                if re.search(version_folder_pattern, relpath):
-                    new_relpath = re.sub(version_folder_pattern,
-                                         "/v001/",
+                # Reset version in folder and filename in the relative path
+                # to v001. The version should be is only detected when prefixed
+                # with either `_v` (underscore) or `/v` (folder)
+                version_pattern = r"(/|_)v[0-9]+"
+                if re.search(version_pattern, relpath):
+                    new_relpath = re.sub(version_pattern,
+                                         r"\1v001",
                                          relpath)
                     log.info("Resetting version folders to v001: "
                              "%s -> %s" % (relpath, new_relpath))
                     relpath = new_relpath
 
                 new_path = os.path.join(new_work, relpath)
-
-                # Reset version in filename
-                # Version must be prefixed with `_v`
-                filename = os.path.basename(new_path)
-                filename = re.sub("_v[0-9]+", "_v001", filename)
-                new_path = os.path.join(os.path.dirname(new_path), filename)
 
             saver["Clip"] = new_path
 
