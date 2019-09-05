@@ -9,6 +9,7 @@ class ExtractComposite(colorbleed.api.Extractor):
     order = pyblish.api.ExtractorOrder
     label = "Extract Composite (Image Sequence)"
     hosts = ["houdini"]
+    targets = ["local"]
     families = ["colorbleed.imagesequence"]
 
     def process(self, instance):
@@ -25,10 +26,13 @@ class ExtractComposite(colorbleed.api.Extractor):
         file_name = os.path.basename(output)
 
         self.log.info("Writing comp '%s' to '%s'" % (file_name, staging_dir))
-        
+
+        # Print verbose when in batch mode without UI
+        verbose = not hou.isUIAvailable()
+
         # Render
         try:
-            ropnode.render()
+            ropnode.render(verbose=verbose)
         except hou.Error as exc:
             # The hou.Error is not inherited from a Python Exception class,
             # so we explicitly capture the houdini error, otherwise pyblish

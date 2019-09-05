@@ -71,6 +71,10 @@ def on_save(*args):
 
 def on_open(*args):
 
+    if not hou.isUIAvailable():
+        log.debug("Batch mode detected, ignoring `on_open` callbacks..")
+        return
+
     avalon.logger.info("Running callback on open..")
 
     update_task_from_path(hou.hipFile.path())

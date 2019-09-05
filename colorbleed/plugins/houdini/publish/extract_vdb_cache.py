@@ -9,6 +9,7 @@ class ExtractVDBCache(colorbleed.api.Extractor):
     order = pyblish.api.ExtractorOrder + 0.1
     label = "Extract VDB Cache"
     families = ["colorbleed.vdbcache"]
+    targets = ["local"]
     hosts = ["houdini"]
 
     def process(self, instance):
@@ -25,10 +26,13 @@ class ExtractVDBCache(colorbleed.api.Extractor):
         file_name = os.path.basename(sop_output)
 
         self.log.info("Writing VDB '%s' to '%s'" % (file_name, staging_dir))
-        
+
+        # Print verbose when in batch mode without UI
+        verbose = not hou.isUIAvailable()
+
         # Render
         try:
-            ropnode.render()
+            ropnode.render(verbose=verbose)
         except hou.Error as exc:
             # The hou.Error is not inherited from a Python Exception class,
             # so we explicitly capture the houdini error, otherwise pyblish
