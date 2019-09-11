@@ -32,7 +32,9 @@ class ExtractVDBCache(colorbleed.api.Extractor):
 
         # Render
         try:
-            ropnode.render(verbose=verbose)
+            ropnode.render(verbose=verbose,
+                           # Allow Deadline to capture completion percentage
+                           output_progress=verbose)
         except hou.Error as exc:
             # The hou.Error is not inherited from a Python Exception class,
             # so we explicitly capture the houdini error, otherwise pyblish

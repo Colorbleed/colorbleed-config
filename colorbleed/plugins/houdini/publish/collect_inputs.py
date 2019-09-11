@@ -99,6 +99,13 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
         # and include that together with its ancestors
         output = instance.data["output_node"]
 
+        if output is None:
+            # If no valid output node is set then ignore it as validation
+            # will be checking those cases.
+            self.log.debug("No output node found, skipping "
+                           "collecting of inputs..")
+            return
+
         # Collect all upstream parents
         nodes = list(iter_upstream(output))
         nodes.append(output)
