@@ -98,6 +98,30 @@ class HoudiniSubmitPublishDeadline(pyblish.api.ContextPlugin):
             "AuxFiles": []
         }
 
+        # Process submission per individual instance if the submission
+        # is set to publish each instance as a separate job. Else submit
+        # a single job to process all instances.
+        per_instance = context.data.get("separateJobPerInstance", False)
+        if per_instance:
+            # Submit a job per instance
+            job_name = payload["JobInfo"]["Name"]
+            for instance in instance_names:
+                # Clarify job name per submission (include instance name)
+                payload["JobInfo"]["Name"] = job_name + " - %s" % instance
+                self.submit_job(payload,
+                                instances=[instance],
+                                deadline=AVALON_DEADLINE)
+        else:
+            # Submit a single job
+            self.submit_job(payload,
+                            instances=instance_names,
+                            deadline=AVALON_DEADLINE)
+
+    def submit_job(self, payload, instances, deadline):
+
+        # Ensure we operate on a copy, a shallow copy is fine.
+        payload = payload.copy()
+
         # Include critical environment variables with submission + api.Session
         keys = [
             # Submit along the current Avalon tool setup that we launched
@@ -105,9 +129,10 @@ class HoudiniSubmitPublishDeadline(pyblish.api.ContextPlugin):
             # similar environment using it, e.g. "houdini17.5;pluginx2.3"
             "AVALON_TOOLS",
         ]
+
         environment = dict({key: os.environ[key] for key in keys
                             if key in os.environ}, **api.Session)
-        environment["PYBLISH_ACTIVE_INSTANCES"] = ",".join(instance_names)
+        environment["PYBLISH_ACTIVE_INSTANCES"] = ",".join(instances)
 
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(
@@ -116,11 +141,12 @@ class HoudiniSubmitPublishDeadline(pyblish.api.ContextPlugin):
             ) for index, key in enumerate(environment)
         })
 
+        # Submit
         self.log.info("Submitting..")
-        self.log.info(json.dumps(payload, indent=4, sort_keys=True))
+        self.log.debug(json.dumps(payload, indent=4, sort_keys=True))
 
         # E.g. http://192.168.0.1:8082/api/jobs
-        url = "{}/api/jobs".format(AVALON_DEADLINE)
+        url = "{}/api/jobs".format(deadline)
         response = requests.post(url, json=payload)
         if not response.ok:
             raise Exception(response.text)
