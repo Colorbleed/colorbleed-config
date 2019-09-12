@@ -1,10 +1,11 @@
 import os
+import copy
 import logging
 import shutil
 
 import errno
 import pyblish.api
-from avalon import api, io
+from avalon import api, io, schema
 import colorbleed.vendor.speedcopy as speedcopy
 
 
@@ -90,7 +91,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                             "Missing reference to staging area." % instance)
 
         # extra check if stagingDir actually exists and is available
-
         self.log.debug("Establishing staging directory @ %s" % stagingdir)
 
         project = io.find_one({"type": "project"},
@@ -103,7 +103,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         assert all([project, asset]), ("Could not find current project or "
                                        "asset '%s'" % ASSET)
 
-        subset = self.get_subset(asset, instance)
+        subset = self.get_or_create_subset(asset, instance)
 
         # get next version
         latest_version = io.find_one({"type": "version",
@@ -116,7 +116,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             next_version += latest_version["name"]
 
         self.log.info("Verifying version from assumed destination")
-
         assumed_data = instance.data["assumedTemplateData"]
         assumed_version = assumed_data["version"]
         if assumed_version != next_version:
@@ -127,12 +126,12 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         self.log.debug("Next version: v{0:03d}".format(next_version))
 
-        version_data = self.create_version_data(context, instance)
-        version = self.create_version(subset=subset,
+        version = self.create_version(instance=instance,
+                                      subset=subset,
                                       version_number=next_version,
-                                      locations=[LOCATION],
-                                      data=version_data)
+                                      locations=[LOCATION])
 
+        schema.validate(version)
         self.log.debug("Creating version ...")
         version_id = io.insert_one(version).inserted_id
 
@@ -246,12 +245,16 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 # supported input tracking is consistently created for now.
                 # todo(roy): Remove these redundant assertions
                 assert isinstance(inputs, (list, tuple))
-                representation["data"]["inputs"] = [io.ObjectId(x) for x in inputs]
+                inputs = [io.ObjectId(x) for x in inputs]
+                representation["data"]["inputs"] = inputs
 
             representations.append(representation)
 
-        self.log.info("Registering {} items".format(len(representations)))
+        # Validate all representations
+        for representation in representations:
+            schema.validate(representation)
 
+        self.log.info("Registering %s representations" % len(representations))
         io.insert_many(representations)
 
     def integrate(self, instance):
@@ -270,7 +273,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             self.copy_file(src, dest)
 
     def copy_file(self, src, dst):
-        """ Copy given source to destination
+        """Copy given source to destination
 
         Arguments:
             src (str): the source file which needs to be copied
@@ -291,32 +294,48 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         speedcopy.copyfile(src, dst)
 
-    def get_subset(self, asset, instance):
+    def get_or_create_subset(self, asset, instance):
 
         subset = io.find_one({"type": "subset",
                               "parent": asset["_id"],
                               "name": instance.data["subset"]})
 
         if subset is None:
+            # Create subset if it didn't exist yet.
             subset_name = instance.data["subset"]
             self.log.info("Subset '%s' not found, creating.." % subset_name)
+            families = self._get_families(instance)
 
-            _id = io.insert_one({
-                "schema": "avalon-core:subset-2.0",
+            subset = {
+                "schema": "avalon-core:subset-3.0",
                 "type": "subset",
                 "name": subset_name,
-                "data": {},
+                "data": {
+                    "families": families
+                },
                 "parent": asset["_id"]
-            }).inserted_id
+            }
 
-            subset = io.find_one({"_id": _id})
+            # Validate schema
+            schema.validate(subset)
+
+            _id = io.insert_one(subset).inserted_id
+
+            # Optimization: Instead of querying the subset again, just add
+            # "_id" into the data to avoid a database query.
+            subset["_id"] = _id
 
         return subset
 
-    def create_version(self, subset, version_number, locations, data=None):
+    def create_version(self,
+                       instance,
+                       subset,
+                       version_number,
+                       locations):
         """ Copy given source to destination
 
         Args:
+            instance: the current instance being published
             subset (dict): the registered subset of the asset
             version_number (int): the version number
             locations (list): the currently registered locations
@@ -324,35 +343,44 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         Returns:
             dict: collection of data to create a version
         """
+
+        data = self.create_version_data(instance)
+
         # Imprint currently registered location
         version_locations = [location for location in locations if
                              location is not None]
 
-        return {"schema": "avalon-core:version-2.0",
-                "type": "version",
-                "parent": subset["_id"],
-                "name": version_number,
-                "locations": version_locations,
-                "data": data}
+        version = {
+            "schema": "avalon-core:version-3.0",
+            "type": "version",
+            "parent": subset["_id"],
+            "name": version_number,
+            "locations": version_locations,
+            "data": data
+        }
 
-    def create_version_data(self, context, instance):
-        """Create the data collection for the version
+        # Backwards compatibility for when family was still stored on the
+        # version as opposed to the subset. See getavalon/core#443.
+        if subset["schema"] == "avalon-core:subset-2.0":
+            # Stick to older version schema and add families into version
+            self.log.debug("Falling back to older version schema to match "
+                           "subset schema 'avalon-core:subset-2.0'")
+            version["schema"] = "avalon-core:version-2.0"
+            version["data"]["families"] = self._get_families(instance)
+
+        return version
+
+    def create_version_data(self, instance):
+        """Create the data for the version
 
         Args:
-            context: the current context
             instance: the current instance being published
 
         Returns:
             dict: the required information with instance.data as key
         """
 
-        families = []
-        current_families = instance.data.get("families", list())
-        instance_family = instance.data.get("family", None)
-
-        if instance_family is not None:
-            families.append(instance_family)
-        families += current_families
+        context = instance.context
 
         # Allow current file to also be set per instance if they have the data
         # otherwise it *must* be present in the context. This way we can e.g.
@@ -366,8 +394,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                                         api.registered_root())
         source = os.path.join("{root}", relative_path).replace("\\", "/")
 
-        version_data = {"families": families,
-                        "time": context.data["time"],
+        version_data = {"time": context.data["time"],
                         "author": context.data["user"],
                         "source": source,
                         "comment": context.data.get("comment"),
@@ -381,3 +408,18 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 version_data[key] = instance.data[key]
 
         return version_data
+
+    def _get_families(self, instance):
+        """Helper function to get the families from instance data"""
+
+        # Get families for the subset
+        families = instance.data.get("families", list())
+
+        # Backwards compatibility for primary family stored in instance.
+        primary_family = instance.data.get("family", None)
+        if primary_family and primary_family not in families:
+            families.insert(0, primary_family)
+
+        assert families, "Instance must have at least a single family"
+
+        return families
