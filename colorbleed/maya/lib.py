@@ -1302,18 +1302,26 @@ def list_looks(asset_id):
     subsets = list(subsets)
 
     # Now ensure it's actually really a subset that contains `colorbleed.look`
-    # family. This currently has to be a separate query as the family is not
-    # set and locked with the subset but is applied per version.
-    # See: https://github.com/getavalon/core/issues/246
-    # todo (roy): implemented optimized method when #246 is merged
+    # family. Since #443 this wouldn't have to be done separately, but we are
+    # still doing so for backwards compatibility.
+    look_family = "colorbleed.look"
     look_subsets = []
     for subset in subsets:
-        if io.find_one({"data.families": "colorbleed.look",
-                        "parent": subset["_id"]},
-                       # Optimization: Use empty projection list so it only
-                       # returns the id instead of full data for the version
-                       projection=list()):
-            look_subsets.append(subset)
+        # Subsets that based on schema "avalon-core:subset-3.0" have
+        # families directly inside it, see #443.
+        if subset.get("schema") == "avalon-core:subset-3.0":
+            if look_family in subset["data"]["families"]:
+                look_subsets.append(subset)
+        else:
+            # Backwards compatibility for older subset version that only
+            # had families stored in the version data.
+            if io.find_one({"data.families": look_family,
+                            "parent": subset["_id"]},
+                           # Optimization: Use empty projection list so it
+                           # only returns the id instead of full data for the
+                           # version
+                           projection=list()):
+                look_subsets.append(subset)
 
     return look_subsets
 
