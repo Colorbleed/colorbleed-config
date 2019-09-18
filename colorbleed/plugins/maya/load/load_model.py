@@ -37,7 +37,9 @@ class ModelLoader(colorbleed.maya.plugin.ReferenceLoader):
 class GpuCacheLoader(api.Loader):
     """Load model Alembic as gpuCache"""
 
-    families = ["colorbleed.model"]
+    families = ["colorbleed.model",
+                "colorbleed.pointcache",
+                "colorbleed.animation"]
     representations = ["abc"]
 
     label = "Import Gpu Cache"
