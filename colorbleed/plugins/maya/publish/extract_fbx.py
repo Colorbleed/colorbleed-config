@@ -1,4 +1,6 @@
 import os
+import json
+import contextlib
 
 from maya import cmds
 import maya.mel as mel
@@ -7,6 +9,136 @@ import pyblish.api
 import avalon.maya
 
 import colorbleed.api
+
+
+def bake_to_layer(nodes, layer_name, start, end):
+    """Bake to new animation layer
+
+    Returns:
+        str: Name of created animLayer
+
+    """
+    before = set(cmds.ls(exactType="container"))
+
+    # Bake
+    result = cmds.bakeResults(
+        nodes,
+        shape=False,
+        controlPoints=False,
+        simulation=True,
+        t=(start, end),
+        sampleBy=1,
+        oversamplingRate=1,
+        disableImplicitControl=True,
+        preserveOutsideKeys=False,
+        sparseAnimCurveBake=True,
+        removeBakedAttributeFromLayer=False,
+        bakeOnOverrideLayer=True,
+        minimizeRotation=True
+    )
+
+    if not result:
+        raise RuntimeError("Nothing baked.")
+
+    # Get the new container
+    after = cmds.ls(exactType="container")
+    new = [x for x in after if x not in before]
+    assert len(new) == 1, "Must be a single new container for bake results"
+    container = new[0]
+
+    # Get animLayer
+    members = cmds.container(container, query=True, nodeList=True)
+    layer = cmds.ls(members, type="animLayer")[0]
+
+    # Rename the layer
+    return cmds.rename(layer, layer_name)
+
+
+@contextlib.contextmanager
+def undo_changes():
+    """Undos whatever was done during the context"""
+    chunk_name = "<temporary undo>"
+    cmds.undoInfo(openChunk=True, chunkName=chunk_name)
+    try:
+        yield
+    finally:
+        cmds.undoInfo(closeChunk=True)
+        if cmds.undoInfo(query=True, undoName=True) == chunk_name:
+            cmds.undo()
+
+
+@contextlib.contextmanager
+def ogs_paused():
+    before = cmds.ogs(query=True, pause=True)
+    if not before:
+        cmds.ogs(pause=True)
+    try:
+        yield
+    finally:
+        current = cmds.ogs(query=True, pause=True)
+        if current != before:
+            cmds.ogs(pause=True)
+
+
+def layerbake(nodes, settings):
+    """Helper function to bake specific frame ranges to separate layers.
+
+    Note: This is based on the guide for baking the animation layers to
+          Lens Studio for Snapchat filters.
+
+    - Each animLayer will be shifted to start at frame zero.
+    - Each animLayer will have its keys reduced (optimization for filesize)
+
+    Examples:
+        # Bake pCube1's animation to an intro and outro animLayer.
+        layerbake(nodes=["pCube1"],
+                  settings=[("intro", 1, 10),
+                            ("outro", 20, 30)])
+
+    Args:
+        nodes (list): List of Maya nodes.
+        settings (list): List of 3-tuples containing "name", "start" and "end"
+
+    Returns:
+        list: The created animLayer nodes.
+
+    """
+    # Validate inputs
+    assert isinstance(settings, list)
+    for entry in settings:
+        assert isinstance(entry, (tuple, list))
+        assert len(entry) == 3
+
+    # Bake the layers by name, start and end frame.
+    created = []
+    for name, start, end in settings:
+        layer = bake_to_layer(nodes, name, start, end)
+        print("Baked to: %s (%s - %s)" % (layer, start, end))
+        created.append(layer)
+
+        # Mute the layer temporarily so that it doesn't mess
+        # up the next layer bake
+        cmds.animLayer(layer, edit=True, mute=True)
+
+    for layer in created:
+
+        # Unmute the layers
+        cmds.animLayer(layer, edit=True, mute=False)
+        curves = cmds.animLayer(layer, query=True, animCurves=True)
+        start = min(cmds.keyframe(curves, query=True, tc=True))
+
+        # Shift all keys in layers to start at frame zero
+        if start != 0:
+            cmds.keyframe(curves, edit=True, timeChange=-start, relative=True)
+
+        # Force simplication of keys to reduce datasize
+        cmds.filterCurve(curves,
+                         filter="keyReducer",
+                         selectedKeys=False,
+                         precisionMode=0,
+                         precision=0.001)
+
+    return created
 
 
 class ExtractFBX(colorbleed.api.Extractor):
@@ -53,6 +185,7 @@ class ExtractFBX(colorbleed.api.Extractor):
             "smoothMesh": bool,
             "instances": bool,
             # "referencedContainersContent": bool, # deprecated in Maya 2016+
+            "applyConstantKeyReducer": bool,
             "bakeComplexAnimation": int,
             "bakeComplexStart": int,
             "bakeComplexEnd": int,
@@ -94,6 +227,7 @@ class ExtractFBX(colorbleed.api.Extractor):
             "tangents": False,
             "smoothMesh": False,
             "instances": False,
+            "applyConstantKeyReducer": False,
             "bakeComplexAnimation": True,
             "bakeComplexStart": start_frame,
             "bakeComplexEnd": end_frame,
@@ -180,6 +314,14 @@ class ExtractFBX(colorbleed.api.Extractor):
         # each time for successive publishes
         mel.eval("FBXResetExport")
 
+        bake_anim_layers = instance.data.get("bakeAnimLayers")
+        if bake_anim_layers:
+            # If there are custom bake ranges then we don't let the FBX
+            # exporter perform baking too
+            options["bakeComplexAnimation"] = False
+            options["bakeResampleAnimation"] = True
+            options["applyConstantKeyReducer"] = True
+
         # Apply the FBX overrides through MEL since the commands
         # only work correctly in MEL according to online
         # available discussions on the topic
@@ -205,8 +347,27 @@ class ExtractFBX(colorbleed.api.Extractor):
 
         # Export
         with avalon.maya.maintained_selection():
-            cmds.select(members, r=1, noExpand=True)
-            mel.eval('FBXExport -f "{}" -s'.format(path))
+
+            # todo(roy): Cleanup this code to have less code duplication
+            #            and branching
+            if bake_anim_layers:
+                # Special FBX Export with baked animation layers
+                self.log.debug("Baking animation layers: %s" %
+                               bake_anim_layers)
+                settings = json.loads(bake_anim_layers)
+
+                with ogs_paused():
+                    with undo_changes():
+                        layerbake(members, settings)
+
+                        # FBX Export
+                        cmds.select(members, r=1, noExpand=True)
+                        mel.eval('FBXExport -f "{}" -s'.format(path))
+
+            else:
+                # FBX Export
+                cmds.select(members, r=1, noExpand=True)
+                mel.eval('FBXExport -f "{}" -s'.format(path))
 
         if "files" not in instance.data:
             instance.data["files"] = list()
