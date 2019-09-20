@@ -9,7 +9,7 @@ import hou
 class ValidateRemotePublishOutNode(pyblish.api.ContextPlugin):
     """Validate the remote publish out node exists for Deadline to trigger."""
 
-    order = colorbleed.api.ValidateContentsOrder - 0.4
+    order = pyblish.api.ValidatorOrder - 0.4
     families = ["*"]
     hosts = ['houdini']
     targets = ["deadline"]

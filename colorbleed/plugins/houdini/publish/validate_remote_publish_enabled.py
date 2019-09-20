@@ -7,7 +7,7 @@ import hou
 class ValidateRemotePublishEnabled(pyblish.api.ContextPlugin):
     """Validate the remote publish node is *not* bypassed."""
 
-    order = colorbleed.api.ValidateContentsOrder - 0.39
+    order = pyblish.api.ValidatorOrder - 0.39
     families = ["*"]
     hosts = ['houdini']
     targets = ["deadline"]
