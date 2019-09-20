@@ -265,6 +265,9 @@ def create_remote_publish_node(force=True):
     node = out.createNode("shell", node_name="REMOTE_PUBLISH")
     node.moveToGoodPosition()
 
+    # Set color make it stand out (avalon/pyblish color)
+    node.setColor(hou.Color(0.439, 0.709, 0.933))
+
     # Set the pre-render script
     node.setParms({
         "prerender": cmd,
