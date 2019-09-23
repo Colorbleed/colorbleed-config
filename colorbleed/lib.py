@@ -9,6 +9,7 @@ from .vendor.pather.error import ParseError
 
 import avalon.io as io
 import avalon.api
+import pyblish.util
 
 log = logging.getLogger(__name__)
 
