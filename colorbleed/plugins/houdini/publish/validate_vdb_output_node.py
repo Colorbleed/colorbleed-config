@@ -35,8 +35,9 @@ class ValidateVDBOutputNode(pyblish.api.InstancePlugin):
             cls.log.error("SOP path is not correctly set on "
                           "ROP node '%s'." % instance[0].path())
             return [instance]
-
-        geometry = node.geometry()
+        
+        frame = instance.data.get("startFrame", 0)
+        geometry = node.geometryAtFrame(frame)
         if geometry is None:
             # No geometry data on this node, maybe the node hasn't cooked?
             cls.log.error("SOP node has no geometry data. "
@@ -45,6 +46,15 @@ class ValidateVDBOutputNode(pyblish.api.InstancePlugin):
 
         prims = geometry.prims()
         nr_of_prims = len(prims)
+        
+        # All primitives must be hou.VDB
+        invalid_prim = False
+        for prim in prims:
+            if not isinstance(prim, hou.VDB):
+                cls.log.error("Found non-VDB primitive: %s" % prim)
+                invalid_prim = True
+        if invalid_prim:
+            return [instance]
 
         nr_of_points = len(geometry.points())
         if nr_of_points != nr_of_prims:
