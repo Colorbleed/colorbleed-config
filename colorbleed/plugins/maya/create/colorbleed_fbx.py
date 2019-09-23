@@ -20,7 +20,7 @@ class CreateFBX(avalon.maya.Creator):
         self.data["tangents"] = False
 
         # Whether to triangulate the mesh in the output
-        self.data["triangulate"] = True
+        self.data["triangulate"] = False
 
         # Special option to support a custom baking of keys "just before" the
         # FBX extraction so the FBX exporter picks up these custom animation
