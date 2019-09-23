@@ -36,7 +36,9 @@ class ValidateAlembicInputNode(pyblish.api.InstancePlugin):
             cls.log.warning("No geometry output node found, skipping check..")
             return
         
-        geo = node.geometry()
+        frame = instance.data.get("startFrame", 0)
+        geo = node.geometryAtFrame(frame)
+        
         invalid = False
         for prim_type in invalid_prim_types:
             if geo.countPrimType(prim_type) > 0:

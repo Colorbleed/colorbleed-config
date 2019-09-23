@@ -29,23 +29,6 @@ class ValidateAbcPrimitiveToDetail(pyblish.api.InstancePlugin):
     @classmethod
     def get_invalid(cls, instance):
 
-        invalid_prim_types = ["VDB", "Volume"]
-        node = instance.data["output_node"]
-
-        geo = node.geometry()
-        invalid = False
-        for prim_type in invalid_prim_types:
-            if geo.countPrimType(prim_type) > 0:
-                cls.log.error("Found a primitive which is of type '%s' !"
-                              % prim_type)
-                invalid = True
-
-        if invalid:
-            return [instance]
-
-    @classmethod
-    def get_invalid(cls, instance):
-
         import hou
 
         output = instance.data["output_node"]
@@ -72,14 +55,15 @@ class ValidateAbcPrimitiveToDetail(pyblish.api.InstancePlugin):
 
         # Let's assume each attribute is explicitly named for now and has no
         # wildcards for Primitive to Detail. This simplifies the check.
-        cls.log.debug("Checking with pattern: %s" % pattern)
-        cls.log.debug("Checking for path attribute: %s" % path_attr)
+        cls.log.debug("Checking Primitive to Detail pattern: %s" % pattern)
+        cls.log.debug("Checking with path attribute: %s" % path_attr)
 
         # Check if the primitive attribute exists
-        geo = output.geometry()
+        frame = instance.data.get("startFrame", 0)
+        geo = output.geometryAtFrame(frame)
+        
         attrib = geo.findPrimAttrib(path_attr)
         if not attrib:
-
             cls.log.info("Geometry Primitives are missing "
                          "path attribute: `%s`" % path_attr)
             return [output.path()]
@@ -92,17 +76,18 @@ class ValidateAbcPrimitiveToDetail(pyblish.api.InstancePlugin):
 
         paths = None
         for attr in pattern.split(" "):
+            if not attr.strip():
+                # Ignore empty values
+                continue
 
             # Check if the primitive attribute exists
-            geo = output.geometry()
             attrib = geo.findPrimAttrib(attr)
             if not attrib:
                 # It is allowed to not have the attribute at all
                 continue
 
-            # If at least one string is present the the issue could happen
-            # since then already it could be X and empty. So we ignore cases
-            # where there are no values whatsoever.
+            # The issue can only happen if at least one string attribute is
+            # present. So we ignore cases with no values whatsoever.
             if not attrib.strings():
                 continue
 
