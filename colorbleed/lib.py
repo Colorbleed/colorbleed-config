@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import logging
 import importlib
 import itertools
@@ -9,6 +10,7 @@ from .vendor.pather.error import ParseError
 
 import avalon.io as io
 import avalon.api
+import pyblish.util
 
 log = logging.getLogger(__name__)
 
@@ -364,7 +366,7 @@ def publish_remote():
         for result in error_results:
             log.error(error_format.format(**result))
 
-        log.error("Fatal Error: Errors occurred, see log..")
+        log.error("Fatal Error: Errors occurred during publish, see log..")
         sys.exit(2)
 
     print("All good. Success!")
