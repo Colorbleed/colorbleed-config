@@ -239,8 +239,10 @@ def create_remote_publish_node(force=True):
     """Function to create a remote publish node in /out
 
     This is a hacked "Shell" node that does *nothing* except for triggering
-    `pyblish.util.publish()` as pre-render script. All default attributes of
-    the Shell node are hidden to the Artist to avoid confusion.
+    `colorbleed.lib.publish_remote()` as pre-render script.
+
+    All default attributes of the Shell node are hidden to the Artist to
+    avoid confusion.
 
     Additionally some custom attributes are added that can be collected
     by a Collector to set specific settings for the publish, e.g. whether
