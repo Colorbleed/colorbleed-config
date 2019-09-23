@@ -335,3 +335,36 @@ def get_asset_data(asset=None):
     data = document.get("data", {})
 
     return data
+
+
+def publish_remote():
+    """Perform a publish without pyblish GUI that will sys.exit on errors.
+
+    This will:
+        - `sys.exit(1)` on nothing being collected
+        - `sys.exit(2)` on errors during publish
+
+    Note: This function assumes Avalon has been installed prior to this.
+          As such it does *not* trigger avalon.api.install().
+
+    """
+    print("Starting pyblish.util.pyblish()..")
+    context = pyblish.util.publish()
+    print("Finished pyblish.util.publish(), checking for errors..")
+
+    if not context:
+        log.warning("Fatal Error: Nothing collected.")
+        sys.exit(1)
+
+    # Collect errors, {plugin name: error}
+    error_results = [r for r in context.data["results"] if r["error"]]
+
+    if error_results:
+        error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
+        for result in error_results:
+            log.error(error_format.format(**result))
+
+        log.error("Fatal Error: Errors occurred, see log..")
+        sys.exit(2)
+
+    print("All good. Success!")

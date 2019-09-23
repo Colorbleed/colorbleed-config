@@ -15,3 +15,8 @@ class CreateFBX(avalon.maya.Creator):
         # get basic animation data : start / end / handles / steps
         for key, value in lib.collect_animation_data().items():
             self.data[key] = value
+
+        # Special option to support a custom baking of keys "just before" the
+        # FBX extraction so the FBX exporter picks up these custom animation
+        # layers. This will currently *only* bake joints.
+        self.data["bakeAnimLayers"] = ""

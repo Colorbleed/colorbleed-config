@@ -18,7 +18,7 @@ class ValidateRemotePublishOutNode(pyblish.api.ContextPlugin):
 
     def process(self, context):
 
-        cmd = "import pyblish.util; pyblish.util.publish()"
+        cmd = "import colorbleed.lib; colorbleed.lib.publish_remote()"
 
         node = hou.node("/out/REMOTE_PUBLISH")
         if not node:

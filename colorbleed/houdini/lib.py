@@ -248,7 +248,7 @@ def create_remote_publish_node(force=True):
 
     """
 
-    cmd = "import pyblish.util; pyblish.util.publish()"
+    cmd = "import colorbleed.lib; colorbleed.lib.publish_remote()"
 
     existing = hou.node("/out/REMOTE_PUBLISH")
     if existing:
