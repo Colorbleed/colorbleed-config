@@ -17,7 +17,7 @@ class ValidateVRayDistributedRendering(pyblish.api.InstancePlugin):
 
     order = colorbleed.api.ValidateContentsOrder
     label = "VRay Distributed Rendering"
-    families = ["colorbleed.renderlayer"]
+    families = ["colorbleed.renderlayer.vray"]
     actions = [colorbleed.api.RepairAction]
 
     # V-Ray attribute names
@@ -25,10 +25,6 @@ class ValidateVRayDistributedRendering(pyblish.api.InstancePlugin):
     ignored_attr = "vraySettings.sys_distributed_rendering_ignore_batch"
 
     def process(self, instance):
-
-        if instance.data.get("renderer") != "vray":
-            # If not V-Ray ignore..
-            return
 
         vray_settings = cmds.ls("vraySettings", type="VRaySettingsNode")
         assert vray_settings, "Please ensure a VRay Settings Node is present"
