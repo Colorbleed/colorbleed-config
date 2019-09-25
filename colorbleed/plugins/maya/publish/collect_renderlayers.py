@@ -88,6 +88,11 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
                 "source": filepath
             }
 
+            # Include the renderer in the families so we can direct specific
+            # validators to specific renderers.
+            renderer_family = "colorbleed.renderlayer.%s" % data["renderer"]
+            data["families"].append(renderer_family)
+
             # Apply each user defined attribute as data
             for attr in cmds.listAttr(layer, userDefined=True) or list():
                 try:

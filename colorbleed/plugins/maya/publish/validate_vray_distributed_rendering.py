@@ -17,7 +17,7 @@ class ValidateVRayDistributedRendering(pyblish.api.InstancePlugin):
 
     order = colorbleed.api.ValidateContentsOrder
     label = "VRay Distributed Rendering"
-    families = ["colorbleed.renderlayer"]
+    families = ["colorbleed.renderlayer.vray"]
     actions = [colorbleed.api.RepairAction]
 
     # V-Ray attribute names
