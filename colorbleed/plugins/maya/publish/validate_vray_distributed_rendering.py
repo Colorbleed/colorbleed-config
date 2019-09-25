@@ -26,10 +26,6 @@ class ValidateVRayDistributedRendering(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
-        if instance.data.get("renderer") != "vray":
-            # If not V-Ray ignore..
-            return
-
         vray_settings = cmds.ls("vraySettings", type="VRaySettingsNode")
         assert vray_settings, "Please ensure a VRay Settings Node is present"
 
