@@ -1,3 +1,4 @@
+import copy
 from maya import cmds
 
 from colorbleed.maya import lib
@@ -7,7 +8,7 @@ import avalon.api as api
 import pyblish.api
 
 
-def collect_input_containers(nodes):
+def collect_input_containers(containers, nodes):
     """Collect containers that contain any of the node in `nodes`.
 
     This will return any loaded Avalon container that contains at least one of
@@ -19,21 +20,25 @@ def collect_input_containers(nodes):
 
     """
 
-    # Lookup by node ids
-    lookup = frozenset(cmds.ls(nodes, uuid=True))
+    # Instead of querying all members of each set and then doing a
+    # lookup for many nodes we just check for destination connections
+    # to sets with which we assume membership. This makes the query
+    # much faster for large scenes.
+    connected_sets = set(cmds.listConnections(nodes,
+                                              source=False,
+                                              destination=True,
+                                              plugs=False,
+                                              connections=False,
+                                              t="objectSet",
+                                              exactType=True) or [])
 
-    containers = []
-    host = api.registered_host()
-    for container in host.ls():
+    containers_with_members = []
+    for container in containers:
         node = container["objectName"]
-        members = cmds.sets(node, query=True)
-        members_uuid = cmds.ls(members, uuid=True)
+        if node in connected_sets:
+            containers_with_members.append(container)
 
-        # If there's an intersection
-        if not lookup.isdisjoint(members_uuid):
-            containers.append(container)
-
-    return containers
+    return containers_with_members
 
 
 class CollectUpstreamInputs(pyblish.api.InstancePlugin):
@@ -51,24 +56,40 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
+        # For large scenes the querying of "host.ls()" can be relatively slow
+        # e.g. up to a second. As such for many instances all calling it could
+        # easily add a slow Collector. As such, we cache out the so we
+        # trigger it only once.
+        # todo(roy): Instead of hidden cache make "CollectContainers" plug-in
+        cache_key = "__cache_containers"
+        scene_containers = instance.context.data.get(cache_key, None)
+        if scene_containers is None:
+            # Query the scenes' containers if there's no cache yet
+            host = api.registered_host()
+            scene_containers = list(host.ls())
+            instance.context.data["__cache_containers"] = scene_containers
+
+        # Collect the relevant input containers for this instance
         if "colorbleed.renderlayer" in set(instance.data.get("families", [])):
             # Special behavior for renderlayers
             self.log.debug("Collecting renderlayer inputs....")
-            containers = self._collect_renderlayer_inputs(instance)
+            containers = self._collect_renderlayer_inputs(scene_containers,
+                                                          instance)
 
         else:
             # Basic behavior
             nodes = instance[:]
 
             # Collect containers for the given set of nodes
-            containers = collect_input_containers(nodes)
+            containers = collect_input_containers(scene_containers,
+                                                  nodes)
 
         inputs = [c["representation"] for c in containers]
         instance.data["inputs"] = inputs
 
         self.log.info("Collected inputs: %s" % inputs)
 
-    def _collect_renderlayer_inputs(self, instance):
+    def _collect_renderlayer_inputs(self, scene_containers, instance):
         """Collects inputs from nodes in renderlayer, incl. shaders + camera"""
 
         # Get the renderlayer
@@ -77,14 +98,13 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
         if renderlayer == "defaultRenderLayer":
             # Assume all loaded containers in the scene are inputs
             # for the masterlayer
-            host = api.registered_host()
-            containers = list(host.ls())
+            return copy.deepcopy(scene_containers)
         else:
             # Get the members of the layer
             members = cmds.editRenderLayerMembers(renderlayer,
                                                   query=True,
                                                   fullNames=True) or []
-                                                  
+
             # In some cases invalid objects are returned from
             # `editRenderLayerMembers` so we filter them out
             members = cmds.ls(members, long=True)
@@ -108,7 +128,7 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
             cameras = instance.data.get("cameras")
             members.extend(cameras)
 
-            containers = collect_input_containers(members)
+            containers = collect_input_containers(scene_containers, members)
 
         return containers
 
