@@ -11,8 +11,14 @@ import avalon.maya
 import colorbleed.api
 
 
-def bake_to_layer(nodes, layer_name, start, end):
+def bake_to_layer(nodes, layer_name, start, end,
+                  disable_implicit_control=True):
     """Bake to new animation layer
+    
+    Args:
+        disable_implicit_control (bool): Whether to
+            disable implicit controls (e.g. IK Handles)
+            after the bake.
 
     Returns:
         str: Name of created animLayer
@@ -29,7 +35,7 @@ def bake_to_layer(nodes, layer_name, start, end):
         t=(start, end),
         sampleBy=1,
         oversamplingRate=1,
-        disableImplicitControl=True,
+        disableImplicitControl=disable_implicit_control,
         preserveOutsideKeys=False,
         sparseAnimCurveBake=True,
         removeBakedAttributeFromLayer=False,
@@ -111,8 +117,17 @@ def layerbake(nodes, settings):
 
     # Bake the layers by name, start and end frame.
     created = []
-    for name, start, end in settings:
-        layer = bake_to_layer(nodes, name, start, end)
+    for i, (name, start, end) in enumerate(settings):
+    
+        # Workaround (Hack):
+        # Only disable the implicit controls
+        # once we reach the last layer to bake
+        # so that up to that point the IK handles
+        # bake as they should behave
+        disable_implicit = i == len(settings) - 1
+    
+        layer = bake_to_layer(nodes, name, start, end,
+                              disable_implicit_control=disable_implicit)
         print("Baked to: %s (%s - %s)" % (layer, start, end))
         created.append(layer)
 
