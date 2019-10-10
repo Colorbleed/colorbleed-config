@@ -65,6 +65,7 @@ class ExtractColorbleedAnimation(colorbleed.api.Extractor):
             "selection": True,
             "worldSpace": instance.data.get("worldSpace", True),
             "eulerFilter": instance.data.get("eulerFilter", True),
+            "writeColorSets": instance.data.get("writeColorSets", False)
         }
 
         if not instance.data.get("includeParentHierarchy", True):
