@@ -7,6 +7,35 @@ import colorbleed.api
 from colorbleed.maya.lib import extract_alembic, get_visible_in_frame_range
 
 
+def get_roots(nodes):
+    """Return the highest nodes in the hierarchies.
+
+    This filters out nodes that are children of others in the input `nodes`.
+
+    """
+    nodes = sorted(cmds.ls(nodes, long=True), reverse=True)
+    roots = set()
+
+    if len(nodes) <= 1:
+        # Don't search when just one node or none
+        return nodes
+
+    head = None
+    while nodes:
+        this = head or nodes.pop()
+        that = nodes.pop()
+
+        if that.startswith(this):
+            head = this
+        else:
+            roots.add(this)
+            head = that
+
+        roots.add(head)
+
+    return list(roots)
+
+
 class ExtractColorbleedAlembic(colorbleed.api.Extractor):
     """Produce an alembic of just point positions and normals.
 
@@ -72,7 +101,12 @@ class ExtractColorbleedAlembic(colorbleed.api.Extractor):
             # Set the root nodes if we don't want to include parents
             # The roots are to be considered the ones that are the actual
             # direct members of the set
-            options["root"] = instance.data.get("setMembers")
+            root = instance.data.get("setMembers")
+
+            # To avoid the issue of a child node being included as root node
+            # too we solely use the highest root nodes only, otherwise Alembic
+            # export will fail on "parent/child" relationships for the roots
+            options["root"] = get_roots(root)
 
         if int(cmds.about(version=True)) >= 2017:
             # Since Maya 2017 alembic supports multiple uv sets - write them.
