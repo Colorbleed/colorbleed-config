@@ -2,6 +2,7 @@ from maya import cmds
 
 import pyblish.api
 import colorbleed.api
+import colorbleed.action
 
 
 class ValidateLookDefaultShadersConnections(pyblish.api.InstancePlugin):
@@ -12,7 +13,8 @@ class ValidateLookDefaultShadersConnections(pyblish.api.InstancePlugin):
     as the default shader which can have unpredictable results.
 
     To fix the default connections need to be made again. See the logs for
-    more details on which connections are missing.
+    more details on which connections are missing or use the Repair action
+    to fix the issue automatically.
 
     """
 
@@ -20,12 +22,25 @@ class ValidateLookDefaultShadersConnections(pyblish.api.InstancePlugin):
     families = ['colorbleed.look']
     hosts = ['maya']
     label = 'Look Default Shader Connections'
+    actions = [colorbleed.action.RepairAction]
 
     # The default connections to check
-    DEFAULTS = [("initialShadingGroup.surfaceShader", "lambert1"),
-                ("initialParticleSE.surfaceShader", "lambert1"),
-                ("initialParticleSE.volumeShader", "particleCloud1")
-                ]
+    DEFAULTS = [
+        ("initialShadingGroup.surfaceShader", "lambert1"),
+        ("initialParticleSE.surfaceShader", "lambert1"),
+        ("initialParticleSE.volumeShader", "particleCloud1")
+    ]
+
+    @classmethod
+    def iter_invalid(cls):
+        """Yield the invalid connections"""
+        for plug, input_node in cls.DEFAULTS:
+            inputs = cmds.listConnections(plug,
+                                          source=True,
+                                          destination=False) or None
+
+            if not inputs or inputs[0] != input_node:
+                yield plug, input_node
 
     def process(self, instance):
 
@@ -42,12 +57,7 @@ class ValidateLookDefaultShadersConnections(pyblish.api.InstancePlugin):
 
         # Process as usual
         invalid = list()
-        for plug, input_node in self.DEFAULTS:
-            inputs = cmds.listConnections(plug,
-                                          source=True,
-                                          destination=False) or None
-
-            if not inputs or inputs[0] != input_node:
+        for plug, input_node in self.iter_invalid():
                 self.log.error("{0} is not connected to {1}. "
                                "This can result in unexpected behavior. "
                                "Please reconnect to continue.".format(
@@ -57,3 +67,12 @@ class ValidateLookDefaultShadersConnections(pyblish.api.InstancePlugin):
 
         if invalid:
             raise RuntimeError("Invalid connections.")
+
+    @classmethod
+    def repair(cls, instance):
+
+        for plug, input_node in cls.iter_invalid():
+            source_plug = input_node + ".outColor"
+            cls.log.info("Repairing connection: "
+                         "{0} -> {1}".format(source_plug, plug))
+            cmds.connectAttr(source_plug, plug, force=True)

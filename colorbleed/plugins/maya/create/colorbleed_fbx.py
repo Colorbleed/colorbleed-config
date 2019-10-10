@@ -26,3 +26,6 @@ class CreateFBX(avalon.maya.Creator):
         # FBX extraction so the FBX exporter picks up these custom animation
         # layers. This will currently *only* bake joints.
         self.data["bakeAnimLayers"] = ""
+
+        # Whether to preserve instances in the export
+        self.data["instances"] = False
