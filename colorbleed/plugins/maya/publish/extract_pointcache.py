@@ -75,9 +75,6 @@ class ExtractColorbleedAlembic(colorbleed.api.Extractor):
         attr_prefixes = [value for value in attr_prefixes if value.strip()]
         attr_prefixes.append("cb_")
 
-        # Get extra export arguments
-        writeColorSets = instance.data.get("writeColorSets", False)
-
         self.log.info("Extracting pointcache..")
         dirname = self.staging_dir(instance)
 
@@ -91,7 +88,7 @@ class ExtractColorbleedAlembic(colorbleed.api.Extractor):
             "attrPrefix": attr_prefixes,
             "writeVisibility": True,
             "writeCreases": True,
-            "writeColorSets": writeColorSets,
+            "writeColorSets": instance.data.get("writeColorSets", False),
             "uvWrite": True,
             "selection": True,
             "worldSpace": instance.data.get("worldSpace", True)
