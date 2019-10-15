@@ -1,5 +1,6 @@
 import pyblish.api
 import colorbleed.api
+import hou
 
 
 class ValidateVDBOutputNode(pyblish.api.InstancePlugin):
