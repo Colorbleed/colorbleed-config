@@ -62,6 +62,15 @@ class ValidateAbcPrimitiveToDetail(pyblish.api.InstancePlugin):
         frame = instance.data.get("startFrame", 0)
         geo = output.geometryAtFrame(frame)
         
+        # If there are no primitives on the start frame then it might be
+        # something that is emitted over time. As such we can't actually
+        # validate whether the attributes exist, because they won't exist
+        # yet. In that case, just warn the user and allow it.
+        if len(geo.iterPrims()) == 0:
+            cls.log.warning("No primitives found on current frame. Validation"
+                            " for Primitive to Detail will be skipped.")
+            return
+        
         attrib = geo.findPrimAttrib(path_attr)
         if not attrib:
             cls.log.info("Geometry Primitives are missing "

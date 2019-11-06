@@ -57,6 +57,7 @@ class ValidatePrimitiveHierarchyPaths(pyblish.api.InstancePlugin):
             cls.log.warning("No primitives found on current frame. Validation"
                             " for primitive hierarchy paths will be skipped,"
                             " thus can't be validated.")
+            return
 
         # Check if there are any values for the primitives
         attrib = geo.findPrimAttrib(path_attr)
