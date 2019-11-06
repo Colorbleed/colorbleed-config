@@ -155,6 +155,13 @@ class ValidateRigControllers(pyblish.api.InstancePlugin):
         attributes = mc.listAttr(control, keyable=True, scalar=True)
         invalid = []
         for attr in attributes:
+        
+            # Ignore visibility attribute as that will
+            # be forced to be locked anyway. As such we
+            # don't care whether it has an incoming connection.
+            if attr == "visibility":
+                continue
+        
             plug = "{}.{}".format(control, attr)
 
             # Ignore locked attributes
