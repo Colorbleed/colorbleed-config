@@ -57,11 +57,16 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
                                             layer=layer)
             if not enabled:
                 continue
-
+            
+            # Subset of the AOV is based on {layer}.{aov}
+            # So we need to ensure to store it correctly
             pass_name = self.get_pass_name(renderer, element)
-            result.append(pass_name)
+            subset_pass_name = "{layer}.{aov}".format(layer=instance.data["subset"],
+                                                      aov=pass_name)
+                                                      
+            result.append(subset_pass_name)
 
-        self.log.debug("Found {} render elements / AOVs for "
+        self.log.debug("Found {} AOVs for "
                        "'{}': {}".format(len(result), 
                                          instance.data["subset"],
                                          sorted(result)))
