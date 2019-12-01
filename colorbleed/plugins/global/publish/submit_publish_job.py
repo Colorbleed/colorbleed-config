@@ -27,31 +27,51 @@ def _get_script():
 # Logic to retrieve latest files concerning extendFrames
 def get_latest_version(asset_name, subset_name, family):
     # Get asset
-    asset_name = io.find_one({"type": "asset",
-                              "name": asset_name},
-                             projection={"name": True})
-
+    asset = io.find_one({"type": "asset",
+                         "name": asset_name},
+                         projection={"name": True})
     subset = io.find_one({"type": "subset",
                           "name": subset_name,
-                          "parent": asset_name["_id"]},
-                         projection={"_id": True, "name": True})
+                          "parent": asset["_id"]},
+                         projection={"_id": True, 
+                                     "name": True, 
+                                     "schema": True,
+                                     "data.families": True})
 
-    # Check if subsets actually exists (pre-run check)
-    assert subset, "No subsets found, please publish with `extendFrames` off"
+    # Check if subsets actually exists
+    assert subset, "Subset %s (%s) does not exist, please publish with `extendFrames` off" % (
+		subset_name, asset_name
+	)
+    
+    schema = subset.get("schema")
+    is_new_style_subset = schema == 'avalon-core:subset-3.0'
+    if is_new_style_subset:
+        # New style subsets have data.families on the subset
+        if family not in subset["data"]["families"]:
+           raise RuntimeError("Subset %s is not of family: %s" % (subset_name, family))
 
     # Get version
     version_projection = {"name": True,
                           "data.startFrame": True,
                           "data.endFrame": True,
+                          "data.families": True,
                           "parent": True}
 
     version = io.find_one({"type": "version",
-                           "parent": subset["_id"],
-                           "data.families": family},
+                           "parent": subset["_id"]},
                           projection=version_projection,
                           sort=[("name", -1)])
-
-    assert version, "No version found, this is a bug"
+    
+    if not is_new_style_subset:
+        # Old style subsets have data.families on the versions
+        if family not in version["data"]["families"]:
+           raise RuntimeError("Subset->Version %s->%s is not of family: %s" % (
+               subset_name, "v{0:03d}".format(version["name"]), family
+           ))
+    
+    assert version, "No version found for %s > %s (%s), this is a bug" % (
+		asset_name, subset_name, family
+	)
 
     return version
 
