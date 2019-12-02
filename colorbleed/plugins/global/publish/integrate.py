@@ -46,7 +46,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "colorbleed.vrayproxy",
                 "colorbleed.yetiRig",
                 "colorbleed.yeticache",
-                "colorbleed.review"]
+                "colorbleed.review",
+                "colorbleed.usd"]
     targets = ["local"]
 
     def process(self, instance):
