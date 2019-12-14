@@ -14,11 +14,17 @@ log = logging.getLogger(__name__)
 
 def _get_menu():
     """Return the menu instance if it currently exists in Maya"""
+    
+    menu = self._menu
 
-    app = QtWidgets.QApplication.instance()
-    widgets = dict((w.objectName(), w) for w in app.allWidgets())
-    menu = widgets.get(self._menu)
-    return menu
+    # In Maya 2020+ don't use the QApplication.instance()
+    # during startup (userSetup.py) as it will return a
+    # QtCore.QCoreApplication instance which does not have
+    # the allWidgets method. As such, we call the staticmethod.
+    widgets = QtWidgets.QApplication.allWidgets()
+    
+    return next((w for w in widgets if w.objectName() == menu), 
+                None)
 
 
 def deferred():
