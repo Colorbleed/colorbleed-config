@@ -97,7 +97,7 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
         # We can't get the "inputAncestors" directly from the ROP
         # node, so we find the related output node (set in SOP/COP path)
         # and include that together with its ancestors
-        output = instance.data["output_node"]
+        output = instance.data.get("output_node")
 
         if output is None:
             # If no valid output node is set then ignore it as validation
