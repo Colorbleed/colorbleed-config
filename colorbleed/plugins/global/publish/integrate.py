@@ -28,6 +28,20 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             the dot (.) prefix.
         - instance.data["transfer"]: straight per file copy src -> dst
 
+    Required inputs:
+        instance.data["asset"]
+        instance.data["subset"]
+        instance.data["families"] or instance.data["family"] (deprecated)
+        instance.data["stagingDir"]
+        instance.data["files"]
+        instance.data["transfers"]
+        instance.context.data["time"]
+        instance.context.data["user"]
+        instance.context.data["currentFile"]
+
+    Optional inputs:
+        instance.data["assumedTemplateData"]
+
     """
 
     label = "Integrate Asset"
@@ -47,7 +61,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "colorbleed.yetiRig",
                 "colorbleed.yeticache",
                 "colorbleed.review",
-                "colorbleed.usd"]
+                "colorbleed.usd",
+                # We don't actually integrate to colorbleed.usd.bootstrap
+                # because on extraction we swap the family to colorbleed.usd.
+                # However without this the integrator would not be loaded if
+                # there was no colorbleed.usd instance to begin with.
+                "colorbleed.usd.bootstrap"
+                ]
     targets = ["local"]
 
     def process(self, instance):
@@ -116,14 +136,15 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if latest_version is not None:
             next_version += latest_version["name"]
 
-        self.log.info("Verifying version from assumed destination")
-        assumed_data = instance.data["assumedTemplateData"]
-        assumed_version = assumed_data["version"]
-        if assumed_version != next_version:
-            raise AttributeError("Assumed version 'v{0:03d}' does not match"
-                                 "next version in database "
-                                 "('v{1:03d}')".format(assumed_version,
-                                                       next_version))
+        assumed_data = instance.data.get("assumedTemplateData")
+        if assumed_data:
+            self.log.info("Verifying version from assumed destination")
+            assumed_version = assumed_data["version"]
+            if assumed_version != next_version:
+                raise AttributeError("Assumed version 'v{0:03d}' does not "
+                                     "match next version in database "
+                                     "('v{1:03d}')".format(assumed_version,
+                                                           next_version))
 
         self.log.debug("Next version: v{0:03d}".format(next_version))
 
@@ -316,6 +337,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 },
                 "parent": asset["_id"]
             }
+
+            group = instance.data.get("group")
+            if group:
+                assert isinstance(group, str), "group data must be string"
+                subset["data"]["group"] = group
 
             # Validate schema
             schema.validate(subset)

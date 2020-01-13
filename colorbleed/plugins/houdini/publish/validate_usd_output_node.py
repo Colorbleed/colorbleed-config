@@ -14,7 +14,7 @@ class ValidateUSDOutputNode(pyblish.api.InstancePlugin):
     order = pyblish.api.ValidatorOrder
     families = ["colorbleed.usd"]
     hosts = ["houdini"]
-    label = "Validate LOP Output Node"
+    label = "Validate Output Node (USD)"
 
     def process(self, instance):
 

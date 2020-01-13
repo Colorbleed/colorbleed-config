@@ -22,7 +22,6 @@ class ExtractUSD(colorbleed.api.Extractor):
         output = ropnode.evalParm("lopoutput")
         staging_dir = os.path.dirname(output)
         instance.data["stagingDir"] = staging_dir
-
         file_name = os.path.basename(output)
 
         self.log.info("Writing USD '%s' to '%s'" % (file_name, staging_dir))

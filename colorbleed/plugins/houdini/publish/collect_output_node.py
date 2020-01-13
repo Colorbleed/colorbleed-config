@@ -10,6 +10,7 @@ class CollectOutputNodePath(pyblish.api.InstancePlugin):
                 "colorbleed.vdbcache",
                 "colorbleed.imagesequence",
                 "colorbleed.usd"]
+
     hosts = ["houdini"]
     label = "Collect Output Node Path"
 
@@ -23,6 +24,7 @@ class CollectOutputNodePath(pyblish.api.InstancePlugin):
         node_type = node.type().name()
         if node_type == "geometry":
             path = node.parm("soppath").eval()
+
         elif node_type == "alembic":
 
             # Alembic can switch between using SOP Path or object
@@ -35,8 +37,19 @@ class CollectOutputNodePath(pyblish.api.InstancePlugin):
 
         elif node_type == "comp":
             path = node.parm("coppath").eval()
+
         elif node_type == "usd":
             path = node.parm("loppath").eval()
+
+        elif node_type == "usd_rop":
+            # Inside Solaris e.g. /stage (not in ROP context)
+            # When incoming connection is present it takes it directly
+            inputs = node.inputs()
+            if inputs:
+                path = inputs[0].path()
+            else:
+                path = node.parm("loppath").eval()
+
         else:
             raise ValueError("ROP node type '%s' is"
                              " not supported." % node_type)
