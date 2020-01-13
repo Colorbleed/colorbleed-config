@@ -29,22 +29,16 @@ class _USDWorkspace(api.Creator):
         instance = stage.createNode(node_type, node_name=name)
         instance.moveToGoodPosition()
 
+        # With the Workspace HDAs there is no need to imprint the instance data
+        # since this data is pre-built into it. However, we do set the right
+        # asset as that can be defined by the user.
         parms = {
-             "lopoutput": "$HIP/usd/%s.usd" % subset
+            "asset": self.data["asset"],
+            # This is just so it has a good default value
+            # TODO build this into the HDA
+            "lopoutput": "$HIP/usd/%s.usd" % subset
          }
         instance.setParms(parms)
-
-        # Avoid the "active" state?
-        self.data.pop("active", None)
-
-        # Imprint avalon data
-        lib.imprint(instance, self.data)
-
-        # Lock any parameters in this list
-        to_lock = ["id", "family", "subset"]
-        for name in to_lock:
-            parm = instance.parm(name)
-            parm.lock(True)
 
         return instance
 
@@ -75,6 +69,9 @@ class USDCreateShadingWorkspace(_USDWorkspace):
     step = "Shade"
 
     def process(self):
+
+        raise NotImplementedError("Shading workspace HDA needs to be updated.")
+
         instance = super(USDCreateShadingWorkspace, self).process()
 
         # Set published file path for this one?
