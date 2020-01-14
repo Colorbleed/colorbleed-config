@@ -1,8 +1,8 @@
 import pyblish.api
 
 
-class ValidateUsdOutputNode(pyblish.api.InstancePlugin):
-    """Validate the instance USD Lop Output Node.
+class ValidateUSDOutputNode(pyblish.api.InstancePlugin):
+    """Validate the instance USD LOPs Output Node.
 
     This will ensure:
         - The LOP Path is set.
@@ -32,8 +32,8 @@ class ValidateUsdOutputNode(pyblish.api.InstancePlugin):
 
         if output_node is None:
             node = instance[0]
-            cls.log.error("USD Output node in '%s' does not exist. "
-                          "Ensure a valid LOP output path is set."
+            cls.log.error("USD node '%s' LOP path does not exist. "
+                          "Ensure a valid LOP path is set."
                           % node.path())
 
             return [node.path()]

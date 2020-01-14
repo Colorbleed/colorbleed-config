@@ -8,8 +8,9 @@ class CollectOutputNodePath(pyblish.api.InstancePlugin):
     families = ["colorbleed.pointcache",
                 "colorbleed.camera",
                 "colorbleed.vdbcache",
-                "colorbleed.usd",
-                "colorbleed.imagesequence"]
+                "colorbleed.imagesequence",
+                "colorbleed.usd"]
+
     hosts = ["houdini"]
     label = "Collect Output Node Path"
 
@@ -25,6 +26,7 @@ class CollectOutputNodePath(pyblish.api.InstancePlugin):
             path = node.parm("soppath").eval()
 
         elif node_type == "alembic":
+
             # Alembic can switch between using SOP Path or object
             if node.parm("use_sop_path").eval():
                 path = node.parm("sop_path").eval()

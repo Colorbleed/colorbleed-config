@@ -18,8 +18,7 @@ class ExtractUSD(colorbleed.api.Extractor):
 
         ropnode = instance[0]
 
-        # Get the filename from the copoutput parameter
-        # `.evalParm(parameter)` will make sure all tokens are resolved
+        # Get the filename from the filename parameter
         output = ropnode.evalParm("lopoutput")
         staging_dir = os.path.dirname(output)
         instance.data["stagingDir"] = staging_dir
@@ -42,6 +41,8 @@ class ExtractUSD(colorbleed.api.Extractor):
             import traceback
             traceback.print_exc()
             raise RuntimeError("Render failed: {0}".format(exc))
+
+        assert os.path.exists(output), "Output does not exist: %s" % output
 
         if "files" not in instance.data:
             instance.data["files"] = []
