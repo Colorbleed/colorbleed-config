@@ -37,5 +37,5 @@ class ShowInUsdview(api.Loader):
         env.pop("HOUDINI_SCRIPT_PATH", None)
         env.pop("HOUDINI_MENU_PATH", None)
 
-        subprocess.Popen([usdview, filepath],
+        subprocess.Popen([usdview, filepath, "--renderer", "GL"],
                          env=env)
