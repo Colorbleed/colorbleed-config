@@ -33,11 +33,8 @@ class _USDWorkspace(api.Creator):
         # since this data is pre-built into it. However, we do set the right
         # asset as that can be defined by the user.
         parms = {
-            "asset": self.data["asset"],
-            # This is just so it has a good default value
-            # TODO build this into the HDA
-            "lopoutput": "$HIP/usd/%s.usd" % subset
-         }
+            "asset": self.data["asset"]
+        }
         instance.setParms(parms)
 
         return instance
@@ -68,16 +65,6 @@ class USDCreateShadingWorkspace(_USDWorkspace):
     node_name = "shadingWorkspace"
     step = "Shade"
 
-    def process(self):
-
-        raise NotImplementedError("Shading workspace HDA needs to be updated.")
-
-        instance = super(USDCreateShadingWorkspace, self).process()
-
-        # Set published file path for this one?
-        instance.setParms({
-            "filepath1": "$HIP/usd/usdModel.usd"
-        })
 
 # Don't allow the base class to be picked up by Avalon
 del _USDWorkspace
