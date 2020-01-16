@@ -338,10 +338,12 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "parent": asset["_id"]
             }
 
-            group = instance.data.get("group")
+            group = instance.data.get("subsetGroup")
             if group:
-                assert isinstance(group, str), "group data must be string"
-                subset["data"]["group"] = group
+                assert isinstance(group, str), (
+                    "subsetGroup data must be string"
+                )
+                subset["data"]["subsetGroup"] = group
 
             # Validate schema
             schema.validate(subset)

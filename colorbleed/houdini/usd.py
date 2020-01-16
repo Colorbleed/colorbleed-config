@@ -11,10 +11,10 @@ log = logging.getLogger(__name__)
 
 # The predefined steps order used for bootstrapping USD Shots and Assets.
 # These are ordered in order from strongest to weakest opinions, like in USD.
-SHOT_PIPELINE = ["lighting", "fx", "sim", "anim", "layout"]
-ASSET_PIPELINE = ["shade", "model"]
-SHOT_PIPELINE_SUBSETS = ["usd" + step.title() for step in SHOT_PIPELINE]
-ASSET_PIPELINE_SUBSETS = ["usd" + step.title() for step in ASSET_PIPELINE]
+PIPELINE = {
+    "shot": ["usdLighting", "usdFx", "usdSim", "usdAnim", "usdLayout"],
+    "asset": ["usdShade", "usdModel"]
+}
 
 
 def create_asset(filepath,

@@ -27,21 +27,21 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
     hosts = ["houdini"]
     families = ["colorbleed.usd"]
 
-    # The predefined subset steps for a Shot and Asset
-    shot_subsets_lookup = set(usdlib.SHOT_PIPELINE_SUBSETS)
-    asset_subsets_lookup = set(usdlib.ASSET_PIPELINE_SUBSETS)
-
     def process(self, instance):
 
         instance_subset = instance.data["subset"]
+        require_all_layers = instance.data.get("requireAllLayers", False)
 
-        if instance_subset in self.shot_subsets_lookup:
-            bootstrap = "shot"
-        elif instance_subset in self.asset_subsets_lookup:
-            bootstrap = "asset"
+        # Detect whether the current subset is a subset in a pipeline
+        for name, layers in usdlib.PIPELINE.items():
+            if instance_subset in set(layers):
+                bootstrap = name    # e.g. "asset"
+                break
         else:
             self.log.debug("Ignoring bootstrap...")
             return
+
+        self.log.debug("Detected bootstrap for: %s" % bootstrap)
 
         asset = io.find_one({"name": instance.data["asset"],
                              "type": "asset"})
@@ -49,12 +49,19 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
 
         # Check which are not about to be created and don't exist yet
         required = {
-            "shot": usdlib.SHOT_PIPELINE_SUBSETS + ["usdShot"],
-            "asset": usdlib.ASSET_PIPELINE_SUBSETS + ["usdAsset"]
+            "shot": ["usdShot"],
+            "asset": ["usdAsset"]
         }.get(bootstrap)
 
-        self.log.debug("Checking required bootstrap: %s" % list(required))
+        if require_all_layers:
+            # USD files load fine in usdview and Houdini even when layered or
+            # referenced files do not exist. So by default we don't require
+            # the layers to exist.
+            layers = usdlib.PIPELINE.get(bootstrap)
+            if layers:
+                required += list(layers)
 
+        self.log.debug("Checking required bootstrap: %s" % required)
         for subset in required:
             if self._subset_exists(instance, subset, asset):
                 continue

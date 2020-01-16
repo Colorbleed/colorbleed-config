@@ -43,7 +43,7 @@ class ExtractBootstrapUSD(colorbleed.api.Extractor):
         subset = instance.data["subset"]
         if subset == "usdAsset":
             # Asset
-            steps = usdlib.ASSET_PIPELINE_SUBSETS
+            steps = usdlib.PIPELINE["asset"]
             layers = self.get_usd_master_paths(steps, instance)
             usdlib.create_asset(filepath,
                                 asset_name=instance.data["asset"],
@@ -51,17 +51,17 @@ class ExtractBootstrapUSD(colorbleed.api.Extractor):
 
         elif subset == "usdShot":
             # Shot
-            steps = usdlib.SHOT_PIPELINE_SUBSETS
+            steps = usdlib.PIPELINE["shot"]
             layers = self.get_usd_master_paths(steps, instance)
             usdlib.create_shot(filepath,
                                layers=layers)
 
-        elif subset in usdlib.ASSET_PIPELINE_SUBSETS:
+        elif subset in usdlib.PIPELINE["asset"]:
             # Asset layer
             # Generate the stub files with root primitive
             usdlib.create_stub_usd(filepath)
 
-        elif subset in usdlib.SHOT_PIPELINE_SUBSETS:
+        elif subset in usdlib.PIPELINE["shot"]:
             # Shot Layer
             # Generate the stub file for an Sdf Layer
             usdlib.create_stub_usd_sdf_layer(filepath)
