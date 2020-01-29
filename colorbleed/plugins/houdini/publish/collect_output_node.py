@@ -23,36 +23,37 @@ class CollectOutputNodePath(pyblish.api.InstancePlugin):
         # Get sop path
         node_type = node.type().name()
         if node_type == "geometry":
-            path = node.parm("soppath").eval()
+            out_node = node.parm("soppath").evalAsNode()
 
         elif node_type == "alembic":
 
             # Alembic can switch between using SOP Path or object
-            if node.parm("use_sop_path").eval():
-                path = node.parm("sop_path").eval()
+            if node.parm("use_sop_path").evalAsNode():
+                out_node = node.parm("sop_path").evalAsNode()
             else:
                 root = node.parm("root").eval()
                 objects = node.parm("objects").eval()
                 path = root + "/" + objects
+                out_node = hou.node(path)
 
         elif node_type == "comp":
-            path = node.parm("coppath").eval()
+            out_node = node.parm("coppath").evalAsNode()
 
         elif node_type == "usd":
-            path = node.parm("loppath").eval()
+            out_node = node.parm("loppath").evalAsNode()
 
         elif node_type == "usd_rop":
             # Inside Solaris e.g. /stage (not in ROP context)
             # When incoming connection is present it takes it directly
             inputs = node.inputs()
             if inputs:
-                path = inputs[0].path()
+                out_node = inputs[0]
             else:
-                path = node.parm("loppath").eval()
+                out_node = node.parm("loppath").evalAsNode()
 
         else:
             raise ValueError("ROP node type '%s' is"
                              " not supported." % node_type)
 
-        out_node = hou.node(path)
+        self.log.debug("Output node: %s" % out_node.path())
         instance.data["output_node"] = out_node
