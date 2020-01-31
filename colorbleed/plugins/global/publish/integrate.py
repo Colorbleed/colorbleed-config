@@ -41,6 +41,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
     Optional inputs:
         instance.data["assumedTemplateData"]
+        instance.data["publishFamilies"]        # override avalon families
 
     """
 
@@ -66,15 +67,35 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 # because on extraction we swap the family to colorbleed.usd.
                 # However without this the integrator would not be loaded if
                 # there was no colorbleed.usd instance to begin with.
-                "colorbleed.usd.bootstrap"
+                "colorbleed.usd.bootstrap",
+                "colorbleed.usd.layered"
                 ]
     targets = ["local"]
 
     def process(self, instance):
 
-        self.register(instance)
+        self.publish_instance(instance)
 
-        self.log.info("Integrating Asset in to the database ...")
+        # Allow hidden sub instances to be published along too.
+        dependencies = instance.data.get("publishDependencies", [])
+        for dependency in dependencies:
+
+            is_integrated = dependency.data.get("_isIntegrated", False)
+            if is_integrated:
+                # This dependency might have been embedded in another instance
+                # too and thus had already run on another instance. We will
+                # skip integrating it again.
+                continue
+
+            is_extracted = dependency.data.get("_isExtracted", False)
+            if not is_extracted:
+                continue
+
+            self.publish_instance(dependency)
+
+    def publish_instance(self, instance):
+        self.log.info("Integrating into the database: {0}".format(instance))
+        self.register(instance)
         self.integrate(instance)
 
     def register(self, instance):
@@ -440,6 +461,12 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
     def _get_families(self, instance):
         """Helper function to get the families from instance data"""
+
+        # Allow custom publish families to be defined when they
+        # need to be different from the Pyblish families. E.g.
+        # a specific family to be triggered by specific Pyblish plug-ins
+        if "publishFamilies" in instance.data:
+            return instance.data["publishFamilies"]
 
         # Get families for the subset
         families = instance.data.get("families", list())

@@ -126,6 +126,9 @@ def _set_asset_fps():
 def on_pyblish_instance_toggled(instance, new_value, old_value):
     """Toggle saver tool passthrough states on instance toggles."""
 
+    if not instance.data.get("_allowToggleBypass", True):
+        return
+
     nodes = instance[:]
     if not nodes:
         return

@@ -21,7 +21,8 @@ class IntegrateUSDMasterFile(pyblish.api.InstancePlugin):
     hosts = ["houdini"]
     targets = ["local"]
     families = ["colorbleed.usd",
-                "colorbleed.usd.bootstrap"]
+                "colorbleed.usd.bootstrap",
+                "colorbleed.usd.layered"]
 
     def process(self, instance):
 
