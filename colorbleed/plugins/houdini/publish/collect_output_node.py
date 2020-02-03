@@ -28,7 +28,7 @@ class CollectOutputNodePath(pyblish.api.InstancePlugin):
         elif node_type == "alembic":
 
             # Alembic can switch between using SOP Path or object
-            if node.parm("use_sop_path").evalAsNode():
+            if node.parm("use_sop_path").eval():
                 out_node = node.parm("sop_path").evalAsNode()
             else:
                 root = node.parm("root").eval()
