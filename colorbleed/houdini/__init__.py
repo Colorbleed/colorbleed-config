@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 
 import hou
@@ -48,6 +49,12 @@ def install():
         "colorbleed.imagesequence",
         "colorbleed.review"
     ]
+
+    # Expose Houdini husdoutputprocessors
+    hou_setup_pythonpath = os.path.join(os.path.dirname(PACKAGE_DIR),
+                                        "setup", "houdini", "pythonpath")
+    print("Adding PYTHONPATH: %s" % hou_setup_pythonpath)
+    sys.path.append(hou_setup_pythonpath)
 
     # Set asset FPS for the empty scene directly after launch of Houdini
     # so it initializes into the correct scene FPS
