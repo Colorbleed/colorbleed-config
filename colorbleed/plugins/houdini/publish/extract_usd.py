@@ -2,6 +2,7 @@ import os
 
 import pyblish.api
 import colorbleed.api
+from colorbleed.houdini.lib import render_rop
 
 
 class ExtractUSD(colorbleed.api.Extractor):
@@ -26,21 +27,7 @@ class ExtractUSD(colorbleed.api.Extractor):
 
         self.log.info("Writing USD '%s' to '%s'" % (file_name, staging_dir))
 
-        # Print verbose when in batch mode without UI
-        verbose = not hou.isUIAvailable()
-
-        # Render
-        try:
-            ropnode.render(verbose=verbose,
-                           # Allow Deadline to capture completion percentage
-                           output_progress=verbose)
-        except hou.Error as exc:
-            # The hou.Error is not inherited from a Python Exception class,
-            # so we explicitly capture the houdini error, otherwise pyblish
-            # will remain hanging.
-            import traceback
-            traceback.print_exc()
-            raise RuntimeError("Render failed: {0}".format(exc))
+        render_rop(ropnode)
 
         assert os.path.exists(output), "Output does not exist: %s" % output
 

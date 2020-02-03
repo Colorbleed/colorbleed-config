@@ -317,3 +317,24 @@ def create_remote_publish_node(force=True):
     # Apply template back to the node
     node.setParmTemplateGroup(template)
 
+
+def render_rop(ropnode):
+    """Render ROP node utility for Publishing.
+
+    This renders a ROP node with the settings we want during Publishing.
+    """
+    # Print verbose when in batch mode without UI
+    verbose = not hou.isUIAvailable()
+
+    # Render
+    try:
+        ropnode.render(verbose=verbose,
+                       # Allow Deadline to capture completion percentage
+                       output_progress=verbose)
+    except hou.Error as exc:
+        # The hou.Error is not inherited from a Python Exception class,
+        # so we explicitly capture the houdini error, otherwise pyblish
+        # will remain hanging.
+        import traceback
+        traceback.print_exc()
+        raise RuntimeError("Render failed: {0}".format(exc))
