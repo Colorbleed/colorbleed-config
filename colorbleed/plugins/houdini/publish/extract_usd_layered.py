@@ -8,6 +8,7 @@ import pyblish.api
 import colorbleed.api
 
 import colorbleed.houdini.usd as usdlib
+from colorbleed.houdini.lib import render_rop
 
 
 class ExitStack(object):
@@ -123,24 +124,6 @@ class ExitStack(object):
         return suppressed_exc
 
 
-def render(ropnode):
-    # Print verbose when in batch mode without UI
-    verbose = not hou.isUIAvailable()
-
-    # Render
-    try:
-        ropnode.render(verbose=verbose,
-                       # Allow Deadline to capture completion percentage
-                       output_progress=verbose)
-    except hou.Error as exc:
-        # The hou.Error is not inherited from a Python Exception class,
-        # so we explicitly capture the houdini error, otherwise pyblish
-        # will remain hanging.
-        import traceback
-        traceback.print_exc()
-        raise RuntimeError("Render failed: {0}".format(exc))
-
-
 @contextlib.contextmanager
 def parm_values(overrides):
     """Override Parameter values during the context."""
@@ -148,12 +131,15 @@ def parm_values(overrides):
     originals = list()
     try:
         for parm, value in overrides:
-            originals.append((parm, parm.rawValue()))
+            originals.append((parm, parm.eval()))
             parm.set(value)
         yield
     finally:
         for parm, value in originals:
-            parm.set(value)
+            # Parameter might not exist anymore so first
+            # check whether it's still valid
+            if hou.parm(parm.path()):
+                parm.set(value)
 
 
 class ExtractUSDLayered(colorbleed.api.Extractor):
@@ -164,11 +150,19 @@ class ExtractUSDLayered(colorbleed.api.Extractor):
     targets = ["local"]
     families = ["colorbleed.usd.layered"]
 
+    # Force Output Processors so it will always save any file
+    # into our unique staging directory with processed Avalon paths
+    output_processors = [
+        "avalon_uri_processor",
+        "stagingdir_processor"
+    ]
+
     def process(self, instance):
 
-        staging_dir = self.staging_dir(instance)
-
         self.log.info("Extracting: %s" % instance)
+
+        staging_dir = self.staging_dir(instance)
+        fname = instance.data.get("usdFilename")
 
         # The individual rop nodes are collected as "publishDependencies"
         dependencies = instance.data["publishDependencies"]
@@ -176,79 +170,134 @@ class ExtractUSDLayered(colorbleed.api.Extractor):
         assert all(node.type().name() in {"usd", "usd_rop"}
                    for node in ropnodes)
 
-        # The main ROP node, either a USD Rop or ROP network containing
-        # multiple USD rops.
+        # Main ROP node, either a USD Rop or ROP network with multiple USD ROPs
         node = instance[0]
-
-        # Write out only this layer using the save pattern parameter
-        # Match any filename with folders above it and match the
-        # filename itself explicitly. THe match pattern is based on the
-        # output path *after* the Output Processor. So we process the save
-        # path manually beforehand too.
-        fname = instance.data.get("usdFilename")
-
-        # Enable Output Processors so it will always save any file
-        # into our unique staging directory with processed Avalon paths
-        processors = [
-            "avalon_uri_processor",
-            "stagingdir_processor"
-        ]
 
         # Collect any output dependencies that have not been processed yet
         # during extraction of other instances
         outputs = [fname]
-        for dependency in dependencies:
-            if not dependency.data.get("_isExtracted", False):
-                dependency_fname = dependency.data["usdFilename"]
-                self.log.debug("Extracting dependency: %s" % dependency)
+        active_dependencies = [dep for dep in dependencies if
+                               dep.data.get("publish", True) and
+                               not dep.data.get("_isExtracted", False)]
+        for dependency in active_dependencies:
+            outputs.append(dependency.data["usdFilename"])
 
-                # Find the file in this instance's staging directory
-                dependency.data["files"] = [dependency_fname]
-                dependency.data["stagingDir"] = staging_dir
-
-                outputs.append(dependency_fname)
-                dependency.data["_isExtracted"] = True
+        pattern = r"*[/\]{0} {0}"
+        save_pattern = " ".join(pattern.format(fname) for fname in outputs)
 
         # Run a stack of context managers before we start the render to
         # temporarily adjust USD ROP settings for our publish output.
+        rop_overrides = {
+            # This sets staging directory on the processor to force our
+            # output files to end up in the Staging Directory.
+            "stagingdiroutputprocessor_stagingDir": staging_dir,
+
+            # Force the Avalon URI Output Processor to refactor paths for
+            # references, payloads and layers to published paths.
+            "avalonurioutputprocessor_use_publish_paths": True,
+
+            # Only write out specific USD files based on our outputs
+            "savepattern": save_pattern
+        }
         overrides = list()
         with ExitStack() as stack:
 
             for ropnode in ropnodes:
                 manager = usdlib.outputprocessors(
                     ropnode,
-                    processors=processors,
+                    processors=self.output_processors,
                     disable_all_others=True
                 )
                 stack.enter_context(manager)
 
-                # Only write out specific USD files based on our outputs
-                pattern = r"*[/\]{0} {0}"
-                value = " ".join(pattern.format(fname) for fname in outputs)
-                overrides.append([ropnode.parm("savepattern"),
-                                  value])
-
-                # We must add the after we entered the output processor context
-                # manager  because this attribute only exists when the Output
-                # Processor is added to the ROP node.
-                # This sets staging directory on the processor to force our
-                # output files to end up in the Staging Directory.
-                name = "stagingdiroutputprocessor_stagingDir"
-                overrides.append([ropnode.parm(name),
-                                  staging_dir])
+                # Some of these must be added after we enter the output
+                # processor context manager because those parameters only
+                # exist when the Output Processor is added to the ROP node.
+                for name, value in rop_overrides.items():
+                    parm = ropnode.parm(name)
+                    assert parm, "Parm not found: %s.%s" % (ropnode.path(),
+                                                            name)
+                    overrides.append((parm, value))
 
             stack.enter_context(parm_values(overrides))
 
             # Render the single ROP node or the full ROP network
-            render(node)
+            render_rop(node)
 
-        # Detect the output files in the Staging Directory
-        path = os.path.join(staging_dir, fname)
-        assert os.path.exists(path), "Output file must exist: %s" % path
+        # Assert all output files in the Staging Directory
+        for output_fname in outputs:
+            path = os.path.join(staging_dir, output_fname)
+            assert os.path.exists(path), "Output file must exist: %s" % path
+
+        # Set up the dependency for publish if they have new content
+        # compared to previous publishes
+        for dependency in active_dependencies:
+            dependency_fname = dependency.data["usdFilename"]
+
+            filepath = os.path.join(staging_dir, dependency_fname)
+            similar = self._compare_with_latest_publish(dependency,
+                                                        filepath)
+            if similar:
+                # Deactivate this dependency
+                self.log.debug("Dependency matches previous publish version,"
+                               " deactivating %s for publish" % dependency)
+                dependency.data["publish"] = False
+            else:
+                self.log.debug("Extracted dependency: %s" % dependency)
+                # This dependency should be published
+                dependency.data["files"] = [dependency_fname]
+                dependency.data["stagingDir"] = staging_dir
+                dependency.data["_isExtracted"] = True
 
         # Store the created files on the instance
         if "files" not in instance.data:
             instance.data["files"] = list()
         instance.data["files"].append(fname)
 
-        #raise RuntimeError("Force no integration with a crash")
+    def _compare_with_latest_publish(self, dependency, new_file):
+
+        from avalon import api, io
+        import filecmp
+
+        _, ext = os.path.splitext(new_file)
+
+        # Compare this dependency with the latest published version
+        # to detect whether we should make this into a new publish
+        # version. If not, skip it.
+        asset = io.find_one({
+            "name": dependency.data["asset"],
+            "type": "asset"
+        })
+        subset = io.find_one({
+            "name": dependency.data["subset"],
+            "type": "subset",
+            "parent": asset["_id"]
+        })
+        if not subset:
+            # Subset doesn't exist yet. Definitely new file
+            self.log.debug("No existing subset..")
+            return False
+
+        version = io.find_one({
+            "type": "version",
+            "parent": subset["_id"],
+        }, sort=[("name", -1)])
+        if not version:
+            self.log.debug("No existing version..")
+            return False
+
+        representation = io.find_one({
+            "name": ext.lstrip("."),
+            "type": "representation",
+            "parent": version["_id"]
+        })
+        if not representation:
+            self.log.debug("No existing representation..")
+            return False
+
+        old_file = api.get_representation_path(representation)
+        if not os.path.exists(old_file):
+            return False
+
+        similar = filecmp.cmp(old_file, new_file)
+        return similar

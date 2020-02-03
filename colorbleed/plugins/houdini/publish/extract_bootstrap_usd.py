@@ -29,12 +29,6 @@ class ExtractBootstrapUSD(colorbleed.api.Extractor):
 
     def process(self, instance):
 
-        # This is crucial for the Integrator to integrate
-        # it to the correct family in the end.
-        family = "colorbleed.usd"
-        instance.data["family"] = family
-        instance.data["families"] = [family]
-
         staging_dir = self.staging_dir(instance)
         filename = "{subset}.usd".format(**instance.data)
         filepath = os.path.join(staging_dir, filename)

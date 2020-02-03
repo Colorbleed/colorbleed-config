@@ -242,12 +242,13 @@ def outputprocessors(ropnode,
             `processors` list passed to this function.
 
     """
+    # TODO: Add support for forcing the correct Order of the processors
 
-    original_states = {}
+    original = []
     prefix = "enableoutputprocessor_"
     processor_parms = ropnode.globParms(prefix + "*")
     for parm in processor_parms:
-        original_states[parm.name()] = parm.eval()
+        original.append((parm, parm.eval()))
 
     if disable_all_others:
         for parm in processor_parms:
@@ -275,8 +276,9 @@ def outputprocessors(ropnode,
             remove_usd_output_processor(ropnode, processor)
 
         # Revert to original values
-        for parm_name, value in original_states.items():
-            ropnode.parm(parm_name).set(value)
+        for parm, value in original:
+            if parm:
+                parm.set(value)
 
 
 def get_usd_rop_loppath(node):
@@ -375,7 +377,7 @@ def get_configured_save_layers(usd_rop):
 
 def parse_avalon_uri(uri):
     # URI Pattern: avalon://{asset}/{subset}.{ext}
-    pattern = "avalon://(?P<asset>[^/.]*)/(?P<subset>[^/.]*)\.(?P<ext>.*)"
+    pattern = r"avalon://(?P<asset>[^/.]*)/(?P<subset>[^/.]*)\.(?P<ext>.*)"
     if uri.startswith("avalon://"):
         match = re.match(pattern, uri)
         if match:

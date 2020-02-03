@@ -25,23 +25,34 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.1
     label = "Collect USD Bootstrap"
     hosts = ["houdini"]
-    families = ["colorbleed.usd"]
+    families = ["colorbleed.usd",
+                "colorbleed.usd.layered"]
 
     def process(self, instance):
 
-        instance_subset = instance.data["subset"]
-        require_all_layers = instance.data.get("requireAllLayers", False)
-
         # Detect whether the current subset is a subset in a pipeline
-        for name, layers in usdlib.PIPELINE.items():
-            if instance_subset in set(layers):
-                bootstrap = name    # e.g. "asset"
-                break
-        else:
-            self.log.debug("Ignoring bootstrap...")
-            return
+        def get_bootstrap(instance):
+            instance_subset = instance.data["subset"]
+            for name, layers in usdlib.PIPELINE.items():
+                if instance_subset in set(layers):
+                    return name    # e.g. "asset"
+                    break
+            else:
+                return
 
-        self.log.debug("Detected bootstrap for: %s" % bootstrap)
+        bootstrap = get_bootstrap(instance)
+        if bootstrap:
+            self.add_bootstrap(instance, bootstrap)
+
+        # Check if any of the dependencies requires a bootstrap
+        for dependency in instance.data.get("publishDependencies", list()):
+            bootstrap = get_bootstrap(dependency)
+            if bootstrap:
+                self.add_bootstrap(dependency, bootstrap)
+
+    def add_bootstrap(self, instance, bootstrap):
+
+        self.log.debug("Add bootstrap for: %s" % bootstrap)
 
         asset = io.find_one({"name": instance.data["asset"],
                              "type": "asset"})
@@ -53,6 +64,7 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
             "asset": ["usdAsset"]
         }.get(bootstrap)
 
+        require_all_layers = instance.data.get("requireAllLayers", False)
         if require_all_layers:
             # USD files load fine in usdview and Houdini even when layered or
             # referenced files do not exist. So by default we don't require
@@ -77,9 +89,13 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
             new.data["label"] = "{0} ({1})".format(subset, asset["name"])
             new.data["family"] = "colorbleed.usd.bootstrap"
             new.data["comment"] = "Automated bootstrap USD file."
+            new.data["publishFamilies"] = ["colorbleed.usd"]
+
+            # Do not allow the user to toggle this instance
+            new.data["optional"] = False
 
             # Copy some data from the instance for which we bootstrap
-            for key in ["asset", "id"]:
+            for key in ["asset"]:
                 new.data[key] = instance.data[key]
 
     def _subset_exists(self, instance, subset, asset):
@@ -89,6 +105,10 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
         context = instance.context
         for inst in context:
             if inst.data["subset"] == subset:
+                if inst.data["asset"] != asset["name"]:
+                    # Ignore instances that are for another asset
+                    continue
+
                 return True
 
         # Or, if they already exist in the database we can

@@ -97,9 +97,10 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
             dependency_save_data = self.get_save_data(lopoutput)
             dependency = context.create_instance(dependency_save_data["name"])
             dependency.append(ropnode)
+            dependency.data.update(data)
             dependency.data.update(dependency_save_data)
-            dependency.data["family"] = data["family"]
-            dependency.data["transfers"] = [] # stub
+            dependency.data["family"] = "colorbleed.usd.dependency"
+            dependency.data["optional"] = False
             dependencies.append(dependency)
 
             # Hide the dependency instance from the context
@@ -144,7 +145,6 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
             return {}
 
         # Collect asset + subset from URI
-        self.log.info(uri_data)
         name = "{subset} ({asset})".format(**uri_data)
         fname = "{asset}_{subset}.{ext}".format(**uri_data)
 

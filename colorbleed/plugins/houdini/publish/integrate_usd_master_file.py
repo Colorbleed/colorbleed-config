@@ -30,6 +30,25 @@ class IntegrateUSDMasterFile(pyblish.api.InstancePlugin):
         assert all(result["success"] for result in context.data["results"]), (
             "Atomicity not held, aborting.")
 
+        self.create_master_file(instance)
+
+        # Create master files for dependencies
+        for dependency in instance.data.get("publishDependencies", list()):
+
+            if not dependency.data.get("publish", True):
+                continue
+
+            if not dependency.data.get("_isExtracted", False):
+                continue
+
+            if dependency.data.get("_isMasterFileCreated", False):
+                continue
+
+            self.create_master_file(dependency)
+            dependency.data["_isMasterFileCreated"] = True
+
+    def create_master_file(self, instance):
+
         extensions = {"usd", "usda", "usdlc", "usdnc"}
 
         for src, dest in instance.data.get("transfers"):
