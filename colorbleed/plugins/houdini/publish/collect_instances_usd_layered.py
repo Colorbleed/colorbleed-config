@@ -140,8 +140,7 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
         # Resolve Avalon URI
         uri_data = usdlib.parse_avalon_uri(save_path)
         if not uri_data:
-            self.log.warning("Non Avalon URI Layer Path: "
-                             "%s (%s)" % (save_path, layer))
+            self.log.warning("Non Avalon URI Layer Path: %s" % save_path)
             return {}
 
         # Collect asset + subset from URI
