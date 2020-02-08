@@ -67,11 +67,12 @@ class AvalonURIOutputProcessor(base.OutputProcessorBase):
         self._use_publish_paths = None
         self._cache.clear()
 
-    def processAsset(self, asset_path,
-            asset_path_for_save,
-            referencing_layer_path,
-            asset_is_layer,
-            for_save):
+    def processAsset(self,
+                     asset_path,
+                     asset_path_for_save,
+                     referencing_layer_path,
+                     asset_is_layer,
+                     for_save):
         """
         Args:
             asset_path (str): The incoming file path you want to alter or not.
@@ -99,17 +100,6 @@ class AvalonURIOutputProcessor(base.OutputProcessorBase):
         uri_data = usdlib.parse_avalon_uri(asset_path)
         if uri_data:
 
-            if asset_path_for_save:
-                if self._use_publish_paths:
-                    # Resolve to an Avalon published asset for embedded paths
-                    path = self._get_usd_master_path(**uri_data)
-                else:
-                    path = relative_template.format(**uri_data)
-
-                print("Avalon URI Resolver: %s -> %s" % (asset_path, path))
-                self._cache[cache_key] = path
-                return path
-
             if for_save:
                 # Set save output path to a relative path so other
                 # processors can potentially manage it easily?
@@ -118,6 +108,16 @@ class AvalonURIOutputProcessor(base.OutputProcessorBase):
                 print("Avalon URI Resolver: %s -> %s" % (asset_path, path))
                 self._cache[cache_key] = path
                 return path
+
+            if self._use_publish_paths:
+                # Resolve to an Avalon published asset for embedded paths
+                path = self._get_usd_master_path(**uri_data)
+            else:
+                path = relative_template.format(**uri_data)
+
+            print("Avalon URI Resolver: %s -> %s" % (asset_path, path))
+            self._cache[cache_key] = path
+            return path
 
         self._cache[cache_key] = asset_path
         return asset_path
@@ -138,6 +138,8 @@ class AvalonURIOutputProcessor(base.OutputProcessorBase):
         PROJECT = api.Session["AVALON_PROJECT"]
         asset_doc = io.find_one({"name": asset,
                                  "type": "asset"})
+        if not asset_doc:
+            raise RuntimeError("Invalid asset name: '%s'" % asset)
 
         root = api.registered_root()
         path = self._template.format(**{
@@ -147,8 +149,8 @@ class AvalonURIOutputProcessor(base.OutputProcessorBase):
             "asset": asset_doc["name"],
             "subset": subset,
             "representation": ext,
-            "version": 0                # stub version zero
-         })
+            "version": 0  # stub version zero
+        })
 
         # Remove the version folder
         subset_folder = os.path.dirname(os.path.dirname(path))
@@ -159,6 +161,8 @@ class AvalonURIOutputProcessor(base.OutputProcessorBase):
 
 
 output_processor = AvalonURIOutputProcessor()
+
+
 def usdOutputProcessor():
     return output_processor
 
