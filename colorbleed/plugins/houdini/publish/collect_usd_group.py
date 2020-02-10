@@ -20,7 +20,7 @@ class CollectUsdGroup(pyblish.api.InstancePlugin):
 
     """
 
-    order = pyblish.api.CollectorOrder + 0.2
+    order = pyblish.api.CollectorOrder + 0.3
     label = "Collect USD Group"
     hosts = ["houdini"]
     families = ["colorbleed.usd"]

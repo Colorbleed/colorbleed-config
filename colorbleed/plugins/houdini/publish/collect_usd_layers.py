@@ -13,7 +13,7 @@ from pxr import Sdf
 class CollectUsdLayers(pyblish.api.InstancePlugin):
     """Collect the USD Layers that have configured save paths."""
 
-    order = pyblish.api.CollectorOrder + 0.2
+    order = pyblish.api.CollectorOrder + 0.3
     label = "Collect USD Layers"
     hosts = ["houdini"]
     families = ["colorbleed.usd"]
@@ -45,9 +45,6 @@ class CollectUsdLayers(pyblish.api.InstancePlugin):
 
         # Store on the instance
         instance.data["usdConfiguredSavePaths"] = save_layers
-
-        # Ignore everything below for now
-        return
 
         # Create configured layer instances so User can disable updating
         # specific configured layers for publishing.

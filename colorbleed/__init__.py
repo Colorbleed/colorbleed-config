@@ -23,6 +23,10 @@ def install():
     print("Registering pyblish target: local")
     pyblish.api.register_target("local")
 
+    # Set a Pyblish QML post collector order: pyblish-qml#356
+    post_collector_order = str(pyblish.api.CollectorOrder + 0.3)
+    os.environ["PYBLISH_QML_POST_COLLECT"] = post_collector_order
+
 
 def uninstall():
     print("Deregistering global plug-ins..")

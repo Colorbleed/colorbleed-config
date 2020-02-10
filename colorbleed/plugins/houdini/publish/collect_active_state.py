@@ -12,7 +12,7 @@ class CollectInstanceActiveState(pyblish.api.InstancePlugin):
 
     """
 
-    order = pyblish.api.CollectorOrder + 0.499
+    order = pyblish.api.CollectorOrder + 0.299
     families = ["*"]
     hosts = ["houdini"]
     label = "Instance Active State"

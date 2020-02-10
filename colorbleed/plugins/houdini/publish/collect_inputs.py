@@ -90,7 +90,7 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
     """
 
     label = "Collect Inputs"
-    order = pyblish.api.CollectorOrder + 0.2
+    order = pyblish.api.CollectorOrder + 0.4
     hosts = ["houdini"]
 
     def process(self, instance):
