@@ -28,7 +28,7 @@ class CollectFrames(pyblish.api.InstancePlugin):
         # path so we can compute all frames that would
         # come out from rendering the ROP node if there
         # is a frame pattern in the name
-        pattern = "\w+\.(\d+)" + re.escape(ext)
+        pattern = r"\w+\.(\d+)" + re.escape(ext)
         match = re.match(pattern, file_name)
 
         start_frame = instance.data.get("startFrame", None)
