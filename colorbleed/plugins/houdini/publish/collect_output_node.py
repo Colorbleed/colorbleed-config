@@ -9,7 +9,8 @@ class CollectOutputNodePath(pyblish.api.InstancePlugin):
                 "colorbleed.camera",
                 "colorbleed.vdbcache",
                 "colorbleed.imagesequence",
-                "colorbleed.usd"]
+                "colorbleed.usd",
+                "colorbleed.usdrender"]
 
     hosts = ["houdini"]
     label = "Collect Output Node Path"
@@ -39,10 +40,10 @@ class CollectOutputNodePath(pyblish.api.InstancePlugin):
         elif node_type == "comp":
             out_node = node.parm("coppath").evalAsNode()
 
-        elif node_type == "usd":
+        elif node_type == "usd" or node_type == "usdrender":
             out_node = node.parm("loppath").evalAsNode()
 
-        elif node_type == "usd_rop":
+        elif node_type == "usd_rop" or node_type == "usdrender_rop":
             # Inside Solaris e.g. /stage (not in ROP context)
             # When incoming connection is present it takes it directly
             inputs = node.inputs()
@@ -54,6 +55,10 @@ class CollectOutputNodePath(pyblish.api.InstancePlugin):
         else:
             raise ValueError("ROP node type '%s' is"
                              " not supported." % node_type)
+
+        if not out_node:
+            self.log.warning("No output node collected.")
+            return
 
         self.log.debug("Output node: %s" % out_node.path())
         instance.data["output_node"] = out_node
