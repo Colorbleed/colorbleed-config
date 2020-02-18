@@ -29,5 +29,5 @@ class CopyFile(api.Loader):
         data.setUrls([url])
 
         # Set to Clipboard
-        clipboard = app.clipboard()
+        clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setMimeData(data)

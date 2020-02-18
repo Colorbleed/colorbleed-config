@@ -25,5 +25,5 @@ class CopyFilePath(api.Loader):
         assert app, "Must have running QApplication instance"
 
         # Set to Clipboard
-        clipboard = app.clipboard()
+        clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setText(os.path.normpath(path))
