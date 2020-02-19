@@ -4,7 +4,8 @@ import hou
 import pyblish.api
 from avalon import io
 from avalon.houdini import lib
-import colorbleed.houdini.usd as usdlib
+import colorbleed.houdini.usd as hou_usdlib
+import colorbleed.usdlib as usdlib
 
 
 class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
@@ -108,9 +109,9 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
 
             # Get all configured layers for this USD ROP node
             # and create a Pyblish instance for each one
-            layers = usdlib.get_configured_save_layers(ropnode)
+            layers = hou_usdlib.get_configured_save_layers(ropnode)
             for layer in layers:
-                save_path = usdlib.get_layer_save_path(layer)
+                save_path = hou_usdlib.get_layer_save_path(layer)
                 save_data = self.get_save_data(save_path)
                 if not save_data:
                     continue
