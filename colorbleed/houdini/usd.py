@@ -8,6 +8,8 @@ from avalon.vendor.Qt import QtCore, QtGui
 from avalon.tools.widgets import AssetWidget
 from avalon import style
 
+from pxr import Sdf
+
 
 def pick_asset(node):
     """Show a user interface to select an Asset in the project
