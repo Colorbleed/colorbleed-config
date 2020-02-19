@@ -21,7 +21,9 @@ class CollectUsdGroup(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.3
     label = "Collect USD Group"
     hosts = ["houdini", "maya"]
-    families = ["colorbleed.usd", "usdModel"]
+    families = ["colorbleed.usd",
+                "colorbleed.usd.bootstrap",
+                "usdModel"]
 
     # The predefined subset steps for a Shot and Asset
     lookup = flatten_as_set(usdlib.PIPELINE.values())
