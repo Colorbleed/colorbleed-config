@@ -7,7 +7,7 @@ from collections import deque
 import pyblish.api
 import colorbleed.api
 
-import colorbleed.houdini.usd as usdlib
+import colorbleed.houdini.usd as hou_usdlib
 from colorbleed.houdini.lib import render_rop
 
 
@@ -203,7 +203,7 @@ class ExtractUSDLayered(colorbleed.api.Extractor):
         with ExitStack() as stack:
 
             for ropnode in ropnodes:
-                manager = usdlib.outputprocessors(
+                manager = hou_usdlib.outputprocessors(
                     ropnode,
                     processors=self.output_processors,
                     disable_all_others=True

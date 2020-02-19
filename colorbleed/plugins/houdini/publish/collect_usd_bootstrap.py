@@ -4,7 +4,7 @@ import pyblish.api
 
 from avalon import io
 from avalon.houdini import lib
-import colorbleed.houdini.usd as usdlib
+import colorbleed.usdlib as usdlib
 
 
 class CollectUsdBootstrap(pyblish.api.InstancePlugin):

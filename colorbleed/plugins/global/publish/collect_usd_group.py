@@ -1,10 +1,8 @@
-import hou
-
 import pyblish.api
 
 from avalon import io
-from avalon.houdini import lib
-import colorbleed.houdini.usd as usdlib
+
+import colorbleed.usdlib as usdlib
 
 
 def flatten_as_set(l):
@@ -22,14 +20,23 @@ class CollectUsdGroup(pyblish.api.InstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.3
     label = "Collect USD Group"
-    hosts = ["houdini"]
-    families = ["colorbleed.usd"]
+    hosts = ["houdini", "maya"]
+    families = ["colorbleed.usd", "usdModel"]
 
     # The predefined subset steps for a Shot and Asset
     lookup = flatten_as_set(usdlib.PIPELINE.values())
 
     def process(self, instance):
 
+        group = "USD Layer"
+
+        if instance.data["family"] == "usdModel":
+            instance.data["subsetGroup"] = group
+            return
+
+        # Backwards compatibility
+        # TODO Replace the lookup check by having more explicit instance
+        #      families to avoid requiring lookups by subset.
         is_layer = instance.data["subset"] in self.lookup
         if is_layer:
-            instance.data["subsetGroup"] = "USD Layer"
+            instance.data["subsetGroup"] = group

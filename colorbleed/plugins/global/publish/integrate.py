@@ -36,8 +36,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "colorbleed.review",
                 "colorbleed.usd",
                 "colorbleed.usd.bootstrap",
-                "colorbleed.usd.layered"
-                ]
+                "colorbleed.usd.layered",
+                "usdModel"]
     targets = ["local"]
 
     def process(self, instance):

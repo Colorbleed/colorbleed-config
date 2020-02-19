@@ -15,6 +15,11 @@ class ValidateInstanceHasMembers(pyblish.api.InstancePlugin):
     def get_invalid(cls, instance):
 
         invalid = list()
+
+        if "setMembers" not in instance.data:
+            cls.log.debug("Instance has no setMembers data: %s" % instance)
+            return
+
         if not instance.data["setMembers"]:
             objectset_name = instance.data['name']
             invalid.append(objectset_name)

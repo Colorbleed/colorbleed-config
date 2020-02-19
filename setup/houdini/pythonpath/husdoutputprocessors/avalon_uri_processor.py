@@ -4,7 +4,7 @@ import os
 import re
 import logging
 
-import colorbleed.houdini.usd as usdlib
+import colorbleed.usdlib as usdlib
 
 
 def _get_project_publish_template():

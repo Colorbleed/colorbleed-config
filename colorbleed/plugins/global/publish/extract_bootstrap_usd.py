@@ -2,7 +2,7 @@ import os
 
 import pyblish.api
 import colorbleed.api
-import colorbleed.houdini.usd as usdlib
+import colorbleed.usdlib as usdlib
 
 from avalon import api, io
 
@@ -23,7 +23,7 @@ class ExtractBootstrapUSD(colorbleed.api.Extractor):
 
     order = pyblish.api.ExtractorOrder + 0.1
     label = "Bootstrap USD"
-    hosts = ["houdini"]
+    hosts = ["houdini", "maya"]
     targets = ["local"]
     families = ["colorbleed.usd.bootstrap"]
 
@@ -49,6 +49,18 @@ class ExtractBootstrapUSD(colorbleed.api.Extractor):
             layers = self.get_usd_master_paths(steps, instance)
             usdlib.create_shot(filepath,
                                layers=layers)
+
+        elif subset == "usdModel":
+            variant_subsets = instance.data["variantSubsets"]
+            usdlib.create_model(filepath,
+                                asset=instance.data["asset"],
+                                variant_subsets=variant_subsets)
+
+        elif subset == "usdShade":
+            variant_subsets = instance.data["variantSubsets"]
+            usdlib.create_shade(filepath,
+                                asset=instance.data["asset"],
+                                variant_subsets=variant_subsets)
 
         elif subset in usdlib.PIPELINE["asset"]:
             # Asset layer
