@@ -11,7 +11,8 @@ class ExtractUSD(colorbleed.api.Extractor):
     label = "Extract USD"
     hosts = ["houdini"]
     targets = ["local"]
-    families = ["colorbleed.usd"]
+    families = ["colorbleed.usd",
+                "usdModel"]
 
     def process(self, instance):
 
