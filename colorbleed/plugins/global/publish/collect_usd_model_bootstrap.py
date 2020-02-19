@@ -18,7 +18,7 @@ class CollectUsdModelBootstrap(pyblish.api.InstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.3
     label = "Collect USD Model bootstrap"
-    hosts = ["maya"]
+    hosts = ["houdini", "maya"]
     families = ["usdModel"]
 
     def process(self, instance):
