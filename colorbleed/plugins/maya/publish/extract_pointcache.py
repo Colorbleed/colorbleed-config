@@ -91,7 +91,8 @@ class ExtractColorbleedAlembic(colorbleed.api.Extractor):
             "writeColorSets": instance.data.get("writeColorSets", False),
             "uvWrite": True,
             "selection": True,
-            "worldSpace": instance.data.get("worldSpace", True)
+            "worldSpace": instance.data.get("worldSpace", True),
+            "stripNamespaces": instance.data.get("stripNamespaces", False)
         }
 
         if not instance.data.get("includeParentHierarchy", True):

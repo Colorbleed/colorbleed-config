@@ -25,6 +25,9 @@ class CreatePointCache(avalon.maya.Creator):
         self.data["includeParentHierarchy"] = False  # Include parent groups
         self.data["worldSpace"] = True       # Default to exporting world-space
 
+        # Whether to strip namespaces
+        self.data["stripNamespaces"] = True
+
         # Add options for custom attributes
         self.data["attr"] = ""
         self.data["attrPrefix"] = ""
