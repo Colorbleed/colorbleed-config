@@ -21,6 +21,9 @@ class ExtractUSDModel(colorbleed.api.Extractor):
 
     def process(self, instance):
 
+        # Ensure the plugin is loaded
+        cmds.loadPlugin("MultiverseForMaya", quiet=True)
+
         # Define extract output file path
         dir_path = self.staging_dir(instance)
         filename = "{0}.usd".format(instance.name)
