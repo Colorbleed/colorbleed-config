@@ -116,6 +116,16 @@ class HoudiniSubmitRenderDeadline(pyblish.api.InstancePlugin):
             fname = os.path.basename(filepath)
             output_data["OutputDirectory%d" % i] = dirname.replace("\\", "/")
             output_data["OutputFilename%d" % i] = fname
+
+            # For now ensure destination folder exists otherwise HUSK
+            # will fail to render the output image. This is supposedly fixed
+            # in new production builds of Houdini
+            # TODO Remove this workaround with Houdini 18.0.391+
+            if not os.path.exists(dirname):
+                self.log.info("Ensuring output directory exists: %s" %
+                              dirname)
+                os.makedirs(dirname)
+
         payload["JobInfo"].update(output_data)
 
         self.submit(instance, payload)
