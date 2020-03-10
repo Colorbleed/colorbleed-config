@@ -20,7 +20,8 @@ class CreateUSD(houdini.Creator):
         instance = super(CreateUSD, self).process()
 
         parms = {
-            "lopoutput": "$HIP/pyblish/%s.usd" % self.name
+            "lopoutput": "$HIP/pyblish/%s.usd" % self.name,
+            "enableoutputprocessor_simplerelativepaths": False
         }
 
         if self.nodes:
