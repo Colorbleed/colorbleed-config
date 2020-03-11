@@ -15,6 +15,7 @@ class ValidateUsdSetDress(pyblish.api.InstancePlugin):
     families = ["usdSetDress"]
     hosts = ["houdini"]
     label = "Validate USD Set Dress"
+    optional = True
 
     def process(self, instance):
 
@@ -27,7 +28,7 @@ class ValidateUsdSetDress(pyblish.api.InstancePlugin):
         invalid = []
         for node in stage.Traverse():
 
-            if UsdGeom.Gprim(node):
+            if UsdGeom.Mesh(node):
                 # This solely checks whether there is any USD involved
                 # in this Prim's Stack and doesn't accurately tell us
                 # whether it was generated locally or not.
