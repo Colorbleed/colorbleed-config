@@ -70,6 +70,7 @@ class HoudiniSubmitRenderDeadline(pyblish.api.InstancePlugin):
                 "UserName": deadline_user,
 
                 "Plugin": "Houdini",
+                "Pool": "houdini_redshift",  # todo: remove hardcoded pool
                 "Frames": frames,
 
                 "Comment": comment
