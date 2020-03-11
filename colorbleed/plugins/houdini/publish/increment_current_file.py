@@ -32,7 +32,7 @@ class IncrementCurrentFile(pyblish.api.InstancePlugin):
             context.data[key] = True
 
         context = instance.context
-        errored_plugins = get_errored_plugins_from_data(instance)
+        errored_plugins = get_errored_plugins_from_data(context)
         if any(plugin.__name__ == "HoudiniSubmitPublishDeadline"
                 for plugin in errored_plugins):
             raise RuntimeError("Skipping incrementing current file because "
