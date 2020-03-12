@@ -143,8 +143,16 @@ def on_pyblish_instance_toggled(instance, new_value, old_value):
     # Assume instance node is first node
     instance_node = nodes[0]
 
+    if not hasattr(instance_node, "isBypassed"):
+        # Likely not a node that can actually be bypassed
+        log.debug("Can't bypass node: %s", instance_node.path())
+        return
+
     if instance_node.isBypassed() != (not old_value):
         print("%s old bypass state didn't match old instance state, "
               "updating anyway.." % instance_node.path())
 
-    instance_node.bypass(not new_value)
+    try:
+        instance_node.bypass(not new_value)
+    except hou.PermissionError as exc:
+        log.warning("%s - %s", instance_node.path(), exc)
