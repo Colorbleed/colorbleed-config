@@ -22,7 +22,7 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
 
     """
 
-    order = pyblish.api.CollectorOrder + 0.3
+    order = pyblish.api.CollectorOrder + 0.35
     label = "Collect USD Bootstrap"
     hosts = ["houdini"]
     families = ["colorbleed.usd",

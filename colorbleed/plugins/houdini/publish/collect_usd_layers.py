@@ -13,7 +13,7 @@ from pxr import Sdf
 class CollectUsdLayers(pyblish.api.InstancePlugin):
     """Collect the USD Layers that have configured save paths."""
 
-    order = pyblish.api.CollectorOrder + 0.3
+    order = pyblish.api.CollectorOrder + 0.35
     label = "Collect USD Layers"
     hosts = ["houdini"]
     families = ["colorbleed.usd"]

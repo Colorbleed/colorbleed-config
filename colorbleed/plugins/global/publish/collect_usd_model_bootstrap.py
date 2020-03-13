@@ -16,7 +16,7 @@ class CollectUsdModelBootstrap(pyblish.api.InstancePlugin):
 
     """
 
-    order = pyblish.api.CollectorOrder + 0.3
+    order = pyblish.api.CollectorOrder + 0.35
     label = "Collect USD Model bootstrap"
     hosts = ["houdini", "maya"]
     families = ["usdModel"]
