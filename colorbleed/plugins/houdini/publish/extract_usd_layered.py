@@ -148,7 +148,8 @@ class ExtractUSDLayered(colorbleed.api.Extractor):
     label = "Extract Layered USD"
     hosts = ["houdini"]
     targets = ["local"]
-    families = ["colorbleed.usd.layered"]
+    families = ["colorbleed.usd.layered",
+                "usdShade"]
 
     # Force Output Processors so it will always save any file
     # into our unique staging directory with processed Avalon paths

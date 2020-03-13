@@ -24,6 +24,7 @@ class IntegrateUSDMasterFile(pyblish.api.InstancePlugin):
                 "colorbleed.usd.bootstrap",
                 "colorbleed.usd.layered",
                 "usdModel",
+                "usdShade",
                 "usdSetDress"]
 
     def process(self, instance):

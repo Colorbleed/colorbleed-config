@@ -9,7 +9,8 @@ class IntegrateAssetDependencies(pyblish.api.InstancePlugin):
 
     label = "Integrate Dependencies"
     order = pyblish.api.IntegratorOrder
-    families = ["colorbleed.usd.layered"]
+    families = ["colorbleed.usd.layered",
+                "usdShade"]
     targets = ["local"]
 
     def process(self, instance):
