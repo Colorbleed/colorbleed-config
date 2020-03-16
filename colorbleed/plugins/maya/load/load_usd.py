@@ -18,6 +18,7 @@ class MultiverseUSDLoader(api.Loader):
         import maya.cmds as cmds
         import avalon.maya.lib as lib
         from avalon.maya.pipeline import containerise
+        from colorbleed.maya.lib import namespaced
 
         asset = context['asset']['name']
         namespace = namespace or lib.unique_namespace(
@@ -28,21 +29,19 @@ class MultiverseUSDLoader(api.Loader):
 
         cmds.loadPlugin("MultiverseForMaya", quiet=True)
 
-        # Root group
-        label = "{}:{}".format(namespace, name)
-        root = cmds.group(name=label, empty=True)
+        cmds.namespace(add=namespace)
+        with namespaced(namespace, new=False):
 
-        # Create transform with shape
+            shape = multiverse.CreateUsdCompound(self.fname)
+            shape = cmds.rename(shape, name+"Shape")
+            transform = cmds.listRelatives(shape, parent=True, fullPath=True)
+            transform = cmds.rename(transform, name)
+            shape = cmds.listRelatives(transform, fullPath=True)[0]
 
-        shape = multiverse.CreateUsdCompound(self.fname)
-        transform = cmds.listRelatives(shape, parent=True, fullPath=True)
-        transform = cmds.parent(transform, root)[0]
-        shape = cmds.listRelatives(transform, fullPath=True)[0]
+        # Lock shape node so it can't be deleted or reparented
+        cmds.lockNode(shape, lock=True)
 
-        # Lock parenting of the transform and cache
-        cmds.lockNode([transform, shape], lock=True)
-
-        nodes = [root, transform, shape]
+        nodes = [transform, shape]
         self[:] = nodes
 
         return containerise(
