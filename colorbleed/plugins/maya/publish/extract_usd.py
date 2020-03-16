@@ -8,16 +8,16 @@ import colorbleed.api
 from colorbleed.maya.lib import get_highest_in_hierarchy
 
 
-class ExtractUSDModel(colorbleed.api.Extractor):
-    """Extract Model as USD
+class ExtractUSD(colorbleed.api.Extractor):
+    """Extract USD
 
     This uses the Multiverse 6.0 plug-in.
 
     """
 
-    label = "Extract Model (USD)"
+    label = "Extract USD"
     hosts = ["maya"]
-    families = ["usdModel"]
+    families = ["usdModel", "usdPointcache"]
 
     def process(self, instance):
 
@@ -31,7 +31,21 @@ class ExtractUSDModel(colorbleed.api.Extractor):
 
         write_ancestors = instance.data.get("includeParentHierarchy", False)
 
-        # Perform extraction
+        # Use time samples when provided
+        kwargs = {}
+        if instance.data.get("startFrame") and instance.data.get("endFrame"):
+            start = instance.data["startFrame"]
+            end = instance.data["endFrame"]
+            handles = instance.data.get("handles", 0)
+            if handles:
+                start -= handles
+                end += handles
+
+            kwargs["frameRange"] = [start, end]
+            kwargs["numTimeSamples"] = 1
+            kwargs["timeSamplesSpan"] = 0.0
+
+            # Perform extraction
         self.log.info("Performing extraction..")
         with avalon.maya.maintained_selection():
             cmds.select(instance, noExpand=True)
@@ -47,7 +61,8 @@ class ExtractUSDModel(colorbleed.api.Extractor):
                                  writeNormals=True,
                                  writeUVs=True,
                                  writeDisplayColor=False,
-                                 mergeTransformAndShape=True)
+                                 mergeTransformAndShape=True,
+                                 **kwargs)
 
         if "files" not in instance.data:
             instance.data["files"] = list()

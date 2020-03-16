@@ -6,7 +6,7 @@ class CollectUSDFamily(pyblish.api.InstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.25
     label = "Collect USD Family"
-    families = ["usdModel", "usdSetDress"]
+    families = ["usdModel", "usdSetDress", "usdPointcache"]
     hosts = ["houdini", "maya"]
 
     def process(self, instance):
