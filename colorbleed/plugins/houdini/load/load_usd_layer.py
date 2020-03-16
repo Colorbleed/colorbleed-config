@@ -7,7 +7,8 @@ class USDSublayerLoader(api.Loader):
 
     families = ["colorbleed.usd",
                 "colorbleed.pointcache",
-                "colorbleed.animation"]
+                "colorbleed.animation",
+                "colorbleed.camera"]
     label = "Sublayer USD"
     representations = ["usd", "usda", "usdlc", "usdnc", "abc"]
     order = 1

@@ -7,7 +7,8 @@ class USDReferenceLoader(api.Loader):
 
     families = ["colorbleed.usd",
                 "colorbleed.pointcache",
-                "colorbleed.animation"]
+                "colorbleed.animation",
+                "colorbleed.camera"]
     label = "Reference USD"
     representations = ["usd", "usda", "usdlc", "usdnc", "abc"]
     order = -8
