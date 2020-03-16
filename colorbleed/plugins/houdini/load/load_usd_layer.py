@@ -5,10 +5,12 @@ from avalon.houdini import pipeline, lib
 class USDSublayerLoader(api.Loader):
     """Sublayer USD file in Solaris"""
 
-    families = ["colorbleed.usd"]
+    families = ["colorbleed.usd",
+                "colorbleed.pointcache",
+                "colorbleed.animation"]
     label = "Sublayer USD"
-    representations = ["usd", "usda", "usdlc", "usdnc"]
-    order = 0
+    representations = ["usd", "usda", "usdlc", "usdnc", "abc"]
+    order = 1
 
     icon = "code-fork"
     color = "orange"

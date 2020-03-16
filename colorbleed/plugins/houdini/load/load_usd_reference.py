@@ -5,10 +5,12 @@ from avalon.houdini import pipeline, lib
 class USDReferenceLoader(api.Loader):
     """Reference USD file in Solaris"""
 
-    families = ["colorbleed.usd"]
+    families = ["colorbleed.usd",
+                "colorbleed.pointcache",
+                "colorbleed.animation"]
     label = "Reference USD"
-    representations = ["usd", "usda", "usdlc", "usdnc"]
-    order = -10
+    representations = ["usd", "usda", "usdlc", "usdnc", "abc"]
+    order = -8
 
     icon = "code-fork"
     color = "orange"
