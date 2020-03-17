@@ -12,7 +12,8 @@ class FusionSetFrameRangeLoader(api.Loader):
                 "colorbleed.camera",
                 "colorbleed.imagesequence",
                 "colorbleed.yeticache",
-                "colorbleed.pointcache"]
+                "colorbleed.pointcache",
+                "colorbleed.usd"]
     representations = ["*"]
 
     label = "Set frame range"
@@ -45,7 +46,8 @@ class FusionSetFrameRangeWithHandlesLoader(api.Loader):
                 "colorbleed.camera",
                 "colorbleed.imagesequence",
                 "colorbleed.yeticache",
-                "colorbleed.pointcache"]
+                "colorbleed.pointcache",
+                "colorbleed.usd"]
     representations = ["*"]
 
     label = "Set frame range (with handles)"

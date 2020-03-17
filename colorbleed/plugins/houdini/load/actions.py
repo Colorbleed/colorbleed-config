@@ -11,8 +11,9 @@ class SetFrameRangeLoader(api.Loader):
     families = ["colorbleed.animation",
                 "colorbleed.camera",
                 "colorbleed.pointcache",
-                "colorbleed.vdbcache"]
-    representations = ["abc", "vdb"]
+                "colorbleed.vdbcache",
+                "colorbleed.usd"]
+    representations = ["abc", "vdb", "usd"]
 
     label = "Set frame range"
     order = 11
@@ -44,8 +45,9 @@ class SetFrameRangeWithHandlesLoader(api.Loader):
     families = ["colorbleed.animation",
                 "colorbleed.camera",
                 "colorbleed.pointcache",
-                "colorbleed.vdbcache"]
-    representations = ["abc", "vdb"]
+                "colorbleed.vdbcache",
+                "colorbleed.usd"]
+    representations = ["abc", "vdb", "usd"]
 
     label = "Set frame range (with handles)"
     order = 12
