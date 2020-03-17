@@ -17,7 +17,8 @@ class ValidateCameraContents(pyblish.api.InstancePlugin):
 
     order = colorbleed.api.ValidateContentsOrder
     families = ["colorbleed.camera",
-                "colorbleed.review"]
+                "colorbleed.review",
+                "usdCamera"]
     hosts = ["maya"]
     label = "Camera Contents"
     actions = [colorbleed.maya.action.SelectInvalidAction]
