@@ -57,6 +57,14 @@ class CollectUsdModelBootstrap(pyblish.api.InstancePlugin):
         for subset in io.find({"name": name,
                                "type": "subset",
                                "parent": asset["_id"]}):
+
+            # Ignore subsets that have been tagged deprecated to
+            # allow "removing" wrong models from the asset for
+            # future publishes
+            tags = subset["data"].get("tags")
+            if tags and "deprecated" in tags:
+                continue
+
             variant_subsets.add(subset["name"])
 
         # To be generated new instances in this publish
