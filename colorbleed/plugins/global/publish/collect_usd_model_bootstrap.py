@@ -80,8 +80,7 @@ class CollectUsdModelBootstrap(pyblish.api.InstancePlugin):
         # Force usdModelDefault to be the first and default variant.
         default = None
         for subset in variant_subsets:
-            match = re.match(r"^usdModel_?[dD]efault$", subset)
-            if match:
+            if subset == "usdModelDefault":
                 default = subset
                 break
 
