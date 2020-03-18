@@ -63,6 +63,8 @@ class CollectUsdModelBootstrap(pyblish.api.InstancePlugin):
             # future publishes
             tags = subset["data"].get("tags")
             if tags and "deprecated" in tags:
+                self.log.debug("Skipping deprecated subset: "
+                               "%s" % subset["name"])
                 continue
 
             variant_subsets.add(subset["name"])

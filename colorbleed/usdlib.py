@@ -126,15 +126,13 @@ def create_model(filename, asset, variant_subsets):
 
     variants = []
     for subset in variant_subsets:
-
-        if subset.startswith("usdModel_"):
-            # Strip off `usdModel_ `
-            variant = subset.split("usdModel_", 1)[-1]
-        elif subset.startswith("usdModel"):
+        prefix = "usdModel"
+        if subset.startswith(prefix):
             # Strip off `usdModel_`
-            variant = subset.split("usdModel", 1)[-1]
+            variant = subset[len(prefix):]
         else:
-            variant = subset
+            raise ValueError("Model subsets must start "
+                             "with usdModel: %s" % subset)
 
         path = get_usd_master_path(asset=asset_doc,
                                    subset=subset,
@@ -176,15 +174,13 @@ def create_shade(filename, asset, variant_subsets):
     variants = []
 
     for subset in variant_subsets:
-
-        if subset.startswith("usdModel_"):
-            # Strip off `usdModel_ `
-            variant = subset.split("usdModel_", 1)[-1]
-        elif subset.startswith("usdModel"):
+        prefix = "usdModel"
+        if subset.startswith(prefix):
             # Strip off `usdModel_`
-            variant = subset.split("usdModel", 1)[-1]
+            variant = subset[len(prefix):]
         else:
-            variant = subset
+            raise ValueError("Model subsets must start "
+                             "with usdModel: %s" % subset)
 
         shade_subset = re.sub("^usdModel", "usdShade", subset)
         path = get_usd_master_path(asset=asset_doc,

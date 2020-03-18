@@ -40,19 +40,6 @@ class _USDWorkspace(api.Creator):
         return instance
 
 
-class USDCreateModelingWorkspace(_USDWorkspace):
-    """USD Modeling Workspace"""
-
-    defaults = ["Model"]
-
-    label = "USD Modeling Workspace"
-    family = "colorbleed.model.usd"
-
-    node_type = "cb::modeling_workspace::1.1"
-    node_name = "modelingWorkspace"
-    step = "Model"
-
-
 class USDCreateShadingWorkspace(_USDWorkspace):
     """USD Shading Workspace"""
 
