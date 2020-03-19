@@ -11,6 +11,7 @@ class ValidateUSDShadeModelExists(pyblish.api.InstancePlugin):
 
     order = colorbleed.api.ValidateContentsOrder
     hosts = ['houdini']
+    families = ["usdShade"]
     label = 'USD Shade model exists'
 
     def process(self, instance):
