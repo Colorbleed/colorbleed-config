@@ -336,7 +336,7 @@ def get_usd_master_path(asset,
 
 def parse_avalon_uri(uri):
     # URI Pattern: avalon://{asset}/{subset}.{ext}
-    pattern = r"avalon://(?P<asset>[^/.]*)/(?P<subset>[^/.]*)\.(?P<ext>.*)"
+    pattern = r"avalon://(?P<asset>[^/.]*)/(?P<subset>[^/]*)\.(?P<ext>.*)"
     if uri.startswith("avalon://"):
         match = re.match(pattern, uri)
         if match:

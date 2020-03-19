@@ -8,7 +8,7 @@ from avalon.vendor import six
 allowed = set(string.ascii_lowercase +
               string.ascii_uppercase +
               string.digits +
-              '_')
+              '_.')
 
 
 def validate_name(subset):
