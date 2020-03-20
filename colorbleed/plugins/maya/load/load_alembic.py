@@ -6,7 +6,7 @@ class AbcLoader(colorbleed.maya.plugin.ReferenceLoader):
 
     families = ["colorbleed.animation",
                 "colorbleed.pointcache"]
-    label = "Reference animation"
+    label = "Reference Alembic"
     representations = ["abc"]
     order = -10
     icon = "code-fork"
