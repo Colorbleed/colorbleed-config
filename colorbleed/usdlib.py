@@ -2,7 +2,11 @@ import os
 import re
 import logging
 
-from pxr import Usd, UsdGeom, Sdf, Kind
+try:
+    from pxr import Usd, UsdGeom, Sdf, Kind
+except ImportError:
+    # Allow to fall back on Multiverse 6.3.0+ pxr usd library
+    from mvpxr import Usd, UsdGeom, Sdf, Kind
 
 from avalon import io, api
 
