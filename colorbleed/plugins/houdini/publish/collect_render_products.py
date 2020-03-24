@@ -34,7 +34,11 @@ class CollectRenderProducts(pyblish.api.InstancePlugin):
 
             # Get Render Product Name
             product = pxr.UsdRender.Product(prim)
-            name = product.GetProductNameAttr().Get()
+
+            # We force taking it from any random time sample as opposed to
+            # "default" that the USD Api falls back to since that won't return
+            # time sampled values if they were set per time sample.
+            name = product.GetProductNameAttr().Get(time=0)
 
             # Substitute $F
             def replace_f(match):
