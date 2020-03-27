@@ -117,7 +117,9 @@ class CollectInstances(pyblish.api.ContextPlugin):
             # Collect members
             members = cmds.ls(members, long=True) or []
 
-            children = list_all_children(members)
+            children = list_all_children(cmds.ls(members,
+                                                 type="dagNode",
+                                                 long=True))
             children = cmds.ls(children, noIntermediate=True, long=True)
 
             parents = []
