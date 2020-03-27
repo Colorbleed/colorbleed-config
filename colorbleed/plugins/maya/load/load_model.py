@@ -9,7 +9,7 @@ class ModelLoader(colorbleed.maya.plugin.ReferenceLoader):
     representations = ["ma"]
 
     label = "Reference Model"
-    order = -10
+    order = -11
     icon = "code-fork"
     color = "orange"
 

@@ -5,7 +5,8 @@ class AbcLoader(colorbleed.maya.plugin.ReferenceLoader):
     """Reference Alembic"""
 
     families = ["colorbleed.animation",
-                "colorbleed.pointcache"]
+                "colorbleed.pointcache",
+                "colorbleed.model"]
     label = "Reference Alembic"
     representations = ["abc"]
     order = -10
