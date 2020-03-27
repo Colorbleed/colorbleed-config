@@ -4,8 +4,27 @@ import maya.api.OpenMaya as om
 import pyblish.api
 
 
-def list_all_children(nodes):
-    """List all children of the nodes, including each instanced child.
+def get_all_parents(nodes):
+    """Get all parents by using string operations (optimization)
+
+    Args:
+        nodes (list): the nodes which are found in the objectSet
+
+    Returns:
+        list
+    """
+
+    parents = []
+    for node in nodes:
+        splitted = node.split("|")
+        items = ["|".join(splitted[0:i]) for i in range(2, len(splitted))]
+        parents.extend(items)
+
+    return list(set(parents))
+
+
+def get_all_children(nodes):
+    """Return all children of `nodes` including each instanced child.
 
     Using maya.cmds.listRelatives(allDescendents=True) includes only the first
     instance. As such, this function acts as an optimal replacement with a
@@ -117,16 +136,15 @@ class CollectInstances(pyblish.api.ContextPlugin):
             # Collect members
             members = cmds.ls(members, long=True) or []
 
-            children = list_all_children(cmds.ls(members,
-                                                 type="dagNode",
-                                                 long=True))
+            dag_members = cmds.ls(members, type="dagNode", long=True)
+            children = get_all_children(dag_members)
             children = cmds.ls(children, noIntermediate=True, long=True)
 
             parents = []
             if data.get("includeParentHierarchy", True):
                 # If `includeParentHierarchy` then include the parents
                 # so they will also be picked up in the instance by validators
-                parents = self.get_all_parents(members)
+                parents = get_all_parents(dag_members)
             members_hierarchy = list(set(members + children + parents))
 
             # Create the instance
@@ -162,21 +180,3 @@ class CollectInstances(pyblish.api.ContextPlugin):
         context[:] = sorted(context, key=sort_by_family)
 
         return context
-
-    def get_all_parents(self, nodes):
-        """Get all parents by using string operations (optimization)
-
-        Args:
-            nodes (list): the nodes which are found in the objectSet
-
-        Returns:
-            list
-        """
-
-        parents = []
-        for node in nodes:
-            splitted = node.split("|")
-            items = ["|".join(splitted[0:i]) for i in range(2, len(splitted))]
-            parents.extend(items)
-
-        return list(set(parents))
