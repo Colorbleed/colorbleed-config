@@ -161,7 +161,7 @@ def get_usd_rop_loppath(node):
     if node_type == "usd":
         return node.parm("loppath").evalAsNode()
 
-    elif node_type == "usd_rop":
+    elif node_type in {"usd_rop", "usdrender_rop"}:
         # Inside Solaris e.g. /stage (not in ROP context)
         # When incoming connection is present it takes it directly
         inputs = node.inputs()
