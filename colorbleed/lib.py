@@ -631,14 +631,18 @@ class Integrator(object):
                                subset,
                                version):
 
+        silo = asset.get("silo", None)
+
         # Define staging directory to publish transfers and its representations
         root = avalon.api.registered_root()
         template_data = {"root": root,
                          "project": project["name"],
-                         "silo": asset["silo"],
                          "asset": asset["name"],
                          "subset": subset["name"],
                          "version": version["name"]}
+        if silo:
+            template_data["silo"] = silo
+
         template_publish = project["config"]["template"]["publish"]
 
         # Append transfers to any that are already on the Instance
@@ -716,12 +720,14 @@ class Integrator(object):
                 "context": {
                     "project": project["name"],
                     "asset": asset["name"],
-                    "silo": asset["silo"],
                     "subset": subset["name"],
                     "version": version["name"],
                     "representation": ext[1:]
                 }
             }
+
+            if silo:
+                representation["context"]["silo"] = silo
 
             # Insert dependencies data when present and
             # containing at least some content
