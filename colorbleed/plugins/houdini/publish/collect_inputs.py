@@ -30,6 +30,7 @@ def collect_input_containers(nodes):
         # and the contained children should be all we need. So we disregard
         # checking for .references() on the nodes.
         members = set(node.allSubChildren())
+        members.add(node)    # include the node itself
 
         # If there's an intersection
         if not lookup.isdisjoint(members):
