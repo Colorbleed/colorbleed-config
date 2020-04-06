@@ -1,5 +1,18 @@
 import pyblish.api
 
+from avalon.vendor import clique
+
+
+def get_collections(files):
+    """Return the file collection and its remainder"""
+
+    # Support filenames like: projectX_shot01_0010.tiff with this regex
+    pattern = r"(?P<index>(?P<padding>0*)\d+)\.\D+\d?$"
+    collections, remainder = clique.assemble(files,
+                                             patterns=[pattern],
+                                             minimum_items=1)
+    return collections, remainder
+
 
 class ValidateSequenceFrames(pyblish.api.InstancePlugin):
     """Ensure the sequence of frames is complete
@@ -16,7 +29,17 @@ class ValidateSequenceFrames(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
-        collection = instance[0]
+        filenames = instance.data["files"]
+        assert isinstance(filenames[0], (list, tuple))
+        assert len(filenames) == 1, \
+            "Image Sequence instance should have one collection"
+        collections, remainder = get_collections(filenames[0])
+
+        assert len(collections) == 1, \
+            "Did not find a single collection: {0}".format(collections)
+        assert not remainder, "Found remaining files: {0}".format(remainder)
+
+        collection = collections[0]
         self.log.info(collection)
 
         frames_explicit = instance.data.get("frames", None)
