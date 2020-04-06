@@ -151,6 +151,6 @@ class HoudiniSubmitRenderDeadline(pyblish.api.InstancePlugin):
             raise Exception(response.text)
 
         # Store output dir for unified publisher (filesequence)
-        output_dir = os.path.dirname(instance.data["filenames"][0])
+        output_dir = os.path.dirname(instance.data["files"][0])
         instance.data["outputDir"] = output_dir
         instance.data["deadlineSubmissionJob"] = response.json()
