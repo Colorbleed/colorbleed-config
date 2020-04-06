@@ -50,7 +50,15 @@ def get_renderer_variables(renderer):
 
 
 class CollectRenderlayerFilenames(pyblish.api.InstancePlugin):
-    """Collect the renderlayer's output filenames"""
+    """Collect the renderlayer's output filenames from the render passes.
+
+    Requires:
+        instance    -> renderPasses
+
+    Provides:
+        instance    -> files
+
+    """
 
     order = pyblish.api.CollectorOrder + 0.1
     label = "Collect Renderlayer Filenames"
@@ -139,4 +147,4 @@ class CollectRenderlayerFilenames(pyblish.api.InstancePlugin):
 
             filenames.append(path)
 
-        instance.data["filenames"] = filenames
+        instance.data["files"] = filenames

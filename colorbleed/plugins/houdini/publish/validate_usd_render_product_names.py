@@ -15,7 +15,7 @@ class ValidateUSDRenderProductNames(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         invalid = []
-        for filepath in instance.data["filenames"]:
+        for filepath in instance.data["files"]:
 
             if not filepath:
                 invalid.append("Detected empty output filepath.")

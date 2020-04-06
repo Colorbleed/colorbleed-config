@@ -69,7 +69,7 @@ class CollectRenderlayerCustomFramelist(pyblish.api.InstancePlugin):
 
     """
 
-    order = pyblish.api.CollectorOrder + 0.4999
+    order = pyblish.api.CollectorOrder + 0.35
     label = "Render Framelist"
     hosts = ["maya"]
     families = ["colorbleed.renderlayer"]

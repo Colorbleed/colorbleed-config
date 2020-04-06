@@ -48,6 +48,7 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
 
         # Collect all AOVs / Render Elements
         layer = instance.data["setMembers"]
+        layer_name = instance.data["subset"]
         node_type = rp_node_types[renderer]
         render_elements = cmds.ls(type=node_type)
 
@@ -57,17 +58,17 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
                                             layer=layer)
             if not enabled:
                 continue
-            
+
             # Subset of the AOV is based on {layer}.{aov}
             # So we need to ensure to store it correctly
             pass_name = self.get_pass_name(renderer, element)
-            subset_pass_name = "{layer}.{aov}".format(layer=instance.data["subset"],
+            subset_pass_name = "{layer}.{aov}".format(layer=layer_name,
                                                       aov=pass_name)
-                                                      
+
             result.append(subset_pass_name)
 
         self.log.debug("Found {} AOVs for "
-                       "'{}': {}".format(len(result), 
+                       "'{}': {}".format(len(result),
                                          instance.data["subset"],
                                          sorted(result)))
 
@@ -76,11 +77,11 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
     def get_pass_name(self, renderer, node):
 
         if renderer == "vray":
-        
+
             vray_class_type = cmds.getAttr(node + ".vrayClassType")
             if vray_class_type == "velocityChannel":
                 # Somehow later versions of V-Ray don't have vray_name
-                # attributes for velocity passes. So we rely on 
+                # attributes for velocity passes. So we rely on
                 # vray_filename_velocity
                 return cmds.getAttr(node + ".vray_filename_velocity")
 

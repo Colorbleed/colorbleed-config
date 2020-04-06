@@ -182,7 +182,7 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
         # frames from Deadline Monitor
         payload["JobInfo"].update({
             "OutputFilename%d" % index: path.replace("\\", "/")
-            for index, path in enumerate(instance.data["filenames"])
+            for index, path in enumerate(instance.data["files"])
         })
 
         # Include optional render globals
@@ -202,6 +202,6 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
             raise Exception(response.text)
 
         # Store output dir for unified publisher (filesequence)
-        output_dir = os.path.dirname(instance.data["filenames"][0])
+        output_dir = os.path.dirname(instance.data["files"][0])
         instance.data["outputDir"] = output_dir
         instance.data["deadlineSubmissionJob"] = response.json()

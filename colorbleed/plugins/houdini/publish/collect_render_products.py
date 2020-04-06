@@ -1,4 +1,5 @@
 import re
+import os
 
 import hou
 import pxr.UsdRender
@@ -91,18 +92,39 @@ class CollectRenderProducts(pyblish.api.InstancePlugin):
             # "default" that the USD Api falls back to since that won't return
             # time sampled values if they were set per time sample.
             name = product.GetProductNameAttr().Get(time=0)
+            dirname = os.path.dirname(name)
+            basename = os.path.basename(name)
 
-            # Substitute $F
-            def replace_f(match):
-                """ Replace $F4 with padded for Deadline"""
-                padding = int(match.group(2)) if match.group(2) else 1
-                return "#" * padding
+            dollarf_regex = r"(\$F([0-9]?))"
+            frame_regex = r"^(.+\.)([0-9]+)(\.[a-zA-Z]+)$"
+            if re.match(dollarf_regex, basename):
+                # TODO: Confirm this actually is allowed USD stages and HUSK
+                # Substitute $F
+                def replace(match):
+                    """Replace $F4 with padded #"""
+                    padding = int(match.group(2)) if match.group(2) else 1
+                    return "#" * padding
 
-            filename = re.sub(r"(\$F([0-9]?))", replace_f, name)
+                filename_base = re.sub(dollarf_regex, replace, basename)
+                filename = os.path.join(dirname, filename_base)
+            else:
+                # Substitute basename.0001.ext
+                def replace(match):
+                    prefix, frame, ext = match.groups()
+                    padding = "#" * len(frame)
+                    return prefix + padding + ext
+
+                filename_base = re.sub(frame_regex, replace, basename)
+                filename = os.path.join(dirname, filename_base)
+                filename = filename.replace("\\", "/")
+
+            assert "#" in filename, "Couldn't resolve render product name " \
+                                    "with frame number: %s" % name
+
             filenames.append(filename)
 
             prim_path = str(prim.GetPath())
             self.log.info("Collected %s name: %s" % (prim_path, filename))
 
         # Filenames for Deadline
-        instance.data["filenames"] = filenames
+        instance.data["files"] = filenames

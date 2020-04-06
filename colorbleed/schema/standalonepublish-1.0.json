@@ -1,0 +1,87 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "standalonepublish-1.0",
+    "description": "A standalone publish definition for Collect Publish",
+    "type": "object",
+    "additionalProperties": true,
+    "required": [
+        "context",
+        "instances",
+        "schema"
+    ],
+    "properties": {
+        "schema": {
+            "type": "string",
+            "enum": ["standalonepublish-1.0"],
+            "example": "standalonepublish-1.0"
+        },
+        "context": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "description": "Comment for the publish",
+                    "type": "string"
+                },
+                "user": {
+                    "description": "The author/creator of the publish.",
+                    "type": "string"
+                },
+                "fps": {
+                    "description": "The FPS of this specific content.",
+                    "type": "number"
+                },
+                "currentFile": {
+                    "description": "The workfile source this originated from.",
+                    "type": "string"
+                }
+            }
+        },
+        "instances": {
+            "description": "List of instances",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "asset",
+                    "subset",
+                    "families",
+                    "files"
+                ],
+                "properties": {
+                    "asset": {
+                        "description": "Asset name",
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9_.]*$",
+                        "example": "Bruce"
+                    },
+                    "subset": {
+                        "description": "Subset name",
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9_.]*$",
+                        "example": "modelDefault"
+                    },
+                    "families": {
+                        "description": "Unformatted path to version.",
+                        "type": "array",
+                        "items": {"type":  "string"}
+                    },
+                    "files": {
+                        "description": "Files to publish, relative to CWD or absolute",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "startFrame": {
+                        "description": "Start frame of the publish",
+                        "type": "number"
+                    },
+                    "endFrame": {
+                        "description": "End frame of the publish",
+                        "type": "number"
+                    }
+                }
+            }
+        }
+    }
+}

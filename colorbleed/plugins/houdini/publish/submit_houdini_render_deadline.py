@@ -26,7 +26,8 @@ class HoudiniSubmitRenderDeadline(pyblish.api.InstancePlugin):
     label = "Submit Render to Deadline"
     order = pyblish.api.IntegratorOrder
     hosts = ["houdini"]
-    families = ["colorbleed.usdrender"]
+    families = ["colorbleed.usdrender",
+                "redshift_rop"]
     targets = ["local"]
 
     def process(self, instance):
@@ -112,7 +113,7 @@ class HoudiniSubmitRenderDeadline(pyblish.api.InstancePlugin):
         # The first entry also enables double-click to preview rendered
         # frames from Deadline Monitor
         output_data = {}
-        for i, filepath in enumerate(instance.data["filenames"]):
+        for i, filepath in enumerate(instance.data["files"]):
             dirname = os.path.dirname(filepath)
             fname = os.path.basename(filepath)
             output_data["OutputDirectory%d" % i] = dirname.replace("\\", "/")
