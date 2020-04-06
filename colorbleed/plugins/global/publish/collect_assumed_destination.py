@@ -84,7 +84,12 @@ class CollectAssumedDestination(pyblish.api.InstancePlugin):
 
         assert asset, ("No asset found by the name '{}' "
                        "in project '{}'".format(asset_name, project_name))
-        silo = asset['silo']
+
+        silo = asset.get("silo")
+        if "{silo}" in template and not silo:
+            self.log.error("No silo set silo data is required "
+                           "in template: %s" % template)
+            raise RuntimeError("Missing silo data for publish template.")
 
         subset = io.find_one({"type": "subset",
                               "name": subset_name,
