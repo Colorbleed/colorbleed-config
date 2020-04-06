@@ -15,7 +15,7 @@ def publish(path, gui=False):
     """Publish rendered image sequences based on the job data
 
     Args:
-        paths (list): a list of paths where to publish from
+        path (list): Path to the .json file defining the Standalone Publish.
         gui (bool, Optional): Choose to show Pyblish GUI, default is False
 
     Returns:
@@ -23,9 +23,9 @@ def publish(path, gui=False):
 
     """
 
+    print("Publish job path: %s" % path)
     assert os.path.exists(path), "File does not exist: %s" % path
     assert os.path.isfile(path), "Path is not a file: %s" % path
-    log.info(path)
 
     # Set this for the PUBLISHJOB collector
     os.environ["STANDALONEPUBLISH"] = path
@@ -49,7 +49,7 @@ def publish(path, gui=False):
         context = pyblish.util.publish()
 
         if not context:
-            log.warning("Nothing collected.")
+            log.error("Nothing collected.")
             sys.exit(1)
 
         # Collect errors, {plugin name: error}
@@ -66,7 +66,7 @@ def __main__():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--path",
-                        default=None,
+                        required=True,
                         help="The publish job `.json` file to parse.")
     parser.add_argument("--gui",
                         default=False,
@@ -75,8 +75,7 @@ def __main__():
 
     kwargs, args = parser.parse_known_args()
 
-    print("Running publish imagesequence...")
-    print("Paths: {}".format(kwargs.paths or [os.getcwd()]))
+    print("Running publish job...")
     publish(kwargs.path, gui=kwargs.gui)
 
 
