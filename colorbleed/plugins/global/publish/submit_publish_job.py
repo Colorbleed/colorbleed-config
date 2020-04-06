@@ -162,7 +162,9 @@ def compute_publish_from_instance(instance):
         publish_instance = {
             "subset": subset,
             "families": ["colorbleed.imagesequence"],
-            "files": files,
+            # Add the sequence of files into a list to ensure full sequence is
+            # seen as a single representation when the publish integrates it
+            "files": [files],
             "stagingDir": os.path.dirname(path).replace("\\", "/")
         }
 
