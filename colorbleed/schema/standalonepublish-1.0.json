@@ -69,7 +69,17 @@
                         "description": "Files to publish, relative to CWD or absolute",
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
                         }
                     },
                     "startFrame": {
