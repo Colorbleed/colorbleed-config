@@ -78,13 +78,26 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
     def get_render_product_name(self, prefix, suffix):
         """Return the output filename using the AOV prefix and suffix"""
 
-        if suffix:
-            directory = os.path.dirname(prefix)
-            basename = os.path.basename(prefix)
-            prefix_no_ext, ext = os.path.splitext(basename)
-            fname = "{0}.{1}{2}".format(prefix_no_ext, suffix, ext)
-            product_name = os.path.join(directory, fname)
+        # When AOV is explicitly defined in prefix we just swap it out
+        # directly with the AOV suffix to embed it.
+        # Note: ${AOV} seems to be evaluated in the parameter as %AOV%
+        has_aov_in_prefix = "%AOV%" in prefix
+        if has_aov_in_prefix:
+            # It seems that when some special separator characters are present
+            # before the %AOV% token that Redshift will secretly remove it if
+            # there is no suffix for the current product, for example:
+            # foo_%AOV% -> foo.exr
+            pattern = "%AOV%" if suffix else "[._-]?%AOV%"
+            product_name = re.sub(pattern,
+                                  suffix,
+                                  prefix,
+                                  flags=re.IGNORECASE)
         else:
-            product_name = prefix
+            if suffix:
+                # Add ".{suffix}" before the extension
+                prefix_base, ext = os.path.splitext(prefix)
+                product_name = prefix_base + "." + suffix + ext
+            else:
+                product_name = prefix
 
         return product_name
