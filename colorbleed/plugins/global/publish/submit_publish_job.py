@@ -353,11 +353,8 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
         prev_end = None
         resource_range = range(int(start), int(end) + 1)
 
-        # Gather all the subset files (one subset per render pass!)
-        subset_names = [data["subset"]]
-        subset_names.extend(data.get("renderPasses", []))
-
-        for subset_name in subset_names:
+        # Gather all the subset files
+        for subset_name in instance.data["renderSubsets"].keys():
             version = get_latest_version(asset_name=data["asset"],
                                          subset_name=subset_name,
                                          family=family)

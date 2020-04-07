@@ -22,6 +22,14 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
         Uses its own render settings node and RedshiftAOV node. It is not
         connected but all AOVs are enabled for all render layers by default.
 
+    Requires:
+        instance    -> renderer
+        instance    -> setMembers
+        instance    -> subset
+
+    Provides:
+        instance    -> renderPasses
+
     """
 
     order = pyblish.api.CollectorOrder + 0.01
@@ -59,13 +67,8 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
             if not enabled:
                 continue
 
-            # Subset of the AOV is based on {layer}.{aov}
-            # So we need to ensure to store it correctly
             pass_name = self.get_pass_name(renderer, element)
-            subset_pass_name = "{layer}.{aov}".format(layer=layer_name,
-                                                      aov=pass_name)
-
-            result.append(subset_pass_name)
+            result.append(pass_name)
 
         self.log.debug("Found {} AOVs for "
                        "'{}': {}".format(len(result),
