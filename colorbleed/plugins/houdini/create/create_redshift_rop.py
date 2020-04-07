@@ -28,6 +28,19 @@ class CreateRedshiftROP(houdini.Creator):
     def process(self):
         instance = super(CreateRedshiftROP, self).process()
 
+        basename = instance.name()
+        instance.setName(basename + "_ROP", unique_name=True)
+
+        # Also create the linked Redshift IPR Rop
+        ipr_rop = self.parent.createNode("Redshift_IPR",
+                                         node_name=basename + "_IPR")
+
+        # Move it to directly under the Redshift ROP
+        ipr_rop.setPosition(instance.position() + hou.Vector2(0, -1))
+
+        # Set the linked rop to the Redshift ROP
+        ipr_rop.parm("linked_rop").set(ipr_rop.relativePathTo(instance))
+
         prefix = '$HIP/render/$HIPNAME/`chs("subset")`.$F4.exr'
         parms = {
             # Render frame range
