@@ -17,7 +17,8 @@ class IncrementCurrentFile(pyblish.api.InstancePlugin):
     label = "Increment current file"
     order = pyblish.api.IntegratorOrder + 9.0
     hosts = ["houdini"]
-    families = ["colorbleed.usdrender"]
+    families = ["colorbleed.usdrender",
+                "redshift_rop"]
     targets = ["local"]
 
     def process(self, instance):

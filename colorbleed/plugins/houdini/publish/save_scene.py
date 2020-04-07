@@ -8,7 +8,8 @@ class SaveCurrentScene(pyblish.api.InstancePlugin):
     label = "Save current file"
     order = pyblish.api.IntegratorOrder - 0.49
     hosts = ["houdini"]
-    families = ["colorbleed.usdrender"]
+    families = ["colorbleed.usdrender",
+                "redshift_rop"]
     targets = ["local"]
 
     def process(self, instance):
