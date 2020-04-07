@@ -41,7 +41,7 @@ class CreateRedshiftROP(houdini.Creator):
         # Set the linked rop to the Redshift ROP
         ipr_rop.parm("linked_rop").set(ipr_rop.relativePathTo(instance))
 
-        prefix = '$HIP/render/$HIPNAME/`chs("subset")`.$F4.exr'
+        prefix = '${HIP}/render/${HIPNAME}/`chs("subset")`.${AOV}.$F4.exr'
         parms = {
             # Render frame range
             "trange": 1,
