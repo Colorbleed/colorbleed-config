@@ -1,11 +1,8 @@
 import os
-import re
-import copy
 import json
 import pprint
 
 import pyblish.api
-from avalon import api
 from colorbleed import schema
 
 

@@ -1,13 +1,7 @@
 import os
 import re
-import copy
-import json
-import pprint
-from collections import defaultdict
 
 import pyblish.api
-from avalon import api
-from colorbleed import schema
 
 
 class CollectRenderSubsets(pyblish.api.InstancePlugin):
