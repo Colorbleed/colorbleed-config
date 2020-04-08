@@ -36,7 +36,24 @@ def get_roots(nodes):
     return list(roots)
 
 
-class ExtractColorbleedAlembic(colorbleed.api.Extractor):
+def _get_animation_members(instance):
+    # todo: Move this family-specific workaround out of here
+
+    # Collect the out set nodes
+    out_sets = [node for node in instance if node.endswith("out_SET")]
+    if len(out_sets) != 1:
+        raise RuntimeError("Couldn't find exactly one out_SET: "
+                           "{0}".format(out_sets))
+    out_set = out_sets[0]
+    roots = cmds.sets(out_set, query=True)
+    nodes = roots + cmds.listRelatives(roots,
+                                       allDescendents=True,
+                                       fullPath=True) or []
+
+    return roots, nodes
+
+
+class ExtractAlembic(colorbleed.api.Extractor):
     """Produce an alembic of just point positions and normals.
 
     Positions and normals, uvs, creases are preserved, but nothing more,
@@ -44,14 +61,23 @@ class ExtractColorbleedAlembic(colorbleed.api.Extractor):
 
     """
 
-    label = "Extract Pointcache (Alembic)"
+    label = "Extract Alembic"
     hosts = ["maya"]
     families = ["colorbleed.pointcache",
+                "colorbleed.animation",
                 "colorbleed.model"]
 
     def process(self, instance):
 
-        nodes = instance[:]
+        # todo: Move this family-specific workaround out of here
+        if ("colorbleed.animation" == instance.data.get("family") or
+                "colorbleed.animation" in instance.data.get("families", [])):
+            # Animation family gets the members from the "out_SET" of the
+            # loaded rig.
+            roots, nodes = _get_animation_members(instance)
+        else:
+            roots = instance.data["setMembers"]
+            nodes = instance[:]
 
         # Exclude constraint nodes as they are useless data in the export.
         # Somehow ls(excludeType) does not seem to work, so filter manually.
@@ -75,7 +101,7 @@ class ExtractColorbleedAlembic(colorbleed.api.Extractor):
         attr_prefixes = [value for value in attr_prefixes if value.strip()]
         attr_prefixes.append("cb_")
 
-        self.log.info("Extracting pointcache..")
+        self.log.info("Extracting Alembic..")
         dirname = self.staging_dir(instance)
 
         parent_dir = self.staging_dir(instance)
@@ -96,15 +122,10 @@ class ExtractColorbleedAlembic(colorbleed.api.Extractor):
         }
 
         if not instance.data.get("includeParentHierarchy", True):
-            # Set the root nodes if we don't want to include parents
-            # The roots are to be considered the ones that are the actual
-            # direct members of the set
-            root = instance.data.get("setMembers")
-
             # To avoid the issue of a child node being included as root node
             # too we solely use the highest root nodes only, otherwise Alembic
             # export will fail on "parent/child" relationships for the roots
-            options["root"] = get_roots(root)
+            options["root"] = get_roots(roots)
 
         if int(cmds.about(version=True)) >= 2017:
             # Since Maya 2017 alembic supports multiple uv sets - write them.
