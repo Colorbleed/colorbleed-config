@@ -114,10 +114,11 @@ class ExtractAlembic(colorbleed.api.Extractor):
             "attrPrefix": attr_prefixes,
             "writeVisibility": True,
             "writeCreases": True,
-            "writeColorSets": instance.data.get("writeColorSets", False),
             "uvWrite": True,
             "selection": True,
             "worldSpace": instance.data.get("worldSpace", True),
+            "eulerFilter": instance.data.get("eulerFilter", True),
+            "writeColorSets": instance.data.get("writeColorSets", False),
             "stripNamespaces": instance.data.get("stripNamespaces", False)
         }
 
