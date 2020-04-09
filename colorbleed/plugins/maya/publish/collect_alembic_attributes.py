@@ -30,7 +30,7 @@ class CollectAlembicAttributes(pyblish.api.InstancePlugin):
         # Parse string attributes collected from the instance to lists
         def parse_attrs(instance, key):
             """Parse string data values to list, a;b;c -> ['a','b', 'c']"""
-            value = instance.data.get("key")
+            value = instance.data.get(key)
             if not value:
                 return []
 
