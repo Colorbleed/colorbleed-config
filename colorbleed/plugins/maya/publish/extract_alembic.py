@@ -93,17 +93,11 @@ class ExtractAlembic(colorbleed.api.Extractor):
             start -= handles
             end += handles
 
-        attrs = instance.data.get("attr", "").split(";")
+        attrs = instance.data.get("attr", [])
         attrs = [value for value in attrs if value.strip()]
 
-        attr_prefixes = instance.data.get("attrPrefix", "").split(";")
+        attr_prefixes = instance.data.get("attrPrefix", [])
         attr_prefixes = [value for value in attr_prefixes if value.strip()]
-        attr_prefixes.append("cb_")
-
-        # By default include cbId attributes with the Alembic unless the
-        # project is explicitly set to disregard writing of 'cbId'
-        if os.environ.get("CB_MAYA_ABC_WRITE_CBID") not in {"0", "False"}:
-            attrs.append("cbId")
 
         self.log.info("Extracting Alembic..")
         dirname = self.staging_dir(instance)
