@@ -56,7 +56,9 @@ class ValidateAttributeOverlapWithTransform(pyblish.api.InstancePlugin):
             if not shape_attrs:
                 continue
 
-            transform = cmds.listRelatives(shape, parent=True, fullPath=True)
+            transform = cmds.listRelatives(shape,
+                                           parent=True,
+                                           fullPath=True)[0]
             transform_attrs = cmds.listAttr(transform, userDefined=True) or []
             if not transform_attrs:
                 continue
