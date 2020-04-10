@@ -4,53 +4,11 @@ from maya import cmds
 
 import avalon.maya
 import colorbleed.api
-from colorbleed.maya.lib import extract_alembic, get_visible_in_frame_range
-
-
-def get_roots(nodes):
-    """Return the highest nodes in the hierarchies.
-
-    This filters out nodes that are children of others in the input `nodes`.
-
-    """
-    nodes = sorted(cmds.ls(nodes, long=True), reverse=True)
-    roots = set()
-
-    if len(nodes) <= 1:
-        # Don't search when just one node or none
-        return nodes
-
-    head = None
-    while nodes:
-        this = head or nodes.pop()
-        that = nodes.pop()
-
-        if that.startswith(this):
-            head = this
-        else:
-            roots.add(this)
-            head = that
-
-        roots.add(head)
-
-    return list(roots)
-
-
-def _get_animation_members(instance):
-    # todo: Move this family-specific workaround out of here
-
-    # Collect the out set nodes
-    out_sets = [node for node in instance if node.endswith("out_SET")]
-    if len(out_sets) != 1:
-        raise RuntimeError("Couldn't find exactly one out_SET: "
-                           "{0}".format(out_sets))
-    out_set = out_sets[0]
-    roots = cmds.sets(out_set, query=True)
-    nodes = roots + cmds.listRelatives(roots,
-                                       allDescendents=True,
-                                       fullPath=True) or []
-
-    return roots, nodes
+from colorbleed.maya.lib import (
+    extract_alembic,
+    get_visible_in_frame_range,
+    get_highest_in_hierarchy
+)
 
 
 class ExtractAlembic(colorbleed.api.Extractor):
@@ -69,12 +27,11 @@ class ExtractAlembic(colorbleed.api.Extractor):
 
     def process(self, instance):
 
-        # todo: Move this family-specific workaround out of here
-        if ("colorbleed.animation" == instance.data.get("family") or
-                "colorbleed.animation" in instance.data.get("families", [])):
-            # Animation family gets the members from the "out_SET" of the
-            # loaded rig.
-            roots, nodes = _get_animation_members(instance)
+        if ("outMembers" in instance.data and
+                "outMembersHierarchy" in instance.data):
+            # The animation family collects members using the out_SET
+            roots = instance.data["outMembers"]
+            nodes = instance.data["outMembersHierarchy"]
         else:
             roots = instance.data["setMembers"]
             nodes = instance[:]
@@ -124,7 +81,7 @@ class ExtractAlembic(colorbleed.api.Extractor):
             # To avoid the issue of a child node being included as root node
             # too we solely use the highest root nodes only, otherwise Alembic
             # export will fail on "parent/child" relationships for the roots
-            options["root"] = get_roots(roots)
+            options["root"] = get_highest_in_hierarchy(roots)
 
         if int(cmds.about(version=True)) >= 2017:
             # Since Maya 2017 alembic supports multiple uv sets - write them.
