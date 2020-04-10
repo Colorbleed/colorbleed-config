@@ -1613,6 +1613,7 @@ def get_highest_in_hierarchy(nodes):
     """Return highest nodes in the hierarchy that are in the `nodes` list.
 
     The "highest in hierarchy" are the nodes closest to world: top-most level.
+    This filters out nodes that are children of others in the input `nodes`.
 
     Args:
         nodes (list): The nodes in which find the highest in hierarchies.
