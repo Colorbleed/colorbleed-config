@@ -35,7 +35,7 @@ class ExtractUSDCamera(colorbleed.api.Extractor):
 
         # Use time samples when provided
         kwargs = {}
-        if instance.data.get("startFrame") and instance.data.get("endFrame"):
+        if "startFrame" in instance.data and "endFrame" in instance.data:
             start = instance.data["startFrame"]
             end = instance.data["endFrame"]
             handles = instance.data.get("handles", 0)
