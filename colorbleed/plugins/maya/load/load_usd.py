@@ -4,8 +4,11 @@ from avalon import api
 class MultiverseUSDLoader(api.Loader):
     """Load Multiverse USD Compound"""
 
-    families = ["colorbleed.usd"]
-    representations = ["usd", "usda", "usdc"]
+    families = ["colorbleed.usd",
+                "colorbleed.pointcache",
+                "colorbleed.animation",
+                "colorbleed.model"]
+    representations = ["usd", "usda", "usdc", "abc"]
 
     label = "Import USD (Multiverse)"
     order = -5
