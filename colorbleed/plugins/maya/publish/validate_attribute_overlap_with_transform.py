@@ -89,8 +89,10 @@ class ValidateAttributeOverlapWithTransform(pyblish.api.InstancePlugin):
 
 
 # Only include this plug-in when CB_ALEMBIC_FORCE_MERGEABLE_SHAPES is set.
-ACTIVE = os.environ.get("CB_ALEMBIC_FORCE_MERGEABLE_SHAPES") not in {"0",
-                                                                     "False"}
-if not ACTIVE:
+def _is_true(key):
+    return os.environ.get(key) not in {"0", "False", "", None}
+
+
+if not _is_true("CB_ALEMBIC_FORCE_MERGEABLE_SHAPES"):
     print("Skipping ValidateAttributeOverlapWithTransform..")
     del ValidateAttributeOverlapWithTransform
