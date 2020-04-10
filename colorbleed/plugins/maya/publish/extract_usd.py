@@ -20,7 +20,7 @@ class ExtractUSD(colorbleed.api.Extractor):
     families = ["usdModel",
                 "usdCamera",
                 "usdPointcache",
-                "colorbleed.animation"]
+                "colorbleed.animation.usd"]
 
     def process(self, instance):
 

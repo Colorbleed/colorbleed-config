@@ -22,7 +22,7 @@ class ExtractAlembic(colorbleed.api.Extractor):
     label = "Extract Alembic"
     hosts = ["maya"]
     families = ["colorbleed.pointcache",
-                "colorbleed.animation",
+                "colorbleed.animation.abc",
                 "colorbleed.model"]
 
     def process(self, instance):
