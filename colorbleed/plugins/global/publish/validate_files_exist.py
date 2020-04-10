@@ -1,5 +1,7 @@
 import pyblish.api
 
+import os
+
 
 class ValidateFilesExist(pyblish.api.InstancePlugin):
     """Ensure files exist on disk.
