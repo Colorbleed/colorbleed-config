@@ -17,7 +17,10 @@ class ExtractUSD(colorbleed.api.Extractor):
 
     label = "Extract USD"
     hosts = ["maya"]
-    families = ["usdModel", "usdPointcache", "colorbleed.animation"]
+    families = ["usdModel",
+                "usdCamera",
+                "usdPointcache",
+                "colorbleed.animation"]
 
     def process(self, instance):
 
@@ -69,11 +72,9 @@ class ExtractUSD(colorbleed.api.Extractor):
                 options[key] = instance.data[key]
         kwargs.update(options)
 
-        # todo: move this code elsewhere
-        if ("colorbleed.animation" == instance.data.get("family") or
-            "colorbleed.animation" in instance.data.get("families", [])):
-            self.log.debug("Disabling writing UVs..")
-            kwargs["writeUVs"] = False
+        # Apply family specific forced overrides
+        overrides = self._get_family_overrides(instance)
+        kwargs.update(overrides)
 
         roots = get_highest_in_hierarchy(roots)
         write_ancestors = instance.data.get("includeParentHierarchy", False)
@@ -95,3 +96,30 @@ class ExtractUSD(colorbleed.api.Extractor):
         instance.data["files"].append(filename)
 
         self.log.info("Extracted instance '%s' to: %s" % (instance.name, path))
+
+    def _get_family_overrides(self, instance):
+
+        families = {instance.data.get("family", None)}
+        families.update(instance.data.get("families", []))
+
+        overrides = {}
+
+        if "colorbleed.animation" in families:
+            # No UVs for animation caches
+            self.log.debug("Disabling UV write for Animation cache..")
+            overrides["writeUVs"] = False
+
+        elif "colorbleed.camera" in families:
+            self.log.debug("Writing Camera only..")
+            # Only include camera
+            overrides["writeCameras"] = True
+            overrides["writePositions"] = False
+            overrides["writeCurves"] = False
+            overrides["writeParticles"] = False
+            overrides["writePositions"] = False
+            overrides["writeUVs"] = False
+            overrides["writeNormals"] = False
+            overrides["writeColorSets"] = False
+            overrides["writeDisplayColor"] = False
+
+        return overrides
