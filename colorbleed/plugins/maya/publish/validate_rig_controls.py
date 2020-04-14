@@ -21,7 +21,7 @@ def get_controls(instance):
 class ValidateRigControlsVisibilityAttribute(pyblish.api.InstancePlugin):
     """Validate rig controller visibility attribute is locked.
 
-    The visibility attribute must be locked.
+    The visibility attribute must be locked for all controls.
 
     """
     order = colorbleed.api.ValidateContentsOrder + 0.05
@@ -65,6 +65,12 @@ class ValidateRigControlsVisibilityAttribute(pyblish.api.InstancePlugin):
 
 
 class ValidateRigControlsNoConnections(pyblish.api.InstancePlugin):
+    """Validate Rig controls keyable attributes have no incoming connections.
+
+    Unlocked keyable attributes may not have any incoming connections. If
+    these connections are required for the rig then lock the attributes.
+
+    """
     order = colorbleed.api.ValidateContentsOrder + 0.05
     label = "Rig Controls No Inputs"
     hosts = ["maya"]
@@ -153,14 +159,6 @@ class ValidateRigControlsDefaults(pyblish.api.InstancePlugin):
     Controls must have the transformation attributes on their default
     values of translate zero, rotate zero and scale one when they are
     unlocked attributes.
-
-    Unlocked keyable attributes may not have any incoming connections. If
-    these connections are required for the rig then lock the attributes.
-
-    Note that `repair` will:
-        - Lock all visibility attributes
-        - Reset all default values for translate, rotate, scale
-        - Break all incoming connections to keyable attributes
 
     """
     order = colorbleed.api.ValidateContentsOrder + 0.05
