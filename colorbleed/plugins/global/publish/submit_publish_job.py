@@ -225,7 +225,8 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
     families = ["colorbleed.saver.deadline",
                 "colorbleed.renderlayer",
                 "colorbleed.vrayscene",
-                "colorbleed.usdrender"]
+                "colorbleed.usdrender",
+                "redshift_rop"]
     targets = ["local"]
 
     def process(self, instance):
