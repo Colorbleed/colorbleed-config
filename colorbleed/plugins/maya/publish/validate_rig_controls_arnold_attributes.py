@@ -7,7 +7,7 @@ import colorbleed.maya.lib as lib
 import colorbleed.maya.action
 
 
-class ValidateRigControllersArnoldAttributes(pyblish.api.InstancePlugin):
+class ValidateRigControlsArnoldAttributes(pyblish.api.InstancePlugin):
     """Validate rig control curves have no keyable arnold attributes.
 
     The Arnold plug-in will create curve attributes like:
@@ -27,7 +27,7 @@ class ValidateRigControllersArnoldAttributes(pyblish.api.InstancePlugin):
 
     """
     order = colorbleed.api.ValidateContentsOrder + 0.05
-    label = "Rig Controllers (Arnold Attributes)"
+    label = "Rig Controls (Arnold Attributes)"
     hosts = ["maya"]
     families = ["colorbleed.rig"]
     actions = [colorbleed.api.RepairAction,

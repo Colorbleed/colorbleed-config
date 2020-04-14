@@ -12,4 +12,6 @@ class CreateLook(avalon.maya.Creator):
     def __init__(self, *args, **kwargs):
         super(CreateLook, self).__init__(*args, **kwargs)
 
-        self.data["renderlayer"] = lib.get_current_renderlayer()
+        renderlayer = cmds.editRenderLayerGlobals(query=True,
+                                                  currentRenderLayer=True)
+        self.data["renderlayer"] = renderlayer
