@@ -204,18 +204,21 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
     Renders are submitted to a Deadline Web Service as
     supplied via the environment variable AVALON_DEADLINE
 
-    Options in instance.data:
-        - deadlineSubmission (dict, Required): The returned .json
-            data from the job submission to deadline.
+    Requires:
+        instance ->     deadlineSubmission (dict)
+            The returned .json data from the job submission to deadline.
+        instance ->     outputDir (str)
+            The output directory where the metadata file should be generated.
+            It's assumed that this will also be final folder containing the
+            output files.
+        instance ->     startFrame (float or int)
+        instance ->     endFrame (float or int)
 
-        - outputDir (str, Required): The output directory where the metadata
-            file should be generated. It's assumed that this will also be
-            final folder containing the output files.
-
-        - publishJobState (str, Optional): "Active" or "Suspended"
-            This defaults to "Suspended"
-
-    This requires "startFrame" and "endFrame" to be present in instance.data.
+    Optional:
+        instance ->     publishJobState (str)
+            "Active" or "Suspended". This defaults to "Suspended"
+        instance ->     frames (tuple of int)
+            Explicit frames list. Overrides startFrame/endFrame.
 
     """
 
