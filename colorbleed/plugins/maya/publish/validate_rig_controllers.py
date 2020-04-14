@@ -7,8 +7,148 @@ import colorbleed.maya.action
 from colorbleed.maya.lib import undo_chunk
 
 
-class ValidateRigControllers(pyblish.api.InstancePlugin):
-    """Validate rig controllers.
+def get_controls(instance):
+    """Return the controls from the controls_SET of the rig instance"""
+
+    sets = cmds.ls(instance, type="objectSet", long=True)
+    controllers_sets = [i for i in sets if i == "controls_SET"]
+    controls = cmds.ls(cmds.sets(controllers_sets, query=True), long=True)
+    assert controls, "Must have 'controls_SET' in rig instance"
+
+    return controls
+
+
+class ValidateRigControlsVisibilityAttribute(pyblish.api.InstancePlugin):
+    """Validate rig controller visibility attribute is locked.
+
+    The visibility attribute must be locked.
+
+    """
+    order = colorbleed.api.ValidateContentsOrder + 0.05
+    label = "Rig Controls Visibility"
+    hosts = ["maya"]
+    families = ["colorbleed.rig"]
+    actions = [colorbleed.api.RepairAction,
+               colorbleed.maya.action.SelectInvalidAction]
+
+    def process(self, instance):
+        invalid = self.get_invalid(instance)
+        if invalid:
+            raise RuntimeError("Controls have unlocked visibility "
+                               "attribute: %s" % invalid)
+
+    @classmethod
+    def get_invalid(cls, instance):
+
+        invalid = []
+        for control in get_controls(instance):
+
+            attribute = "{}.visibility".format(control)
+            locked = cmds.getAttr(attribute, lock=True)
+            if not locked:
+                invalid.append(control)
+
+        return invalid
+
+    @classmethod
+    def repair(cls, instance):
+
+        invalid = cls.get_invalid(instance)
+        if not invalid:
+            return
+
+        with undo_chunk():
+            for control in invalid:
+                attribute = "{}.visibility".format(control)
+                cls.log.info("Locking attribute: %s" % attribute)
+                cmds.setAttr(attribute, lock=True)
+
+
+class ValidateRigControlsNoConnections(pyblish.api.InstancePlugin):
+    order = colorbleed.api.ValidateContentsOrder + 0.05
+    label = "Rig Controls No Inputs"
+    hosts = ["maya"]
+    families = ["colorbleed.rig"]
+    actions = [colorbleed.api.RepairAction,
+               colorbleed.maya.action.SelectInvalidAction]
+
+    def process(self, instance):
+        invalid = self.get_invalid(instance)
+        if invalid:
+            raise RuntimeError("Controls have input connections: %s" % invalid)
+
+    @classmethod
+    def get_invalid(cls, instance):
+
+        # Validate all controls
+        invalid = []
+        for control in get_controls(instance):
+            if cls.get_connected_attributes(control):
+                invalid.append(control)
+
+        return invalid
+
+    @staticmethod
+    def get_connected_attributes(control):
+        """Return attribute plugs with incoming connections.
+
+        This will also get keyframes on unlocked keyable attributes.
+
+        Args:
+            control (str): Name of control node.
+
+        Returns:
+            list: The invalid plugs
+
+        """
+
+        attributes = cmds.listAttr(control, keyable=True, scalar=True)
+        invalid = []
+        for attr in attributes:
+
+            # Ignore visibility attribute as that will
+            # be forced to be locked anyway. As such we
+            # don't care whether it has an incoming connection.
+            if attr == "visibility":
+                continue
+
+            plug = "{}.{}".format(control, attr)
+
+            # Ignore locked attributes
+            locked = cmds.getAttr(plug, lock=True)
+            if locked:
+                continue
+
+            # Check for incoming connections
+            if cmds.listConnections(plug, source=True, destination=False):
+                invalid.append(plug)
+
+        return invalid
+
+    @classmethod
+    def repair(cls, instance):
+
+        invalid = cls.get_invalid(instance)
+        if not invalid:
+            return
+
+        # Use a single undo chunk
+        with undo_chunk():
+            for control in invalid:
+
+                # Remove incoming connections
+                invalid_plugs = cls.get_connected_attributes(control)
+                for plug in invalid_plugs:
+                    cls.log.info("Breaking input connection to %s" % plug)
+                    source = cmds.listConnections(plug,
+                                                  source=True,
+                                                  destination=False,
+                                                  plugs=True)[0]
+                    cmds.disconnectAttr(source, plug)
+
+
+class ValidateRigControlsDefaults(pyblish.api.InstancePlugin):
+    """Validate rig controller default values.
 
     Controls must have the transformation attributes on their default
     values of translate zero, rotate zero and scale one when they are
@@ -17,8 +157,6 @@ class ValidateRigControllers(pyblish.api.InstancePlugin):
     Unlocked keyable attributes may not have any incoming connections. If
     these connections are required for the rig then lock the attributes.
 
-    The visibility attribute must be locked.
-
     Note that `repair` will:
         - Lock all visibility attributes
         - Reset all default values for translate, rotate, scale
@@ -26,7 +164,7 @@ class ValidateRigControllers(pyblish.api.InstancePlugin):
 
     """
     order = colorbleed.api.ValidateContentsOrder + 0.05
-    label = "Rig Controllers"
+    label = "Rig Controls Defaults"
     hosts = ["maya"]
     families = ["colorbleed.rig"]
     actions = [colorbleed.api.RepairAction,
@@ -48,62 +186,16 @@ class ValidateRigControllers(pyblish.api.InstancePlugin):
     def process(self, instance):
         invalid = self.get_invalid(instance)
         if invalid:
-            raise RuntimeError('{} failed, see log '
-                               'information'.format(self.label))
+            raise RuntimeError("Controls have non-default values: "
+                               "%s" % invalid)
 
     @classmethod
     def get_invalid(cls, instance):
 
-        controllers_sets = [i for i in instance if i == "controls_SET"]
-        controls = cmds.sets(controllers_sets, query=True)
-        assert controls, "Must have 'controls_SET' in rig instance"
-
-        # Ensure all controls are within the top group
-        lookup = set(instance[:])
-        assert all(control in lookup for control in cmds.ls(controls,
-                                                            long=True)), (
-            "All controls must be inside the rig's group."
-        )
-
-        # Validate all controls
-        has_connections = list()
-        has_unlocked_visibility = list()
-        has_non_default_values = list()
-        for control in controls:
-            if cls.get_connected_attributes(control):
-                has_connections.append(control)
-
-            # check if visibility is locked
-            attribute = "{}.visibility".format(control)
-            locked = cmds.getAttr(attribute, lock=True)
-            if not locked:
-                has_unlocked_visibility.append(control)
-
+        invalid = list()
+        for control in get_controls(instance):
             if cls.get_non_default_attributes(control):
-                has_non_default_values.append(control)
-
-        if has_connections:
-            cls.log.error("Controls have input connections: "
-                          "%s" % has_connections)
-
-        if has_non_default_values:
-            cls.log.error("Controls have non-default values: "
-                          "%s" % has_non_default_values)
-
-        if has_unlocked_visibility:
-            cls.log.error("Controls have unlocked visibility "
-                          "attribute: %s" % has_unlocked_visibility)
-
-        invalid = []
-        if (has_connections or
-                has_unlocked_visibility or
-                has_non_default_values):
-            invalid = set()
-            invalid.update(has_connections)
-            invalid.update(has_non_default_values)
-            invalid.update(has_unlocked_visibility)
-            invalid = list(invalid)
-            cls.log.error("Invalid rig controllers. See log for details.")
+                invalid.append(control)
 
         return invalid
 
@@ -137,69 +229,16 @@ class ValidateRigControllers(pyblish.api.InstancePlugin):
 
         return invalid
 
-    @staticmethod
-    def get_connected_attributes(control):
-        """Return attribute plugs with incoming connections.
-
-        This will also ensure no (driven) keys on unlocked keyable attributes.
-
-        Args:
-            control (str): Name of control node.
-
-        Returns:
-            list: The invalid plugs
-
-        """
-        import maya.cmds as mc
-
-        attributes = mc.listAttr(control, keyable=True, scalar=True)
-        invalid = []
-        for attr in attributes:
-        
-            # Ignore visibility attribute as that will
-            # be forced to be locked anyway. As such we
-            # don't care whether it has an incoming connection.
-            if attr == "visibility":
-                continue
-        
-            plug = "{}.{}".format(control, attr)
-
-            # Ignore locked attributes
-            locked = cmds.getAttr(plug, lock=True)
-            if locked:
-                continue
-
-            # Check for incoming connections
-            if cmds.listConnections(plug, source=True, destination=False):
-                invalid.append(plug)
-
-        return invalid
-
     @classmethod
     def repair(cls, instance):
 
+        invalid = cls.get_invalid(instance)
+        if not invalid:
+            return
+
         # Use a single undo chunk
         with undo_chunk():
-            controls = cmds.sets("controls_SET", query=True)
-            for control in controls:
-
-                # Lock visibility
-                attr = "{}.visibility".format(control)
-                locked = cmds.getAttr(attr, lock=True)
-                if not locked:
-                    cls.log.info("Locking visibility for %s" % control)
-                    cmds.setAttr(attr, lock=True)
-
-                # Remove incoming connections
-                invalid_plugs = cls.get_connected_attributes(control)
-                if invalid_plugs:
-                    for plug in invalid_plugs:
-                        cls.log.info("Breaking input connection to %s" % plug)
-                        source = cmds.listConnections(plug,
-                                                      source=True,
-                                                      destination=False,
-                                                      plugs=True)[0]
-                        cmds.disconnectAttr(source, plug)
+            for control in invalid:
 
                 # Reset non-default values
                 invalid_plugs = cls.get_non_default_attributes(control)
