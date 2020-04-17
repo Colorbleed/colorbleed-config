@@ -37,5 +37,8 @@ class ShowInUsdview(api.Loader):
         env.pop("HOUDINI_SCRIPT_PATH", None)
         env.pop("HOUDINI_MENU_PATH", None)
 
+        # Force string to avoid unicode issues
+        env = {str(key): str(value) for key, value in env.items()}
+
         subprocess.Popen([usdview, filepath, "--renderer", "GL"],
                          env=env)
