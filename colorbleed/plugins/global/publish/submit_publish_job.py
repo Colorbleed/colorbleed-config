@@ -216,7 +216,7 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
 
     Optional:
         instance ->     publishJobState (str)
-            "Active" or "Suspended". This defaults to "Suspended"
+            "Active" or "Suspended". This defaults to "Active"
         instance ->     frames (tuple of int)
             Explicit frames list. Overrides startFrame/endFrame.
 
@@ -246,7 +246,7 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
 
         data = instance.data.copy()
         subset = data["subset"]
-        state = data.get("publishJobState", "Suspended")
+        state = data.get("publishJobState", "Active")
 
         # Construct job name based on Render Job name and data.
         job_name = "{name} [publish image sequence]".format(
