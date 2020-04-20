@@ -57,7 +57,7 @@ def get_invalid_sets(shapes):
                 members = set(cmds.ls(cmds.sets(set_,
                                                 query=True,
                                                 nodesOnly=True), long=True))
-                cache[set_] = set()
+                cache[set_] = members
 
             # If the shape is not actually present as a member of the set
             # consider it invalid
