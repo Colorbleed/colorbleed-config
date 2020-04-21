@@ -1,5 +1,6 @@
 import avalon.maya
 from colorbleed.maya import lib
+from maya import cmds
 
 
 class CreateLook(avalon.maya.Creator):
