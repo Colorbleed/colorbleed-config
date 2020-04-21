@@ -13,6 +13,7 @@ from .vendor import speedcopy
 import avalon.io as io
 import avalon.api
 from avalon import schema
+from avalon.vendor import six
 
 import pyblish.util
 
@@ -808,3 +809,21 @@ class Integrator(object):
         assert families, "Instance must have at least a single family"
 
         return families
+
+
+def clean_filename(fname, replace=None):
+    r"""Remove invalid characters from filename.
+
+    Do not use this on a full filepath but only on the filename as it will
+    also strip / or \ characters.
+
+    Args:
+        fname (str): Filename (not full filepath)
+        replace (str, optional): Optional character to replace invalid
+            characters with. Defaults to None stripping the characters.
+
+    """
+    invalid = r'\/*?:"<>|'
+    replace = ord(replace) if replace else None
+    fname = six.text_type(fname)        # ensure unicode in py2, str in py3
+    return fname.translate({ord(char): replace for char in invalid})
