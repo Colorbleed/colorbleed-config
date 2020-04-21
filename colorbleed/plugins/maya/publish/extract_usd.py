@@ -5,6 +5,7 @@ from maya import cmds
 import avalon.maya
 import colorbleed.api
 
+from colorbleed.lib import clean_filename
 from colorbleed.maya.lib import get_highest_in_hierarchy
 
 
@@ -38,7 +39,7 @@ class ExtractUSD(colorbleed.api.Extractor):
 
         # Define extract output file path
         dir_path = self.staging_dir(instance)
-        filename = "{0}.usd".format(instance.name)
+        filename = clean_filename("{0}.usd".format(instance.name))
         path = os.path.join(dir_path, filename)
 
         # Use time samples when provided
