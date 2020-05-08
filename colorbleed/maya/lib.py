@@ -1328,11 +1328,19 @@ def apply_shaders(relationships, shadernodes, nodes):
     for data in shader_data.values():
         # collect all unique IDs of the set members
         shader_uuid = data["uuid"]
-        member_uuids = [member["uuid"] for member in data["members"]]
+        member_uuids = [
+            (member["uuid"], member.get("components"))
+            for member in data["members"]]
 
         filtered_nodes = list()
-        for uuid in member_uuids:
-            filtered_nodes.extend(nodes_by_id[uuid])
+        for uuid, components in member_uuids:
+            nodes = nodes_by_id[uuid]
+
+            if components:
+                # Assign to the components
+                nodes = [".".join([node, components]) for node in nodes]
+
+            filtered_nodes.extend(nodes)
 
         id_shading_engines = shading_engines_by_id[shader_uuid]
         if not id_shading_engines:
