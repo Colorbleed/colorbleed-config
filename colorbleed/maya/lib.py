@@ -552,6 +552,20 @@ def namespaced(namespace, new=True):
         cmds.namespace(set=original)
 
 
+@contextlib.contextmanager
+def maintained_selection_api():
+    """Maintain selection using the Maya Python API.
+
+    Warning: This is *not* added to the undo stack.
+
+    """
+    original = om.MGlobal.getActiveSelectionList()
+    try:
+        yield
+    finally:
+        om.MGlobal.setActiveSelectionList(original)
+
+
 def polyConstraint(components, *args, **kwargs):
     """Return the list of *components* with the constraints applied.
 
@@ -570,7 +584,13 @@ def polyConstraint(components, *args, **kwargs):
     kwargs.pop('mode', None)
 
     with no_undo(flush=False):
-        with maya.maintained_selection():
+        # Reverting selection to the original selection using
+        # `maya.cmds.select` can be slow in rare cases where previously
+        # `maya.cmds.polySelectConstraint` had set constrain to "All and Next"
+        # and the "Random" setting was activated. To work around this we
+        # revert to the original selection using the Maya API. This is safe
+        # since we're not generating any undo change anyway.
+        with maintained_selection_api():
             # Apply constraint using mode=2 (current and next) so
             # it applies to the selection made before it; because just
             # a `maya.cmds.select()` call will not trigger the constraint.
