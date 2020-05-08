@@ -320,6 +320,17 @@ class CollectLook(pyblish.api.InstancePlugin):
 
         node, components = (member.rsplit(".", 1) + [None])[:2]
 
+        if components:
+            # When members are found with component assignments it often
+            # happens Maya returns these as ".f[]" (face) assignments on
+            # the transform node.
+            if cmds.nodeType(node) == "transform":
+                # Assume first shape
+                node = cmds.listRelatives(node,
+                                          shapes=True,
+                                          fullPath=True,
+                                          noIntermediate=True)[0]
+
         # Only include valid members of the instance
         if node not in instance_members:
             return
