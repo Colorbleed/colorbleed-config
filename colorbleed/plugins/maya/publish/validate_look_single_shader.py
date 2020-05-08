@@ -17,6 +17,7 @@ class ValidateSingleShader(pyblish.api.InstancePlugin):
     hosts = ['maya']
     label = 'Look Single Shader Per Shape'
     actions = [colorbleed.maya.action.SelectInvalidAction]
+    optional = True
 
     # The default connections to check
     def process(self, instance):
