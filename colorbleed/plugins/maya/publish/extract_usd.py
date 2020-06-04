@@ -110,7 +110,7 @@ class ExtractUSD(colorbleed.api.Extractor):
             self.log.debug("Disabling UV write for Animation cache..")
             overrides["writeUVs"] = False
 
-        elif "colorbleed.camera" in families:
+        elif "usdCamera" in families:
             self.log.debug("Writing Camera only..")
             # Only include camera
             overrides["writeCameras"] = True
