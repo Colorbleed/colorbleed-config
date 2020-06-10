@@ -1,4 +1,5 @@
 import os
+import string
 
 from avalon import api, lib, pipeline
 from avalon.vendor import six
@@ -76,7 +77,7 @@ class BaseProjectAction(api.Action):
         environment = self.environ(session)
 
         if kwargs.get("launch", True):
-        
+
             # todo(roy): Push this elsewhere
             # This is temporarily done here so it just directly works with
             # the current launcher's get_apps() function discovery upon
@@ -91,7 +92,7 @@ class BaseProjectAction(api.Action):
                 tools_env = acre.get_tools(tools)
                 env = acre.compute(tools_env)
                 environment = acre.merge(env, current_env=environment)
-        
+
             return self.launch(environment)
 
     def _format(self, original, **kwargs):
@@ -118,6 +119,11 @@ class FusionRenderNode(BaseProjectAction):
     label = "F9 Render Node"
     icon = "object-group"
     order = 997
+    color = "#AA9999"
+
+    def is_compatible(self, session):
+        # Only show outside of project for clean project view
+        return "AVALON_PROJECT" not in session
 
 
 class VrayRenderSlave(BaseProjectAction):
@@ -126,6 +132,91 @@ class VrayRenderSlave(BaseProjectAction):
     label = "V-Ray Slave"
     icon = "object-group"
     order = 996
+    color = "#AA9999"
+
+    def is_compatible(self, session):
+        # Only show outside of project for clean project view
+        return "AVALON_PROJECT" not in session
+
+
+class ExploreToCurrent(api.Action):
+    name = "exploretocurrent"
+    label = "Explore Here"
+    icon = "external-link"
+    color = "#e8770e"
+    order = 7
+
+    def is_compatible(self, session):
+        return True
+
+    def process(self, session, **kwargs):
+
+        from avalon import io
+        from avalon.vendor.Qt import QtCore, QtWidgets
+
+        class FormatDict(dict):
+            def __missing__(self, key):
+                return "{" + key + "}"
+
+        def partial_format(s, mapping):
+
+            formatter = string.Formatter()
+            mapping = FormatDict(**mapping)
+
+            return formatter.vformat(s, (), mapping)
+
+        project = io.find_one({"type": "project"})
+        template = project["config"]['template']['work']
+
+        # Some data remapping
+        values = dict(session)
+        for key, value in {
+            "AVALON_PROJECT": "project",
+            "AVALON_PROJECTS": "root",
+            "AVALON_ASSET": "asset",
+            "AVALON_SILO": "silo",
+            "AVALON_TASK": "task",
+        }.items():
+            if key in session:
+                values[value] = session[key]
+
+        path = partial_format(template, values)
+
+        # Keep only the part of the path that was formatted
+        path = os.path.normpath(path.split("{", 1)[0])
+
+        app = QtWidgets.QApplication.instance()
+        ctrl_pressed = QtCore.Qt.ControlModifier & app.keyboardModifiers()
+        if ctrl_pressed:
+            # Copy path to clipboard
+            self.copy_path_to_clipboard(path)
+        else:
+            self.open_in_explorer(path)
+
+    @staticmethod
+    def open_in_explorer(path):
+        import subprocess
+
+        if os.path.exists(path):
+            print("Opening Explorer: %s" % path)
+            # todo(roy): Make this cross OS compatible (currently windows only)
+            subprocess.Popen(r'explorer "{}"'.format(path))
+
+        else:
+            print("Path does not exist: %s" % path)
+
+    @staticmethod
+    def copy_path_to_clipboard(path):
+        from avalon.vendor.Qt import QtCore, QtWidgets
+
+        path = path.replace("\\", "/")
+        print("Copyied to clipboard: %s" % path)
+        app = QtWidgets.QApplication.instance()
+        assert app, "Must have running QApplication instance"
+
+        # Set to Clipboard
+        clipboard = QtWidgets.QApplication.clipboard()
+        clipboard.setText(os.path.normpath(path))
 
 
 def register_launcher_actions():
@@ -133,3 +224,4 @@ def register_launcher_actions():
 
     pipeline.register_plugin(api.Action, FusionRenderNode)
     pipeline.register_plugin(api.Action, VrayRenderSlave)
+    pipeline.register_plugin(api.Action, ExploreToCurrent)
