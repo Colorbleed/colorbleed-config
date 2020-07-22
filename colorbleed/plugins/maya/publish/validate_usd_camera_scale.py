@@ -33,7 +33,10 @@ class ValidateUsdCameraScale(pyblish.api.Validator):
         invalid = []
         for camera in cameras:
 
-            scale = cmds.xform(camera,
+            transform = cmds.listRelatives(camera,
+                                           parent=True,
+                                           fullPath=True)[0]
+            scale = cmds.xform(transform,
                                query=True,
                                scale=True,
                                worldSpace=True)
