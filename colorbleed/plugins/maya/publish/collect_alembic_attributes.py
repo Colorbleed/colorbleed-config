@@ -23,7 +23,8 @@ class CollectAlembicAttributes(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.499
     label = 'Define Alembic Export Attributes'
     families = ["colorbleed.pointcache",
-                "colorbleed.animation"]
+                "colorbleed.animation",
+                "colorbleed.model"]
 
     def process(self, instance):
 
