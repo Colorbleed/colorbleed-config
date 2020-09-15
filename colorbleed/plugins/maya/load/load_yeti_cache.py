@@ -258,8 +258,9 @@ class YetiCacheLoader(api.Loader):
             node_name = "{}:{}".format(namespace, original_node)
             yeti_node = cmds.createNode("pgYetiMaya", name=node_name)
 
-            # Create transform node
-            transform_node = node_name.rstrip("Shape")
+            transform_node = cmds.listRelatives(yeti_node,
+                                                parent=True,
+                                                fullPath=True)[0]
 
             lib.set_id(transform_node, node_settings["transform"]["cbId"])
             lib.set_id(yeti_node, node_settings["cbId"])
@@ -301,7 +302,7 @@ class YetiCacheLoader(api.Loader):
             # ../scripts/pgYetiNode.mel script)
             cmds.setAttr("{}.visibleInReflections".format(yeti_node), True)
             cmds.setAttr("{}.visibleInRefractions".format(yeti_node), True)
-            
+
             # Assign lambert1 (initialShadingGroup) because without
             # any shader assigned some renderers will not output any fur
             # in the render, without raising a warning. As such, we mimic
