@@ -46,12 +46,16 @@ class YetiCacheLoader(api.Loader):
                                "fursettings.")
 
         node_data = fursettings["nodes"]
-        nodes = self.create_nodes(namespace, node_data)
+
+        yeti_nodes = self.create_nodes(namespace, node_data)
 
         group_name = "{}:{}".format(namespace, name)
-        group_node = cmds.group(nodes, name=group_name)
+        group_node = cmds.group(yeti_nodes, name=group_name)
 
-        nodes.append(group_node)
+        # Containerise group node and all its children
+        nodes = cmds.listRelatives(group_node,
+                                   allDescendents=True,
+                                   fullPath=True) + [group_node]
 
         self[:] = nodes
 
