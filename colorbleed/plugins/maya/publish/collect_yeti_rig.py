@@ -120,7 +120,7 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
         Returns:
             list
         """
-        self.log.debug("Collecting resources for %s" % node)
+        self.log.info("Collecting resources for %s" % node)
 
         # Get the image search path value (this can return None if not set)
         attr = "{}.imageSearchPath".format(node)
@@ -133,7 +133,7 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
 
         # List all related textures
         texture_filenames = cmds.pgYetiCommand(node, listTextures=True)
-        self.log.info("Found %i texture(s)" % len(texture_filenames))
+        self.log.debug("Found %i texture node(s)" % len(texture_filenames))
 
         if texture_filenames and not image_search_paths:
             raise ValueError("pgYetiMaya node '%s' is missing the path to the "
@@ -149,8 +149,8 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
                                "image search paths for: %s" % texture)
                 files = self.search_textures(texture)
                 if not files:
-                    self.log.warning(
-                        "No texture at absolute path: %s" % (texture,))
+                    self.log.error(
+                        "No texture at absolute path: %s" % texture)
             else:
                 for root in image_search_paths:
                     filepath = os.path.join(root, texture)
@@ -158,11 +158,12 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
                     if files:
                         # Break out on first match in search paths..
                         break
+                    else:
+                        self.log.warning("No texture at path: %s" % filepath)
                 else:
                     # Found no files..
-                    self.log.warning(
-                        "No texture found for: %s "
-                        "(searched: %s)" % (texture, image_search_paths))
+                    self.log.error("No texture found for "
+                                   "relative path: %s" % texture)
 
             item = {
                 "files": files,
@@ -187,7 +188,7 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
         reference_nodes = cmds.pgYetiGraph(node,
                                            listNodes=True,
                                            type="reference")
-        self.log.info("Found %i reference node(s)" % len(reference_nodes))
+        self.log.debug("Found %i reference node(s)" % len(reference_nodes))
 
         for reference_node in reference_nodes:
             ref_file = cmds.pgYetiGraph(node,
@@ -279,8 +280,10 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
         """
         from avalon.vendor import clique
 
-        escaped = re.escape(filepath)
+        escaped = re.escape(os.path.basename(filepath))
         re_pattern = escaped.replace(re.escape(pattern), "-?[0-9]+")
+        clique_pattern = escaped.replace(re.escape(pattern),
+                                         clique.DIGITS_PATTERN)
 
         source_dir = os.path.dirname(filepath)
         if not os.path.exists(source_dir):
@@ -289,7 +292,7 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
         files = [f for f in os.listdir(source_dir)
                  if re.match(re_pattern, f)]
 
-        pattern = [clique.PATTERNS["frames"]]
-        collection, remainder = clique.assemble(files, patterns=pattern)
+        collection, remainder = clique.assemble(files,
+                                                patterns=[clique_pattern])
 
         return collection
