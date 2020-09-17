@@ -278,13 +278,9 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
             list: file sequence.
 
         """
-        from avalon.vendor import clique
 
         escaped = re.escape(os.path.basename(filepath))
         re_pattern = escaped.replace(re.escape(pattern), "-?[0-9]+")
-        clique_pattern = escaped.replace(re.escape(pattern),
-                                         clique.DIGITS_PATTERN)
-
         source_dir = os.path.dirname(filepath)
         if not os.path.exists(source_dir):
             return []
@@ -292,7 +288,4 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
         files = [os.path.join(source_dir, f) for f in os.listdir(source_dir)
                  if re.match(re_pattern, f)]
 
-        collection, remainder = clique.assemble(files,
-                                                patterns=[clique_pattern])
-
-        return collection
+        return files
