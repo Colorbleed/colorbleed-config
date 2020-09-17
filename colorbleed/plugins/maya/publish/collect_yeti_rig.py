@@ -289,7 +289,7 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
         if not os.path.exists(source_dir):
             return []
 
-        files = [f for f in os.listdir(source_dir)
+        files = [os.path.join(source_dir, f) for f in os.listdir(source_dir)
                  if re.match(re_pattern, f)]
 
         collection, remainder = clique.assemble(files,
