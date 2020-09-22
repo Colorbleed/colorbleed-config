@@ -60,8 +60,12 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
             if layer.endswith("defaultRenderLayer"):
                 layername = "masterLayer"
             else:
-                # Remove Maya render setup prefix `rs_`
-                layername = layer.split("rs_", 1)[-1]
+                if layer.startswith("rs_"):
+                    # todo: make sure it is a Render Setup layer
+                    # Remove Maya render setup prefix `rs_`
+                    layername = layer[3:]
+                else:
+                    layername = layer
 
             # Get layer specific settings, might be overrides
             data = {
