@@ -80,6 +80,10 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
             # Basic behavior
             nodes = instance[:]
 
+            # Include any input connections of history
+            history = cmds.ls(cmds.listHistory(nodes), long=True)
+            nodes = list(set(nodes + history))
+
             # Collect containers for the given set of nodes
             containers = collect_input_containers(scene_containers,
                                                   nodes)
