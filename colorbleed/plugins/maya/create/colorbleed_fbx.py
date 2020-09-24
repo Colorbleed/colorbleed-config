@@ -29,3 +29,10 @@ class CreateFBX(avalon.maya.Creator):
 
         # Whether to preserve instances in the export
         self.data["instances"] = False
+
+        # Add output options for specific elements in the export
+        self.data["cameras"] = False
+        self.data["shapes"] = True
+        self.data["skins"] = True
+        self.data["constraints"] = False
+        self.data["lights"] = True
