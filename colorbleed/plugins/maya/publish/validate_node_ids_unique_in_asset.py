@@ -70,7 +70,7 @@ class ValidateNodeIdsUniqueInstanceClash(pyblish.api.InstancePlugin):
 
         others = [i for i in list(instance.context) if
                   i is not instance and
-                  set(cls.families) & get_families(instance)]
+                  set(cls.families) & get_families(i)]
         if not others:
             return []
 
