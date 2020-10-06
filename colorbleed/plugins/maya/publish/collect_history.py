@@ -14,10 +14,10 @@ class CollectMayaHistory(pyblish.api.InstancePlugin):
 
     """
 
-    order = pyblish.api.CollectorOrder + 0.1
+    order = pyblish.api.CollectorOrder + 0.33
     hosts = ["maya"]
     label = "Maya History"
-    families = ["colorbleed.rig"]
+    families = ["colorbleed.rig", "colorbleed.yetiRig"]
     verbose = False
 
     def process(self, instance):
