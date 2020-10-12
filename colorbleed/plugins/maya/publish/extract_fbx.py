@@ -14,7 +14,7 @@ import colorbleed.api
 def bake_to_layer(nodes, layer_name, start, end,
                   disable_implicit_control=True):
     """Bake to new animation layer
-    
+
     Args:
         disable_implicit_control (bool): Whether to
             disable implicit controls (e.g. IK Handles)
@@ -118,14 +118,14 @@ def layerbake(nodes, settings):
     # Bake the layers by name, start and end frame.
     created = []
     for i, (name, start, end) in enumerate(settings):
-    
+
         # Workaround (Hack):
         # Only disable the implicit controls
         # once we reach the last layer to bake
         # so that up to that point the IK handles
         # bake as they should behave
         disable_implicit = i == len(settings) - 1
-    
+
         layer = bake_to_layer(nodes, name, start, end,
                               disable_implicit_control=disable_implicit)
         print("Baked to: %s (%s - %s)" % (layer, start, end))
@@ -154,6 +154,41 @@ def layerbake(nodes, settings):
                          precision=0.001)
 
     return created
+
+
+def set_fbx_export_clips(clips):
+    """Set the FBX Export Split Animation Takes for next export"""
+    # Clear any existing clip list set in the FBX Exporter
+    mel.eval("FBXExportSplitAnimationIntoTakes -clear")
+    # Remove explicit Maya default Take001 from export
+    mel.eval("FBXExportDeleteOriginalTakeOnSplitAnimation  -v true")
+    for name, start, end in clips:
+        # Escape quotation marks if in clip name
+        name = name.replace('"', r'\"')
+
+        mel.eval("FBXExportSplitAnimationIntoTakes -v "
+                 "\"{0}\" {1} {2}".format(name, start, end))
+
+
+def get_time_slider_clips():
+    """Return current time slider bookmarks as clips.
+
+    The clips are 3-tuples: name, start, end.
+
+    Returns:
+        list: Clips sorted by start time.
+
+    """
+
+    bookmarks = cmds.ls(type="timeSliderBookmark")
+    result = []
+    for bookmark in bookmarks:
+        name = cmds.getAttr(bookmark + ".name")
+        start = cmds.getAttr(bookmark + ".timeRangeStart")
+        end = cmds.getAttr(bookmark + ".timeRangeStop") - 1
+        result.append((name, start, end))
+
+    return sorted(result, key=lambda x: x[1])
 
 
 class ExtractFBX(colorbleed.api.Extractor):
@@ -336,6 +371,12 @@ class ExtractFBX(colorbleed.api.Extractor):
             options["bakeComplexAnimation"] = False
             options["bakeResampleAnimation"] = True
             options["applyConstantKeyReducer"] = True
+
+        # Set animation clips from Timeline Bookmarks if enabled
+        use_bookmarks = instance.data.get("useTimelineBookmarksAsTakes")
+        if use_bookmarks:
+            clips = get_time_slider_clips()
+            set_fbx_export_clips(clips)
 
         # Apply the FBX overrides through MEL since the commands
         # only work correctly in MEL according to online

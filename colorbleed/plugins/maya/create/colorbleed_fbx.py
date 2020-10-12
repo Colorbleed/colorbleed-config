@@ -24,8 +24,13 @@ class CreateFBX(avalon.maya.Creator):
 
         # Special option to support a custom baking of keys "just before" the
         # FBX extraction so the FBX exporter picks up these custom animation
-        # layers. This will currently *only* bake joints.
+        # layers. This will currently *only* bake joints. This is used by
+        # Lens Studio importer to import clips correctly.
         self.data["bakeAnimLayers"] = ""
+
+        # When enabled the FBX Export will use all Timeline Bookmarks to
+        # define named takes in a single FBX file.
+        self.data["useTimelineBookmarksAsTakes"] = False
 
         # Whether to preserve instances in the export
         self.data["instances"] = False
