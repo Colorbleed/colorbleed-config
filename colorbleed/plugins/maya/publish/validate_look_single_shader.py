@@ -41,6 +41,11 @@ class ValidateSingleShader(pyblish.api.InstancePlugin):
             shading_engines = cmds.listConnections(shape,
                                                    destination=True,
                                                    type="shadingEngine") or []
+            
+            # A shape can have multiple connections to the same shadingEngine
+            # so let's make sure we only count unique shaders
+            shading_engines = set(shading_engines)
+                                                   
             if not shading_engines:
                 no_shaders.append(shape)
             elif len(shading_engines) > 1:
