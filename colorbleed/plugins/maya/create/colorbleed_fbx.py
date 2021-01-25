@@ -41,3 +41,6 @@ class CreateFBX(avalon.maya.Creator):
         self.data["skins"] = True
         self.data["constraints"] = False
         self.data["lights"] = True
+
+        # Scale Factor for export
+        self.data["scaleFactor"] = 1.0

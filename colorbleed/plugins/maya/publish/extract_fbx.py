@@ -251,7 +251,8 @@ class ExtractFBX(colorbleed.api.Extractor):
             "embeddedTextures": bool,
             "inputConnections": bool,
             "upAxis": str,  # x, y or z,
-            "triangulate": bool
+            "triangulate": bool,
+            "scaleFactor": float
         }
 
     @property
@@ -293,7 +294,8 @@ class ExtractFBX(colorbleed.api.Extractor):
             "embeddedTextures": True,
             "inputConnections": True,
             "upAxis": "y",
-            "triangulate": False
+            "triangulate": False,
+            "scaleFactor": 1.0
         }
 
     def parse_overrides(self, instance, options):
@@ -390,7 +392,7 @@ class ExtractFBX(colorbleed.api.Extractor):
                 value = str(value).lower()
 
             template = "FBXExport{0} -v {1}"
-            if key == "UpAxis":
+            if key in {"UpAxis", "ScaleFactor"}:
                 template = "FBXExport{0} {1}"
 
             cmd = template.format(key, value)
