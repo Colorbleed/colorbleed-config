@@ -32,7 +32,7 @@ def get_rendersetup_layer(layer):
 
     Example:
         >>> for legacy_layer in cmds.ls(type="renderLayer"):
-        >>>    print get_rendersetup_layer(layer)
+        >>>    layer = get_rendersetup_layer(legacy_layer)
 
     Returns:
         str or None: Returns renderSetupLayer node name if `layer` is a valid
