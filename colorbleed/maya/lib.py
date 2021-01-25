@@ -1989,9 +1989,8 @@ def get_attr_in_layer(attr, layer):
     """
 
     if cmds.mayaHasRenderSetup():
-        log.debug("lib.get_attr_in_layer is not optimized for render setup")
-        with renderlayer(layer):
-            return cmds.getAttr(attr)
+        from . import lib_rendersetup
+        return lib_rendersetup.get_attr_in_layer(attr, layer)
 
     # Ignore complex query if we're in the layer anyway
     current_layer = cmds.editRenderLayerGlobals(query=True,
