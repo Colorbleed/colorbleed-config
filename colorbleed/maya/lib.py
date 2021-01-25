@@ -1447,30 +1447,37 @@ def apply_shaders(relationships,
                 nodes = edit["nodes"]
                 shader = edit["shader"]
 
+                if not nodes:
+                    continue
+
                 if cmds.nodeType(shader) != "shadingEngine":
-                    log.warning("{} - Adding nodes directly to set as"
-                                " membership overrides are not supported in"
-                                " Render Setup " %shader)
+                    log.warning("{} - Adding nodes to set because membership "
+                                "overrides are not supported in Render Setup: "
+                                "{} ".format(label, shader))
                     cmds.sets(nodes, forceElement=shader)
                     # todo: support displacement sets, etc.
                     continue
 
-                # Get material label (only for shading engines!)
-                out = cmds.listConnections(shader,
-                                           source=True,
-                                           destination=False)[0]
-                label = out.rsplit(":", 1)[-1]
+                # Get material to label the override nicely
+                material = cmds.listConnections(shader + ".surfaceShader",
+                                                source=True,
+                                                destination=False) or []
+                if material:
+                    material_label = material[0].rsplit(":", 1)[-1]
+                else:
+                    log.warning("Shading Engine has no "
+                                "connected surfaceShader: {}".format(shader))
+                    material_label = "material"
 
-                col = group.createCollection("col_{}".format(label))
+                col = group.createCollection("col_{}".format(material_label))
                 col.setLabelColor("Green")
                 sel = col.getSelector()
                 sel.setFilterType(get_filter(nodes))
                 sel.staticSelection.set(nodes)
 
-                out = shader + ".message"
-                label = out.rsplit(":", 1)[-1].rsplit(".", 1)[0]
-                override = col.createOverride(label, "materialOverride")
-                override.setSource(out)
+                shader_label = shader.rsplit(":", 1)[-1].rsplit(".", 1)[0]
+                override = col.createOverride(shader_label, "materialOverride")
+                override.setSource(shader + ".message")
 
                 # Assign set membership
                 cmds.sets(nodes, forceElement=shader)
@@ -1479,6 +1486,9 @@ def apply_shaders(relationships,
                 # rendersetup absolute override
                 nodes = edit["nodes"]
                 attr_value = edit["attributes"]
+
+                if not nodes:
+                    continue
 
                 col = group.createCollection("col_setattr")
                 col.setLabelColor("Blue")
