@@ -265,7 +265,7 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
             # Collect the frames to copy to extend the frames
             # and set the start frame and end frame to include the
             # extended frames
-            new_start, new_end, copy_resources = self.extend_frames(instance)
+            new_start, new_end, copy_resources = self.extend_frames(instance, job)
             instance.data["startFrame"] = new_start
             instance.data["endFrame"] = new_end
 
@@ -334,9 +334,9 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
                 dest = os.path.join(dest_path, src_file)
                 speedcopy.copyfile(source, dest)
 
-            self.log.info("Finished copying %i files" % len(resources))
+            self.log.info("Finished copying %i files" % len(copy_resources))
 
-    def extend_frames(self, instance):
+    def extend_frames(self, instance, job):
 
         data = instance.data
         family = "colorbleed.imagesequence"
@@ -358,6 +358,7 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
         resource_range = range(int(start), int(end) + 1)
 
         # Gather all the subset files
+        resources = []
         for subset_name in instance.data["renderSubsets"].keys():
             version = get_latest_version(asset_name=data["asset"],
                                          subset_name=subset_name,
