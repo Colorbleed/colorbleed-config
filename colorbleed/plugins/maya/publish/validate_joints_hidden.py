@@ -28,8 +28,16 @@ class ValidateJointsHidden(pyblish.api.InstancePlugin):
 
     @staticmethod
     def get_invalid(instance):
+    
+        def _bone_draws(j):
+            """Return whether joint has not set Draw Style to None.
+            
+            Because when set to None the bone basically is invisible.
+            """
+            return cmds.getAttr(j + ".drawStyle") != 2
+    
         joints = cmds.ls(instance, type='joint', long=True)
-        return [j for j in joints if lib.is_visible(j, displayLayer=True)]
+        return [j for j in joints if _bone_draws(j) and lib.is_visible(j, displayLayer=True)]
 
     def process(self, instance):
         """Process all the nodes in the instance 'objectSet'"""
@@ -40,5 +48,5 @@ class ValidateJointsHidden(pyblish.api.InstancePlugin):
 
     @classmethod
     def repair(cls, instance):
-        import maya.mel as mel
-        mel.eval("HideJoints")
+        invalid = cls.get_invalid(instance)
+        cmds.hide(invalid)
