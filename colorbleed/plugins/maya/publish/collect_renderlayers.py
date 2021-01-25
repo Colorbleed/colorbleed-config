@@ -5,6 +5,7 @@ import pyblish.api
 
 from avalon import maya, api
 import colorbleed.maya.lib as lib
+import colorbleed.maya.lib_rendersetup as lib_rendersetup
 
 
 class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
@@ -60,11 +61,14 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
             if layer.endswith("defaultRenderLayer"):
                 layername = "masterLayer"
             else:
-                if layer.startswith("rs_"):
-                    # todo: make sure it is a Render Setup layer
-                    # Remove Maya render setup prefix `rs_`
-                    layername = layer[3:]
+                rs_layer = lib_rendersetup.get_rendersetup_layer(layer)
+                if rs_layer:
+                    # Output filename is based on the name of the
+                    # Render Setup layer node
+                    layername = rs_layer
                 else:
+                    # Output filename is based on the name of the
+                    # Legacy Renderlayer node
                     layername = layer
 
             # Get layer specific settings, might be overrides
