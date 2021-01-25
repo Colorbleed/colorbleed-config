@@ -7,14 +7,40 @@ import avalon.api as api
 import pyblish.api
 
 
+def get_top_referenced_parm(parm):
+
+    processed = set() # disallow infinite loop
+    while True:
+        if parm.path() in processed:
+            raise RuntimeError("Parameter references result in cycle.")
+    
+        processed.add(parm.path())
+
+        ref = parm.getReferencedParm()
+        if ref.path() == parm.path():
+            # It returns itself when it doesn't reference
+            # another parameter
+            return ref
+        else:
+            parm = ref
+
+
 def evalParmNoFrame(node, parm, pad_character="#"):
 
     parameter = node.parm(parm)
     assert parameter, "Parameter does not exist: %s.%s" % (node, parm)
+    
+    # If the parameter has a parameter reference, then get that
+    # parameter instead as otherwise `unexpandedString()` fails.
+    parameter = get_top_referenced_parm(parameter)
 
     # Substitute out the frame numbering with padded characters
-    raw = parameter.unexpandedString()
-
+    try:
+        raw = parameter.unexpandedString()
+    except hou.Error as exc:
+        print("Failed: %s" % parameter)
+        raise RuntimeError(exc)
+            
     def replace(match):
         padding = 1
         n = match.group(2)
@@ -46,6 +72,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         rop = instance[0]
+        
         default_prefix = evalParmNoFrame(rop, "RS_outputFileNamePrefix")
         beauty_suffix = rop.evalParm("RS_outputBeautyAOVSuffix")
         render_products = []
@@ -58,6 +85,11 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
         num_aovs = rop.evalParm("RS_aov")
         for index in range(num_aovs):
             i = index + 1
+        
+            # Skip disabled AOVs
+            if not rop.evalParm("RS_aovEnable_%s" % i):
+                continue
+        
             aov_suffix = rop.evalParm("RS_aovSuffix_%s" % i)
             aov_prefix = evalParmNoFrame(rop, "RS_aovCustomPrefix_%s" % i)
             if not aov_prefix:
@@ -71,9 +103,6 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
         filenames = list(render_products)
         instance.data["files"] = filenames
-
-        import pprint
-        pprint.pprint(render_products)
 
     def get_render_product_name(self, prefix, suffix):
         """Return the output filename using the AOV prefix and suffix"""
