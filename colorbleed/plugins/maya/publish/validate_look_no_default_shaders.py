@@ -27,7 +27,8 @@ class ValidateLookNoDefaultShaders(pyblish.api.InstancePlugin):
     families = ['colorbleed.look']
     hosts = ['maya']
     label = 'Look No Default Shaders'
-    actions = [colorbleed.maya.action.SelectInvalidAction]
+    actions = [colorbleed.maya.action.SelectInvalidAction,
+               colorbleed.api.RepairInstanceAction]
 
     DEFAULT_SHADERS = {"lambert1", "initialShadingGroup",
                       "initialParticleSE", "particleCloud1"}
@@ -60,3 +61,37 @@ class ValidateLookNoDefaultShaders(pyblish.api.InstancePlugin):
                 invalid.add(node)
 
         return list(invalid)
+        
+    @classmethod
+    def repair(cls, instance):
+        # Break connections with the default shading engines
+
+        for node in instance:
+            outputs = cmds.listConnections(node, 
+                                               type="shadingEngine", 
+                                               plugs=True, 
+                                               source=False,
+                                               destination=True,
+                                               connections=True) or []
+            for src, dest in pairwise(outputs):
+                dest_node = dest.split(".")[0]
+                if dest_node not in cls.DEFAULT_SHADERS:
+                    continue
+                    
+                cmds.disconnectAttr(src, dest)
+                
+            
+            inputs = cmds.listConnections(node, 
+                                               type="shadingEngine", 
+                                               plugs=True, 
+                                               source=True,
+                                               destination=False,
+                                               connections=True) or []
+            for dest, src in pairwise(inputs):
+                src_node = src.split(".")[0]
+                if src_node not in cls.DEFAULT_SHADERS:
+                    continue
+                    
+                cmds.disconnectAttr(src, dest)
+
+    
