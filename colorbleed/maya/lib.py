@@ -1121,27 +1121,6 @@ def set_attribute(attribute, value, node):
         cmds.setAttr(node_attr, value)
 
 
-def apply_attributes(attributes, nodes_by_id):
-    """Alter the attributes to match the state when publishing
-
-    Apply attribute settings from the publish to the node in the scene based
-    on the UUID which is stored in the cbId attribute.
-
-    Args:
-        attributes (list): list of dictionaries
-        nodes_by_id (dict): collection of nodes based on UUID
-                           {uuid: [node, node]}
-
-    """
-
-    for attr_data in attributes:
-        nodes = nodes_by_id[attr_data["uuid"]]
-        attr_value = attr_data["attributes"]
-        for node in nodes:
-            for attr, value in attr_value.items():
-                set_attribute(attr, value, node)
-
-
 # region LOOKDEV
 def list_looks(asset_id):
     """Return all look subsets for the given asset
@@ -1234,8 +1213,17 @@ def assign_look_by_version(nodes, version_id):
     with open(shader_relation, "r") as f:
         relationships = json.load(f)
 
+    # Pass on a label to `apply_shaders`
+    try:
+        label = "{context[asset]}_{context[subset]}".format(
+            **look_representation
+    )
+    except KeyError:
+        label = None
+
     # Assign relationships
-    apply_shaders(relationships, shader_nodes, nodes)
+    return apply_shaders(relationships, shader_nodes, nodes,
+                         label=label)
 
 
 def assign_look(nodes, subset="lookDefault"):
@@ -1259,6 +1247,7 @@ def assign_look(nodes, subset="lookDefault"):
         parts = colorbleed_id.split(":", 1)
         grouped[parts[0]].append(node)
 
+    edits = []
     for asset_id, asset_nodes in grouped.items():
         # create objectId for database
         try:
@@ -1278,35 +1267,27 @@ def assign_look(nodes, subset="lookDefault"):
         # with backwards compatibility
         version = io.find_one({"parent": subset_data['_id'],
                                "type": "version",
-                               "data.families":
-                                   {"$in": ["colorbleed.look"]}
+                               # todo: fix for new style families
+                               #"data.families":
+                               #    {"$in": ["colorbleed.look"]}
                                },
                               sort=[("name", -1)],
                               projection={"_id": True, "name": True})
+        if not version:
+            log.warning("No version found for "
+                        "subset '{}' for {}".format(subset, asset_id))
 
         log.debug("Assigning look '{}' <v{:03d}>".format(subset,
                                                          version["name"]))
 
-        assign_look_by_version(asset_nodes, version['_id'])
+        asset_edits = assign_look_by_version(asset_nodes, version['_id'])
+        edits.extend(asset_edits)
+
+    return edits
 
 
-def apply_shaders(relationships, shadernodes, nodes):
-    """Link shadingEngine to the right nodes based on relationship data
-
-    Relationship data is constructed of a collection of `sets` and `attributes`
-    `sets` corresponds with the shaderEngines found in the lookdev.
-    Each set has the keys `name`, `members` and `uuid`, the `members`
-    hold a collection of node information `name` and `uuid`.
-
-    Args:
-        relationships (dict): relationship data
-        shadernodes (list): list of nodes of the shading objectSets (includes
-        VRayObjectProperties and shadingEngines)
-        nodes (list): list of nodes to apply shader to
-
-    Returns:
-        None
-    """
+def iter_shader_edits(relationships, shadernodes, nodes, label=None):
+    """Yield edits as a set of actions."""
 
     attributes = relationships.get("attributes", [])
     shader_data = relationships.get("relationships", {})
@@ -1344,25 +1325,202 @@ def apply_shaders(relationships, shadernodes, nodes):
 
         id_shading_engines = shading_engines_by_id[shader_uuid]
         if not id_shading_engines:
-            log.error("No shader found with cbId "
-                      "'{}'".format(shader_uuid))
+            log.error("{} - No shader found with cbId "
+                      "'{}'".format(label, shader_uuid))
             continue
         elif len(id_shading_engines) > 1:
-            log.error("Skipping shader assignment. "
+            log.error("{} - Skipping shader assignment. "
                       "More than one shader found with cbId "
-                      "'{}'. (found: {})".format(shader_uuid,
+                      "'{}'. (found: {})".format(label, shader_uuid,
                                                  id_shading_engines))
             continue
 
         if not filtered_nodes:
-            log.warning("No nodes found for shading engine "
-                        "'{0}'".format(id_shading_engines[0]))
+            log.warning("{} - No nodes found for shading engine "
+                        "'{}'".format(label, id_shading_engines[0]))
             continue
 
-        cmds.sets(filtered_nodes, forceElement=id_shading_engines[0])
-    # endregion
+        yield {"action": "assign",
+               "uuid": data["uuid"],
+               "nodes": filtered_nodes,
+               "shader": id_shading_engines[0]}
 
-    apply_attributes(attributes, nodes_by_id)
+    for data in attributes:
+        nodes = nodes_by_id[data["uuid"]]
+        attr_value = data["attributes"]
+        yield {"action": "setattr",
+               "uuid": data["uuid"],
+               "nodes": nodes,
+               "attributes": attr_value}
+
+
+def apply_shaders(relationships,
+                  shadernodes,
+                  nodes,
+                  label=None,
+                  allow_rendersetup_overrides=True):
+    """Link shadingEngine to the right nodes based on relationship data
+
+    Relationship data is constructed of a collection of `sets` and `attributes`
+    `sets` corresponds with the shaderEngines found in the lookdev.
+    Each set has the keys `name`, `members` and `uuid`, the `members`
+    hold a collection of node information `name` and `uuid`.
+
+    Args:
+        relationships (dict): relationship data
+        shadernodes (list): list of nodes of the shading objectSets (includes
+        VRayObjectProperties and shadingEngines)
+        nodes (list): list of filtered nodes to apply shader to.
+        label (str): Label used to describe what shader is being applied.
+            Currently only used to group Render Setup collections.
+
+    Returns:
+        list: List of the edits that were processed.
+
+    """
+    from maya.app.renderSetup.model import (
+        override,
+        selector,
+        collection,
+        renderLayer,
+        renderSetup
+    )
+
+    # Detect whether we are currently in a visible Render Setup layer
+    # so instead of direct assignment we create Render Setup overrides
+    is_rendersetup_layer = False
+    if cmds.mayaHasRenderSetup():
+        layer_name = renderSetup.instance().getVisibleRenderLayer().name()
+        if layer_name != "defaultRenderLayer":
+            is_rendersetup_layer = True
+
+    generator = iter_shader_edits(relationships, shadernodes, nodes)
+    edits = []
+
+    if allow_rendersetup_overrides and is_rendersetup_layer:
+        # TODO This requires more production testing and polish
+        # Render Setup Overrides
+        rs = renderSetup.instance()
+        layer = rs.getVisibleRenderLayer()
+        assert layer.name() != "defaultRenderLayer", (
+            "Not allowed in defaultRenderLayer"
+        )
+
+        group_label = label or "look"
+        group = layer.createGroup("grp_{}".format(group_label))
+
+        def get_filter(nodes):
+            """Return best matching selector filter for node types."""
+            # Reference: Maya2020\Python\Lib\site-packages\maya\app
+            #            \renderSetup\model\selector.py"
+            # todo: implement all 13 Selector filter types
+
+            nodes = cmds.ls(nodes)
+            filters = selector.Filters
+
+            if not nodes:
+                return filters.kAll
+
+            mapping = OrderedDict()
+            # Make sure most exact types are ordered first, then inherited
+            # parents after to avoid matching to broad of a type
+            mapping["transform"] = filters.kTransforms
+            mapping["camera"] = filters.kCameras
+            mapping["shape"] = filters.kShapes
+            mapping["shadingEngine"] = filters.kGenerators
+            mapping["objectSet"] = filters.kSets
+            mapping["shadingEngine"] = filters.kShadingEngines
+            mapping[("transform", "shape")] = filters.kTransformsAndShapes
+            mapping[("polyCreator", "primitive")] = filters.kGenerators
+
+            for types, value in mapping.items():
+                if len(cmds.ls(nodes, type=types)) == len(nodes):
+                    return value
+
+            return filters.kAll
+
+        for edit in generator:
+            action = edit["action"]
+
+            if action == "assign":
+                # rendersetup material override
+                nodes = edit["nodes"]
+                shader = edit["shader"]
+
+                if cmds.nodeType(shader) != "shadingEngine":
+                    log.warning("{} - Adding nodes directly to set as"
+                                " membership overrides are not supported in"
+                                " Render Setup " %shader)
+                    cmds.sets(nodes, forceElement=shader)
+                    # todo: support displacement sets, etc.
+                    continue
+
+                # Get material label (only for shading engines!)
+                out = cmds.listConnections(shader,
+                                           source=True,
+                                           destination=False)[0]
+                label = out.rsplit(":", 1)[-1]
+
+                col = group.createCollection("col_{}".format(label))
+                col.setLabelColor("Green")
+                sel = col.getSelector()
+                sel.setFilterType(get_filter(nodes))
+                sel.staticSelection.set(nodes)
+
+                out = shader + ".message"
+                label = out.rsplit(":", 1)[-1].rsplit(".", 1)[0]
+                override = col.createOverride(label, "materialOverride")
+                override.setSource(out)
+
+                # Assign set membership
+                cmds.sets(nodes, forceElement=shader)
+
+            if action == "setattr":
+                # rendersetup absolute override
+                nodes = edit["nodes"]
+                attr_value = edit["attributes"]
+
+                col = group.createCollection("col_setattr")
+                col.setLabelColor("Blue")
+                sel = col.getSelector()
+                sel.setFilterType(get_filter(nodes))
+                sel.staticSelection.set(nodes)
+
+                for attr, value in attr_value.items():
+
+                    # Create the attribute if it does not exist
+                    for node in nodes:
+                        if not cmds.attributeQuery(attr,
+                                                   node=node,
+                                                   exists=True):
+                            set_attribute(attr, value, node)
+
+                    override = col.createOverride(attr, "absOverride")
+                    override.finalize(attr)
+                    override.setAttrValue(value)
+
+            edits.append(edit)
+
+    else:
+        # Regular edits
+        for edit in generator:
+            action = edit['action']
+
+            if action == "assign":
+                # Assign set membership
+                cmds.sets(edit["nodes"], forceElement=edit["shader"])
+
+            elif action == "setattr":
+                # Set attribute values
+                nodes = edit["nodes"]
+                attr_value = edit["attributes"]
+                for node in nodes:
+                    for attr, value in attr_value.items():
+                        set_attribute(attr, value, node)
+
+            edits.append(edit)
+
+    return edits
 
 
 # endregion LOOKDEV
