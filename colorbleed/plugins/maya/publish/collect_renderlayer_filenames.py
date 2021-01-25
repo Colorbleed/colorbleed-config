@@ -133,6 +133,13 @@ class CollectRenderlayerFilenames(pyblish.api.InstancePlugin):
             # The first entry is the "beauty" pass. (Main render)
             is_beauty_pass = renderpass is None
             if is_beauty_pass:
+
+                if instance.data.get("renderNoMasterLayer", False):
+                    # Some settings might skip rendering of the main layer
+                    # e.g. when in redshift you add a Beauty AOV then only
+                    # that AOV is output and the main layer is ignored.
+                    continue
+
                 renderpass = "beauty"
 
             # Base of the output filepath

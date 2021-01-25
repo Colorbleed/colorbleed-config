@@ -1,8 +1,34 @@
 from maya import cmds
+from maya import mel
 
 import pyblish.api
 
 import colorbleed.maya.lib as lib
+
+
+def get_arnold_light_groups():
+    # reference: {arnold}\scripts\mtoa\ui\ae\aiAOVTemplate.py
+    # loop over all light groups in the scene
+    lights = cmds.ls(exactType=['pointLight',
+                                'directionalLight',
+                                'spotLight',
+                                'areaLight',
+                                'aiAreaLight',
+                                'aiSkyDomeLight',
+                                'aiMeshLight',
+                                'aiPhotometricLight'])
+
+    existing_groups = set()
+    for light in lights:
+        light_group = cmds.getAttr(light + ".aiAov")
+        if light_group:
+            existing_groups.add(light_group)
+
+    return sorted(list(existing_groups))
+
+
+def get_redshift_light_groups():
+    return sorted(mel.eval("redshiftAllAovLightGroups"))
 
 
 class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
@@ -67,8 +93,13 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
             if not enabled:
                 continue
 
-            pass_name = self.get_pass_name(renderer, element)
-            result.append(pass_name)
+            pass_name = self.get_pass_name(renderer, element, instance)
+            if isinstance(pass_name, (tuple, list)):
+                # Single AOV generates multiple output passes
+                result.extend(pass_name)
+            else:
+                # Single AOV generates single output (most often)
+                result.append(pass_name)
 
         self.log.debug("Found {} AOVs for "
                        "'{}': {}".format(len(result),
@@ -77,7 +108,7 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
 
         instance.data["renderPasses"] = result
 
-    def get_pass_name(self, renderer, node):
+    def get_pass_name(self, renderer, node, instance):
 
         if renderer == "vray":
 
@@ -90,7 +121,7 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
 
             # Get render element pass type
             vray_node_attr = next((attr for attr in cmds.listAttr(node)
-                                  if attr.startswith("vray_name")), None)
+                                   if attr.startswith("vray_name")), None)
             if vray_node_attr is None:
                 raise RuntimeError("Failed to retrieve vray_name "
                                    "attribute for: %s" % node)
@@ -118,7 +149,64 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
             # of the attribute as it can be changed
             return cmds.getAttr("{}.{}".format(node, vray_node_attr))
 
-        elif renderer in ["arnold", "redshift"]:
-            return cmds.getAttr("{}.name".format(node))
+        elif renderer == "arnold":
+            name = cmds.getAttr("{}.name".format(node))
+
+            # RGBA pass renders as 'beauty'
+            if name == "RGBA":
+                name = "beauty"
+
+            # Support light Groups
+            all_light_groups = cmds.getAttr("{}.lightGroups".format(node))
+            light_groups = []
+            if all_light_groups:
+                # All light groups is enabled
+                light_groups = get_arnold_light_groups()
+            else:
+                value = cmds.getAttr("{}.lightGroupsList".format(node))
+                selected_light_groups = value.strip().split()
+                light_groups = selected_light_groups
+
+            if light_groups:
+                return ["{}_{}".format(name, light_group) for light_group in
+                        light_groups]
+
+            return name
+        elif renderer == "redshift":
+            name = cmds.getAttr("{}.name".format(node))
+
+            aov = cmds.getAttr(node + ".aovType")
+            if aov == "Beauty":
+                # Redshift skips rendering of masterlayer without AOV suffix
+                # when a Beauty AOV is rendered. It overrides the main layer.
+                instance.data["renderNoMasterLayer"] = True
+
+            if cmds.getAttr("{}.supportsLightGroups".format(node)):
+
+                # Support light Groups
+                all_light_groups = cmds.getAttr(
+                    "{}.allLightGroups".format(node)
+                )
+                light_groups = []
+                if all_light_groups:
+                    # All light groups is enabled
+                    light_groups = get_redshift_light_groups()
+                else:
+                    value = cmds.getAttr("{}.lightGroupList".format(node))
+                    # note: string value can return None when never set
+                    if value:
+                        selected_light_groups = value.strip().split()
+                        light_groups = selected_light_groups
+
+                if light_groups:
+                    names = ["{}_{}".format(name, light_group) for
+                             light_group in light_groups]
+
+                    # Redshift AOV Light Select always renders the global AOV
+                    names.append(name)
+
+                    return names
+
+            return name
         else:
             raise RuntimeError("Unsupported renderer: '{}'".format(renderer))
