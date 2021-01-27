@@ -127,12 +127,9 @@ class CollectFileSequences(pyblish.api.ContextPlugin):
                 root = path
 
             self.log.info("Collecting: {}".format(root))
-            regex = data.get("regex")
-            if regex:
-                self.log.info("Using regex: {}".format(regex))
 
             collections = collect(root=root,
-                                  regex=regex,
+                                  regex=data.get("regex"),
                                   exclude_regex=data.get("exclude_regex"),
                                   startFrame=data.get("startFrame"),
                                   endFrame=data.get("endFrame"))
@@ -176,8 +173,22 @@ class CollectFileSequences(pyblish.api.ContextPlugin):
                     "stagingDir": root,
                     "files": [list(collection)],
                     "startFrame": start,
-                    "endFrame": end
+                    "endFrame": end,
+
+                    # Store the upstream inputs if provided in .json file
+                    "inputs": data.get("inputs"),
+
+                    # Store the current file for each instance as multiple
+                    # 'roots' could be published in a single context
+                    "currentFile": path
                 })
+
+                # When explicit frames are set from the custom frames list
+                # make sure we use those so we can validate explicitly
+                frames_explicit = data.get("frames", None)
+                if frames_explicit:
+                    instance.data["frames"] = frames_explicit
+
                 instance.append(collection)
 
                 self.log.debug("Collected instance:\n"

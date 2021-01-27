@@ -28,15 +28,6 @@ ATTRIBUTE_DICT = {"int": {"attributeType": "long"},
                   "float": {"attributeType": "double"},
                   "bool": {"attributeType": "bool"}}
 
-SHAPE_ATTRS = {"castsShadows",
-               "receiveShadows",
-               "motionBlur",
-               "primaryVisibility",
-               "smoothShading",
-               "visibleInReflections",
-               "visibleInRefractions",
-               "doubleSided",
-               "opposite"}
 
 RENDER_ATTRS = {"vray":
                     {
@@ -115,153 +106,6 @@ def matrix_equals(a, b, tolerance=1e-10):
     if not all(abs(x - y) < tolerance for x, y in zip(a, b)):
         return False
     return True
-
-
-def unique(name):
-    assert isinstance(name, string_types), "`name` must be string"
-
-    while cmds.objExists(name):
-        matches = re.findall(r"\d+$", name)
-
-        if matches:
-            match = matches[-1]
-            name = name.rstrip(match)
-            number = int(match) + 1
-        else:
-            number = 1
-
-        name = name + str(number)
-
-    return name
-
-
-def uv_from_element(element):
-    """Return the UV coordinate of given 'element'
-
-    Supports components, meshes, nurbs.
-
-    """
-
-    supported = ["mesh", "nurbsSurface"]
-
-    uv = [0.5, 0.5]
-
-    if "." not in element:
-        type = cmds.nodeType(element)
-        if type == "transform":
-            geometry_shape = cmds.listRelatives(element, shapes=True)
-
-            if len(geometry_shape) >= 1:
-                geometry_shape = geometry_shape[0]
-            else:
-                return
-
-        elif type in supported:
-            geometry_shape = element
-
-        else:
-            cmds.error("Could not do what you wanted..")
-            return
-    else:
-        # If it is indeed a component - get the current Mesh
-        try:
-            parent = element.split(".", 1)[0]
-
-            # Maya is funny in that when the transform of the shape
-            # of the component elemen has children, the name returned
-            # by that elementection is the shape. Otherwise, it is
-            # the transform. So lets see what type we're dealing with here.
-            if cmds.nodeType(parent) in supported:
-                geometry_shape = parent
-            else:
-                geometry_shape = cmds.listRelatives(parent, shapes=1)[0]
-
-            if not geometry_shape:
-                cmds.error("Skipping %s: Could not find shape." % element)
-                return
-
-            if len(cmds.ls(geometry_shape)) > 1:
-                cmds.warning("Multiple shapes with identical "
-                             "names found. This might not work")
-
-        except TypeError as e:
-            cmds.warning("Skipping %s: Didn't find a shape "
-                         "for component elementection. %s" % (element, e))
-            return
-
-        try:
-            type = cmds.nodeType(geometry_shape)
-
-            if type == "nurbsSurface":
-                # If a surfacePoint is elementected on a nurbs surface
-                root, u, v = element.rsplit("[", 2)
-                uv = [float(u[:-1]), float(v[:-1])]
-
-            if type == "mesh":
-                # -----------
-                # Average the U and V values
-                # ===========
-                uvs = cmds.polyListComponentConversion(element, toUV=1)
-                if not uvs:
-                    cmds.warning("Couldn't derive any UV's from "
-                                 "component, reverting to default U and V")
-                    raise TypeError
-
-                # Flatten list of Uv's as sometimes it returns
-                # neighbors like this [2:3] instead of [2], [3]
-                flattened = []
-
-                for uv in uvs:
-                    flattened.extend(cmds.ls(uv, flatten=True))
-
-                uvs = flattened
-
-                sumU = 0
-                sumV = 0
-                for uv in uvs:
-                    try:
-                        u, v = cmds.polyEditUV(uv, query=True)
-                    except Exception:
-                        cmds.warning("Couldn't find any UV coordinated, "
-                                     "reverting to default U and V")
-                        raise TypeError
-
-                    sumU += u
-                    sumV += v
-
-                averagedU = sumU / len(uvs)
-                averagedV = sumV / len(uvs)
-
-                uv = [averagedU, averagedV]
-        except TypeError:
-            pass
-
-    return uv
-
-
-def shape_from_element(element):
-    """Return shape of given 'element'
-
-    Supports components, meshes, and surfaces
-
-    """
-
-    try:
-        # Get either shape or transform, based on element-type
-        node = cmds.ls(element, objectsOnly=True)[0]
-    except Exception:
-        cmds.warning("Could not find node in %s" % element)
-        return None
-
-    if cmds.nodeType(node) == 'transform':
-        try:
-            return cmds.listRelatives(node, shapes=True)[0]
-        except Exception:
-            cmds.warning("Could not find shape in %s" % element)
-            return None
-
-    else:
-        return node
 
 
 def collect_animation_data():
@@ -475,15 +319,6 @@ class delete_after(object):
     def __exit__(self, type, value, traceback):
         if self._nodes:
             cmds.delete(self._nodes)
-
-
-def get_renderer(layer):
-    with renderlayer(layer):
-        return cmds.getAttr("defaultRenderGlobals.currentRenderer")
-
-
-def get_current_renderlayer():
-    return cmds.editRenderLayerGlobals(query=True, currentRenderLayer=True)
 
 
 @contextlib.contextmanager
@@ -717,6 +552,20 @@ def namespaced(namespace, new=True):
         cmds.namespace(set=original)
 
 
+@contextlib.contextmanager
+def maintained_selection_api():
+    """Maintain selection using the Maya Python API.
+
+    Warning: This is *not* added to the undo stack.
+
+    """
+    original = om.MGlobal.getActiveSelectionList()
+    try:
+        yield
+    finally:
+        om.MGlobal.setActiveSelectionList(original)
+
+
 def polyConstraint(components, *args, **kwargs):
     """Return the list of *components* with the constraints applied.
 
@@ -735,7 +584,13 @@ def polyConstraint(components, *args, **kwargs):
     kwargs.pop('mode', None)
 
     with no_undo(flush=False):
-        with maya.maintained_selection():
+        # Reverting selection to the original selection using
+        # `maya.cmds.select` can be slow in rare cases where previously
+        # `maya.cmds.polySelectConstraint` had set constrain to "All and Next"
+        # and the "Random" setting was activated. To work around this we
+        # revert to the original selection using the Maya API. This is safe
+        # since we're not generating any undo change anyway.
+        with maintained_selection_api():
             # Apply constraint using mode=2 (current and next) so
             # it applies to the selection made before it; because just
             # a `maya.cmds.select()` call will not trigger the constraint.
@@ -1266,27 +1121,6 @@ def set_attribute(attribute, value, node):
         cmds.setAttr(node_attr, value)
 
 
-def apply_attributes(attributes, nodes_by_id):
-    """Alter the attributes to match the state when publishing
-
-    Apply attribute settings from the publish to the node in the scene based
-    on the UUID which is stored in the cbId attribute.
-
-    Args:
-        attributes (list): list of dictionaries
-        nodes_by_id (dict): collection of nodes based on UUID
-                           {uuid: [node, node]}
-
-    """
-
-    for attr_data in attributes:
-        nodes = nodes_by_id[attr_data["uuid"]]
-        attr_value = attr_data["attributes"]
-        for node in nodes:
-            for attr, value in attr_value.items():
-                set_attribute(attr, value, node)
-
-
 # region LOOKDEV
 def list_looks(asset_id):
     """Return all look subsets for the given asset
@@ -1294,13 +1128,36 @@ def list_looks(asset_id):
     This assumes all look subsets start with "look*" in their names.
     """
 
-    # # get all subsets with look leading in
+    # Get all subsets with look leading in
     # the name associated with the asset
-    subset = io.find({"parent": bson.ObjectId(asset_id),
-                      "type": "subset",
-                      "name": {"$regex": "look*"}})
+    subsets = io.find({"parent": io.ObjectId(asset_id),
+                       "type": "subset",
+                       "name": {"$regex": "look*"}})
+    subsets = list(subsets)
 
-    return list(subset)
+    # Now ensure it's actually really a subset that contains `colorbleed.look`
+    # family. Since #443 this wouldn't have to be done separately, but we are
+    # still doing so for backwards compatibility.
+    look_family = "colorbleed.look"
+    look_subsets = []
+    for subset in subsets:
+        # Subsets that based on schema "avalon-core:subset-3.0" have
+        # families directly inside it, see #443.
+        if subset.get("schema") == "avalon-core:subset-3.0":
+            if look_family in subset["data"]["families"]:
+                look_subsets.append(subset)
+        else:
+            # Backwards compatibility for older subset version that only
+            # had families stored in the version data.
+            if io.find_one({"data.families": look_family,
+                            "parent": subset["_id"]},
+                           # Optimization: Use empty projection list so it
+                           # only returns the id instead of full data for the
+                           # version
+                           projection=list()):
+                look_subsets.append(subset)
+
+    return look_subsets
 
 
 def assign_look_by_version(nodes, version_id):
@@ -1356,8 +1213,17 @@ def assign_look_by_version(nodes, version_id):
     with open(shader_relation, "r") as f:
         relationships = json.load(f)
 
+    # Pass on a label to `apply_shaders`
+    try:
+        label = "{context[asset]}_{context[subset]}".format(
+            **look_representation
+    )
+    except KeyError:
+        label = None
+
     # Assign relationships
-    apply_shaders(relationships, shader_nodes, nodes)
+    return apply_shaders(relationships, shader_nodes, nodes,
+                         label=label)
 
 
 def assign_look(nodes, subset="lookDefault"):
@@ -1381,6 +1247,7 @@ def assign_look(nodes, subset="lookDefault"):
         parts = colorbleed_id.split(":", 1)
         grouped[parts[0]].append(node)
 
+    edits = []
     for asset_id, asset_nodes in grouped.items():
         # create objectId for database
         try:
@@ -1400,35 +1267,27 @@ def assign_look(nodes, subset="lookDefault"):
         # with backwards compatibility
         version = io.find_one({"parent": subset_data['_id'],
                                "type": "version",
-                               "data.families":
-                                   {"$in": ["colorbleed.look"]}
+                               # todo: fix for new style families
+                               #"data.families":
+                               #    {"$in": ["colorbleed.look"]}
                                },
                               sort=[("name", -1)],
                               projection={"_id": True, "name": True})
+        if not version:
+            log.warning("No version found for "
+                        "subset '{}' for {}".format(subset, asset_id))
 
         log.debug("Assigning look '{}' <v{:03d}>".format(subset,
                                                          version["name"]))
 
-        assign_look_by_version(asset_nodes, version['_id'])
+        asset_edits = assign_look_by_version(asset_nodes, version['_id'])
+        edits.extend(asset_edits)
+
+    return edits
 
 
-def apply_shaders(relationships, shadernodes, nodes):
-    """Link shadingEngine to the right nodes based on relationship data
-
-    Relationship data is constructed of a collection of `sets` and `attributes`
-    `sets` corresponds with the shaderEngines found in the lookdev.
-    Each set has the keys `name`, `members` and `uuid`, the `members`
-    hold a collection of node information `name` and `uuid`.
-
-    Args:
-        relationships (dict): relationship data
-        shadernodes (list): list of nodes of the shading objectSets (includes
-        VRayObjectProperties and shadingEngines)
-        nodes (list): list of nodes to apply shader to
-
-    Returns:
-        None
-    """
+def iter_shader_edits(relationships, shadernodes, nodes, label=None):
+    """Yield edits as a set of actions."""
 
     attributes = relationships.get("attributes", [])
     shader_data = relationships.get("relationships", {})
@@ -1450,33 +1309,228 @@ def apply_shaders(relationships, shadernodes, nodes):
     for data in shader_data.values():
         # collect all unique IDs of the set members
         shader_uuid = data["uuid"]
-        member_uuids = [member["uuid"] for member in data["members"]]
+        member_uuids = [
+            (member["uuid"], member.get("components"))
+            for member in data["members"]]
 
         filtered_nodes = list()
-        for uuid in member_uuids:
-            filtered_nodes.extend(nodes_by_id[uuid])
+        for uuid, components in member_uuids:
+            nodes = nodes_by_id[uuid]
+
+            if components:
+                # Assign to the components
+                nodes = [".".join([node, components]) for node in nodes]
+
+            filtered_nodes.extend(nodes)
 
         id_shading_engines = shading_engines_by_id[shader_uuid]
         if not id_shading_engines:
-            log.error("No shader found with cbId "
-                      "'{}'".format(shader_uuid))
+            log.error("{} - No shader found with cbId "
+                      "'{}'".format(label, shader_uuid))
             continue
         elif len(id_shading_engines) > 1:
-            log.error("Skipping shader assignment. "
+            log.error("{} - Skipping shader assignment. "
                       "More than one shader found with cbId "
-                      "'{}'. (found: {})".format(shader_uuid,
+                      "'{}'. (found: {})".format(label, shader_uuid,
                                                  id_shading_engines))
             continue
 
         if not filtered_nodes:
-            log.warning("No nodes found for shading engine "
-                        "'{0}'".format(id_shading_engines[0]))
+            log.warning("{} - No nodes found for shading engine "
+                        "'{}'".format(label, id_shading_engines[0]))
             continue
 
-        cmds.sets(filtered_nodes, forceElement=id_shading_engines[0])
-    # endregion
+        yield {"action": "assign",
+               "uuid": data["uuid"],
+               "nodes": filtered_nodes,
+               "shader": id_shading_engines[0]}
 
-    apply_attributes(attributes, nodes_by_id)
+    for data in attributes:
+        nodes = nodes_by_id[data["uuid"]]
+        attr_value = data["attributes"]
+        yield {"action": "setattr",
+               "uuid": data["uuid"],
+               "nodes": nodes,
+               "attributes": attr_value}
+
+
+def apply_shaders(relationships,
+                  shadernodes,
+                  nodes,
+                  label=None,
+                  allow_rendersetup_overrides=True):
+    """Link shadingEngine to the right nodes based on relationship data
+
+    Relationship data is constructed of a collection of `sets` and `attributes`
+    `sets` corresponds with the shaderEngines found in the lookdev.
+    Each set has the keys `name`, `members` and `uuid`, the `members`
+    hold a collection of node information `name` and `uuid`.
+
+    Args:
+        relationships (dict): relationship data
+        shadernodes (list): list of nodes of the shading objectSets (includes
+        VRayObjectProperties and shadingEngines)
+        nodes (list): list of filtered nodes to apply shader to.
+        label (str): Label used to describe what shader is being applied.
+            Currently only used to group Render Setup collections.
+
+    Returns:
+        list: List of the edits that were processed.
+
+    """
+    from maya.app.renderSetup.model import (
+        override,
+        selector,
+        collection,
+        renderLayer,
+        renderSetup
+    )
+
+    # Detect whether we are currently in a visible Render Setup layer
+    # so instead of direct assignment we create Render Setup overrides
+    is_rendersetup_layer = False
+    if cmds.mayaHasRenderSetup():
+        layer_name = renderSetup.instance().getVisibleRenderLayer().name()
+        if layer_name != "defaultRenderLayer":
+            is_rendersetup_layer = True
+
+    generator = iter_shader_edits(relationships, shadernodes, nodes)
+    edits = []
+
+    if allow_rendersetup_overrides and is_rendersetup_layer:
+        # TODO This requires more production testing and polish
+        # Render Setup Overrides
+        rs = renderSetup.instance()
+        layer = rs.getVisibleRenderLayer()
+        assert layer.name() != "defaultRenderLayer", (
+            "Not allowed in defaultRenderLayer"
+        )
+
+        group_label = label or "look"
+        group = layer.createGroup("grp_{}".format(group_label))
+
+        def get_filter(nodes):
+            """Return best matching selector filter for node types."""
+            # Reference: Maya2020\Python\Lib\site-packages\maya\app
+            #            \renderSetup\model\selector.py"
+            # todo: implement all 13 Selector filter types
+
+            nodes = cmds.ls(nodes)
+            filters = selector.Filters
+
+            if not nodes:
+                return filters.kAll
+
+            mapping = OrderedDict()
+            # Make sure most exact types are ordered first, then inherited
+            # parents after to avoid matching to broad of a type
+            mapping["transform"] = filters.kTransforms
+            mapping["camera"] = filters.kCameras
+            mapping["shape"] = filters.kShapes
+            mapping["shadingEngine"] = filters.kGenerators
+            mapping["objectSet"] = filters.kSets
+            mapping["shadingEngine"] = filters.kShadingEngines
+            mapping[("transform", "shape")] = filters.kTransformsAndShapes
+            mapping[("polyCreator", "primitive")] = filters.kGenerators
+
+            for types, value in mapping.items():
+                if len(cmds.ls(nodes, type=types)) == len(nodes):
+                    return value
+
+            return filters.kAll
+
+        for edit in generator:
+            action = edit["action"]
+
+            if action == "assign":
+                # rendersetup material override
+                nodes = edit["nodes"]
+                shader = edit["shader"]
+
+                if not nodes:
+                    continue
+
+                if cmds.nodeType(shader) != "shadingEngine":
+                    log.warning("{} - Adding nodes to set because membership "
+                                "overrides are not supported in Render Setup: "
+                                "{} ".format(label, shader))
+                    cmds.sets(nodes, forceElement=shader)
+                    # todo: support displacement sets, etc.
+                    continue
+
+                # Get material to label the override nicely
+                material = cmds.listConnections(shader + ".surfaceShader",
+                                                source=True,
+                                                destination=False) or []
+                if material:
+                    material_label = material[0].rsplit(":", 1)[-1]
+                else:
+                    log.warning("Shading Engine has no "
+                                "connected surfaceShader: {}".format(shader))
+                    material_label = "material"
+
+                col = group.createCollection("col_{}".format(material_label))
+                col.setLabelColor("Green")
+                sel = col.getSelector()
+                sel.setFilterType(get_filter(nodes))
+                sel.staticSelection.set(nodes)
+
+                shader_label = shader.rsplit(":", 1)[-1].rsplit(".", 1)[0]
+                override = col.createOverride(shader_label, "materialOverride")
+                override.setSource(shader + ".message")
+
+                # Assign set membership
+                cmds.sets(nodes, forceElement=shader)
+
+            if action == "setattr":
+                # rendersetup absolute override
+                nodes = edit["nodes"]
+                attr_value = edit["attributes"]
+
+                if not nodes:
+                    continue
+
+                col = group.createCollection("col_setattr")
+                col.setLabelColor("Blue")
+                sel = col.getSelector()
+                sel.setFilterType(get_filter(nodes))
+                sel.staticSelection.set(nodes)
+
+                for attr, value in attr_value.items():
+
+                    # Create the attribute if it does not exist
+                    for node in nodes:
+                        if not cmds.attributeQuery(attr,
+                                                   node=node,
+                                                   exists=True):
+                            set_attribute(attr, value, node)
+
+                    override = col.createOverride(attr, "absOverride")
+                    override.finalize(attr)
+                    override.setAttrValue(value)
+
+            edits.append(edit)
+
+    else:
+        # Regular edits
+        for edit in generator:
+            action = edit['action']
+
+            if action == "assign":
+                # Assign set membership
+                cmds.sets(edit["nodes"], forceElement=edit["shader"])
+
+            elif action == "setattr":
+                # Set attribute values
+                nodes = edit["nodes"]
+                attr_value = edit["attributes"]
+                for node in nodes:
+                    for attr, value in attr_value.items():
+                        set_attribute(attr, value, node)
+
+            edits.append(edit)
+
+    return edits
 
 
 # endregion LOOKDEV
@@ -1590,6 +1644,7 @@ def get_highest_in_hierarchy(nodes):
     """Return highest nodes in the hierarchy that are in the `nodes` list.
 
     The "highest in hierarchy" are the nodes closest to world: top-most level.
+    This filters out nodes that are children of others in the input `nodes`.
 
     Args:
         nodes (list): The nodes in which find the highest in hierarchies.
@@ -2102,9 +2157,8 @@ def get_attr_in_layer(attr, layer):
     """
 
     if cmds.mayaHasRenderSetup():
-        log.debug("lib.get_attr_in_layer is not optimized for render setup")
-        with renderlayer(layer):
-            return cmds.getAttr(attr)
+        from . import lib_rendersetup
+        return lib_rendersetup.get_attr_in_layer(attr, layer)
 
     # Ignore complex query if we're in the layer anyway
     current_layer = cmds.editRenderLayerGlobals(query=True,
@@ -2162,3 +2216,276 @@ def get_attr_in_layer(attr, layer):
                     return value
 
     return cmds.getAttr(attr)
+
+
+def get_shader_in_layer(node, layer):
+    """Return the assigned shader in a renderlayer without switching layers.
+
+    This has been developed and tested for Legacy Renderlayers and *not* for
+    Render Setup.
+
+    Note: This will also return the shader for any face assignments, however
+        it will *not* return the components they are assigned to. This could
+        be implemented, but since Maya's renderlayers are famous for breaking
+        with face assignments there has been no need for this function to
+        support that.
+
+    Returns:
+        list: The list of assigned shaders in the given layer.
+
+    """
+
+    def _get_shader(shape):
+        """Return current shader"""
+        return cmds.listConnections(shape + ".instObjGroups",
+                                    source=False,
+                                    destination=True,
+                                    plugs=False,
+                                    connections=False,
+                                    type="shadingEngine") or []
+
+    # We check the instObjGroups (shader connection) for layer overrides.
+    attr = node + ".instObjGroups"
+
+    # Ignore complex query if we're in the layer anyway (optimization)
+    current_layer = cmds.editRenderLayerGlobals(query=True,
+                                                currentRenderLayer=True)
+    if layer == current_layer:
+        return _get_shader(node)
+
+    connections = cmds.listConnections(attr,
+                                       plugs=True,
+                                       source=False,
+                                       destination=True,
+                                       type="renderLayer") or []
+    connections = filter(lambda x: x.endswith(".outPlug"), connections)
+    if not connections:
+        # If no overrides anywhere on the shader, just get the current shader
+        return _get_shader(node)
+
+    def _get_override(connections, layer):
+        """Return the overridden connection for that layer in connections"""
+        # If there's an override on that layer, return that.
+        for connection in connections:
+            if (connection.startswith(layer + ".outAdjustments") and
+                    connection.endswith(".outPlug")):
+
+                # This is a shader override on that layer so get the shader
+                # connected to .outValue of the .outAdjustment[i]
+                out_adjustment = connection.rsplit(".", 1)[0]
+                connection_attr = out_adjustment + ".outValue"
+                override = cmds.listConnections(connection_attr) or []
+
+                return override
+
+    override_shader = _get_override(connections, layer)
+    if override_shader is not None:
+        return override_shader
+    else:
+        # Get the override for "defaultRenderLayer" (=masterLayer)
+        return _get_override(connections, layer="defaultRenderLayer")
+
+
+@contextlib.contextmanager
+def maintained_time():
+    ct = cmds.currentTime(query=True)
+    try:
+        yield
+    finally:
+        cmds.currentTime(ct, edit=True)
+
+
+def memodict(f):
+    """Memoization decorator for a function taking a single argument.
+
+    See: http://code.activestate.com/recipes/
+         578231-probably-the-fastest-memoization-decorator-in-the-/
+    """
+
+    class memodict(dict):
+        def __missing__(self, key):
+            ret = self[key] = f(key)
+            return ret
+
+    return memodict().__getitem__
+
+
+def get_visible_in_frame_range(nodes, start, end):
+    """Return nodes that are visible in start-end frame range.
+
+    - Ignores intermediateObjects completely.
+    - Considers animated visibility attributes + upstream visibilities.
+
+    This is optimized for large scenes where some nodes in the parent
+    hierarchy might have some input connections to the visibilities,
+    e.g. key, driven keys, connections to other attributes, etc.
+
+    This only does a single time step to `start` if current frame is
+    not inside frame range since the assumption is made that changing
+    a frame isn't so slow that it beats querying all visibility
+    plugs through MDGContext on another frame.
+
+    Args:
+        nodes (list): List of node names to consider.
+        start (int): Start frame.
+        end (int): End frame.
+
+    Returns:
+        list: List of node names. These will be long full path names so
+            might have a longer name than the input nodes.
+
+    """
+    # States we consider per node
+    VISIBLE = 1  # always visible
+    INVISIBLE = 0  # always invisible
+    ANIMATED = -1  # animated visibility
+
+    # Ensure integers
+    start = int(start)
+    end = int(end)
+
+    # Consider only non-intermediate dag nodes and use the "long" names.
+    nodes = cmds.ls(nodes, long=True, noIntermediate=True, type="dagNode")
+    if not nodes:
+        return []
+
+    with maintained_time():
+        # Go to first frame of the range if we current time is outside of
+        # the queried range. This is to do a single query on which are at
+        # least visible at a time inside the range, (e.g those that are
+        # always visible)
+        current_time = cmds.currentTime(query=True)
+        if not (start <= current_time <= end):
+            cmds.currentTime(start)
+
+        visible = cmds.ls(nodes, long=True, visible=True)
+        if len(visible) == len(nodes) or start == end:
+            # All are visible on frame one, so they are at least visible once
+            # inside the frame range.
+            return visible
+
+    # For the invisible ones check whether its visibility and/or
+    # any of its parents visibility attributes are animated. If so, it might
+    # get visible on other frames in the range.
+    @memodict
+    def get_state(node):
+        plug = node + ".visibility"
+        connections = cmds.listConnections(plug,
+                                           source=True,
+                                           destination=False)
+        if connections:
+            return ANIMATED
+        else:
+            return VISIBLE if cmds.getAttr(plug) else INVISIBLE
+
+    visible = set(visible)
+    invisible = [node for node in nodes if node not in visible]
+    always_invisible = set()
+    # Iterate over the nodes by short to long names, so we iterate the highest
+    # in hierarcy nodes first. So the collected data can be used from the
+    # cache for parent queries in next iterations.
+    node_dependencies = dict()
+    for node in sorted(invisible, key=len):
+
+        state = get_state(node)
+        if state == INVISIBLE:
+            always_invisible.add(node)
+            continue
+
+        # If not always invisible by itself we should go through and check
+        # the parents to see if any of them are always invisible. For those
+        # that are "ANIMATED" we consider that this node is dependent on
+        # that attribute, we store them as dependency.
+        dependencies = set()
+        if state == ANIMATED:
+            dependencies.add(node)
+
+        traversed_parents = list()
+        for parent in iter_parents(node):
+
+            if not parent:
+                # Workaround bug in iter_parents
+                continue
+
+            if parent in always_invisible or get_state(parent) == INVISIBLE:
+                # When parent is always invisible then consider this parent,
+                # this node we started from and any of the parents we
+                # have traversed in-between to be *always invisible*
+                always_invisible.add(parent)
+                always_invisible.add(node)
+                always_invisible.update(traversed_parents)
+                break
+
+            # If we have traversed the parent before and its visibility
+            # was dependent on animated visibilities then we can just extend
+            # its dependencies for to those for this node and break further
+            # iteration upwards.
+            parent_dependencies = node_dependencies.get(parent, None)
+            if parent_dependencies is not None:
+                dependencies.update(parent_dependencies)
+                break
+
+            state = get_state(parent)
+            if state == ANIMATED:
+                dependencies.add(parent)
+
+            traversed_parents.append(parent)
+
+        if node not in always_invisible and dependencies:
+            node_dependencies[node] = dependencies
+
+    if not node_dependencies:
+        return list(visible)
+
+    # Now we only have to check the visibilities for nodes that have animated
+    # visibility dependencies upstream. The fastest way to check these
+    # visibility attributes across different frames is with Python api 2.0
+    # so we do that.
+    @memodict
+    def get_visibility_mplug(node):
+        """Return api 2.0 MPlug with cached memoize decorator"""
+        sel = om.MSelectionList()
+        sel.add(node)
+        dag = sel.getDagPath(0)
+        return om.MFnDagNode(dag).findPlug("visibility", True)
+
+    # We skip the first frame as we already used that frame to check for
+    # overall visibilities. And end+1 to include the end frame.
+    scene_units = om.MTime.uiUnit()
+    for frame in range(start + 1, end + 1):
+
+        mtime = om.MTime(frame, unit=scene_units)
+        context = om.MDGContext(mtime)
+
+        # Build little cache so we don't query the same MPlug's value
+        # again if it was checked on this frame and also is a dependency
+        # for another node
+        frame_visibilities = {}
+
+        for node, dependencies in node_dependencies.items():
+
+            for dependency in dependencies:
+
+                dependency_visible = frame_visibilities.get(dependency, None)
+                if dependency_visible is None:
+                    mplug = get_visibility_mplug(dependency)
+                    dependency_visible = mplug.asBool(context)
+                    frame_visibilities[dependency] = dependency_visible
+
+                if not dependency_visible:
+                    # One dependency is not visible, thus the
+                    # node is not visible.
+                    break
+
+            else:
+                # All dependencies are visible.
+                visible.add(node)
+                # Remove node with dependencies for next iterations
+                # because it was visible at least once.
+                node_dependencies.pop(node)
+
+        # If no more nodes to process break the frame iterations..
+        if not node_dependencies:
+            break
+
+    return list(visible)

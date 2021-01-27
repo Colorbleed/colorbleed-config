@@ -35,5 +35,8 @@ class CreateAnimation(avalon.maya.Creator):
         # Default to exporting world-space
         self.data["worldSpace"] = True
 
+        # Whether to strip namespaces
+        self.data["stripNamespaces"] = True
+
         # Apply Euler filter to rotations
         self.data["eulerFilter"] = True

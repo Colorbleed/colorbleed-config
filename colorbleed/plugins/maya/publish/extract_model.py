@@ -1,10 +1,43 @@
 import os
+import contextlib
 
 from maya import cmds
 
 import avalon.maya
 import colorbleed.api
 import colorbleed.maya.lib as lib
+
+
+@contextlib.contextmanager
+def no_color_sets(nodes, enabled=True):
+    """Temporarily remove mesh color sets using undo chunk"""
+
+    if not enabled:
+        # Do nothing
+        yield
+        return
+
+    mesh_colors = {}
+    for mesh in cmds.ls(nodes, type="mesh"):
+        color_sets = cmds.polyColorSet(mesh,
+                                       query=True,
+                                       allColorSets=True)
+        if color_sets:
+            mesh_colors[mesh] = color_sets
+
+    if not mesh_colors:
+        yield
+        return
+
+    try:
+        cmds.undoInfo(openChunk=True, chunkName="no_color_set (context)")
+        for mesh, color_sets in mesh_colors.items():
+            for color_set in color_sets:
+                cmds.polyColorSet(mesh, delete=True, colorSet=color_set)
+        yield
+    finally:
+        cmds.undoInfo(closeChunk=True)
+        cmds.undo()
 
 
 class ExtractModel(colorbleed.api.Extractor):
@@ -46,26 +79,29 @@ class ExtractModel(colorbleed.api.Extractor):
                           noIntermediate=True,
                           long=True)
 
-        with lib.no_display_layers(instance):
-            with lib.displaySmoothness(members,
-                                       divisionsU=0,
-                                       divisionsV=0,
-                                       pointsWire=4,
-                                       pointsShaded=1,
-                                       polygonObject=1):
-                with lib.shader(members,
-                                shadingEngine="initialShadingGroup"):
-                    with avalon.maya.maintained_selection():
-                        cmds.select(members, noExpand=True)
-                        cmds.file(path,
-                                  force=True,
-                                  typ="mayaAscii",
-                                  exportSelected=True,
-                                  preserveReferences=False,
-                                  channels=False,
-                                  constraints=False,
-                                  expressions=False,
-                                  constructionHistory=False)
+        remove_color_sets = not instance.data.get("writeColorSets", False)
+
+        with no_color_sets(members, enabled=remove_color_sets):
+            with lib.no_display_layers(instance):
+                with lib.displaySmoothness(members,
+                                           divisionsU=0,
+                                           divisionsV=0,
+                                           pointsWire=4,
+                                           pointsShaded=1,
+                                           polygonObject=1):
+                    with lib.shader(members,
+                                    shadingEngine="initialShadingGroup"):
+                        with avalon.maya.maintained_selection():
+                            cmds.select(members, noExpand=True)
+                            cmds.file(path,
+                                      force=True,
+                                      typ="mayaAscii",
+                                      exportSelected=True,
+                                      preserveReferences=False,
+                                      channels=False,
+                                      constraints=False,
+                                      expressions=False,
+                                      constructionHistory=False)
 
                         # Store reference for integration
 

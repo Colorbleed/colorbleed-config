@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 
 import hou
@@ -44,7 +45,16 @@ def install():
     pyblish.register_callback("instanceToggled", on_pyblish_instance_toggled)
 
     log.info("Setting default family states for loader..")
-    avalon.data["familiesStateToggled"] = ["colorbleed.imagesequence"]
+    avalon.data["familiesStateToggled"] = [
+        "colorbleed.imagesequence",
+        "colorbleed.review"
+    ]
+
+    # Expose Houdini husdoutputprocessors
+    hou_setup_pythonpath = os.path.join(os.path.dirname(PACKAGE_DIR),
+                                        "setup", "houdini", "pythonpath")
+    print("Adding PYTHONPATH: %s" % hou_setup_pythonpath)
+    sys.path.append(hou_setup_pythonpath)
 
     # Set asset FPS for the empty scene directly after launch of Houdini
     # so it initializes into the correct scene FPS
@@ -68,6 +78,10 @@ def on_save(*args):
 
 def on_open(*args):
 
+    if not hou.isUIAvailable():
+        log.debug("Batch mode detected, ignoring `on_open` callbacks..")
+        return
+
     avalon.logger.info("Running callback on open..")
 
     update_task_from_path(hou.hipFile.path())
@@ -85,7 +99,7 @@ def on_open(*args):
         parent = hou.ui.mainQtWindow()
         if parent is None:
             log.info("Skipping outdated content pop-up "
-                     "because Maya window can't be found.")
+                     "because Houdini window can't be found.")
         else:
 
             # Show outdated pop-up
@@ -119,6 +133,9 @@ def _set_asset_fps():
 def on_pyblish_instance_toggled(instance, new_value, old_value):
     """Toggle saver tool passthrough states on instance toggles."""
 
+    if not instance.data.get("_allowToggleBypass", True):
+        return
+
     nodes = instance[:]
     if not nodes:
         return
@@ -126,8 +143,16 @@ def on_pyblish_instance_toggled(instance, new_value, old_value):
     # Assume instance node is first node
     instance_node = nodes[0]
 
+    if not hasattr(instance_node, "isBypassed"):
+        # Likely not a node that can actually be bypassed
+        log.debug("Can't bypass node: %s", instance_node.path())
+        return
+
     if instance_node.isBypassed() != (not old_value):
         print("%s old bypass state didn't match old instance state, "
               "updating anyway.." % instance_node.path())
 
-    instance_node.bypass(not new_value)
+    try:
+        instance_node.bypass(not new_value)
+    except hou.PermissionError as exc:
+        log.warning("%s - %s", instance_node.path(), exc)

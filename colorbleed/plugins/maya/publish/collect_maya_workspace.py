@@ -12,7 +12,6 @@ class CollectMayaWorkspace(pyblish.api.ContextPlugin):
     label = "Maya Workspace"
 
     hosts = ['maya']
-    version = (0, 1, 0)
 
     def process(self, context):
         workspace = cmds.workspace(rootDirectory=True, query=True)
@@ -23,5 +22,4 @@ class CollectMayaWorkspace(pyblish.api.ContextPlugin):
 
         # Maya returns forward-slashes by default
         normalised = os.path.normpath(workspace)
-
-        context.set_data('workspaceDir', value=normalised)
+        context.data["workspaceDir"] = normalised

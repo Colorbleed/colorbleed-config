@@ -22,6 +22,14 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
         Uses its own render settings node and RedshiftAOV node. It is not
         connected but all AOVs are enabled for all render layers by default.
 
+    Requires:
+        instance    -> renderer
+        instance    -> setMembers
+        instance    -> subset
+
+    Provides:
+        instance    -> renderPasses
+
     """
 
     order = pyblish.api.CollectorOrder + 0.01
@@ -31,17 +39,14 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
-        # Check if Extend Frames is toggled
-        if not instance.data("extendFrames", False):
-            return
-
         # Get renderer
         renderer = instance.data["renderer"]
-        self.log.info("Renderer found: {}".format(renderer))
 
-        rp_node_types = {"vray": ["VRayRenderElement", "VRayRenderElementSet"],
-                         "arnold": ["aiAOV"],
-                         "redshift": ["RedshiftAOV"]}
+        rp_node_types = {
+            "vray": ["VRayRenderElement", "VRayRenderElementSet"],
+            "arnold": ["aiAOV"],
+            "redshift": ["RedshiftAOV"]
+        }
 
         if renderer not in rp_node_types.keys():
             self.log.error("Unsupported renderer found: '{}'".format(renderer))
@@ -51,6 +56,7 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
 
         # Collect all AOVs / Render Elements
         layer = instance.data["setMembers"]
+        layer_name = instance.data["subset"]
         node_type = rp_node_types[renderer]
         render_elements = cmds.ls(type=node_type)
 
@@ -62,12 +68,12 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
                 continue
 
             pass_name = self.get_pass_name(renderer, element)
-            render_pass = "%s.%s" % (instance.data["subset"], pass_name)
+            result.append(pass_name)
 
-            result.append(render_pass)
-
-        self.log.info("Found {} render elements / AOVs for "
-                      "'{}'".format(len(result), instance.data["subset"]))
+        self.log.debug("Found {} AOVs for "
+                       "'{}': {}".format(len(result),
+                                         instance.data["subset"],
+                                         sorted(result)))
 
         instance.data["renderPasses"] = result
 
@@ -75,17 +81,38 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
 
         if renderer == "vray":
 
+            vray_class_type = cmds.getAttr(node + ".vrayClassType")
+            if vray_class_type == "velocityChannel":
+                # Somehow later versions of V-Ray don't have vray_name
+                # attributes for velocity passes. So we rely on
+                # vray_filename_velocity
+                return cmds.getAttr(node + ".vray_filename_velocity")
+
             # Get render element pass type
-            vray_node_attr = next(attr for attr in cmds.listAttr(node)
-                                  if attr.startswith("vray_name"))
+            vray_node_attr = next((attr for attr in cmds.listAttr(node)
+                                  if attr.startswith("vray_name")), None)
+            if vray_node_attr is None:
+                raise RuntimeError("Failed to retrieve vray_name "
+                                   "attribute for: %s" % node)
             pass_type = vray_node_attr.rsplit("_", 1)[-1]
 
             # Support V-Ray extratex explicit name (if set by user)
             if pass_type == "extratex":
+
                 explicit_attr = "{}.vray_explicit_name_extratex".format(node)
                 explicit_name = cmds.getAttr(explicit_attr)
                 if explicit_name:
                     return explicit_name
+
+                # Somehow V-Ray appends the Texture node's name to the filename
+                texture_attr = node + ".vray_texture_extratex"
+                connected_texture = cmds.listConnections(texture_attr,
+                                                         source=True,
+                                                         destination=False)
+                if connected_texture:
+                    basename = cmds.getAttr("{}.{}".format(node,
+                                                           vray_node_attr))
+                    return "{}_{}".format(basename, connected_texture[0])
 
             # Node type is in the attribute name but we need to check if value
             # of the attribute as it can be changed

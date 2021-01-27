@@ -15,8 +15,7 @@ class ValidateNoDefaultCameras(pyblish.api.InstancePlugin):
 
     order = colorbleed.api.ValidateContentsOrder
     hosts = ['maya']
-    families = ['colorbleed.camera']
-    version = (0, 1, 0)
+    families = ["colorbleed.camera", "usdCamera"]
     label = "No Default Cameras"
     actions = [colorbleed.maya.action.SelectInvalidAction]
 

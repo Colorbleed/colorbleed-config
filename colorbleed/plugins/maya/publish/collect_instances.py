@@ -1,6 +1,66 @@
 from maya import cmds
+import maya.api.OpenMaya as om
 
 import pyblish.api
+
+
+def get_all_parents(nodes):
+    """Get all parents by using string operations (optimization)
+
+    Args:
+        nodes (list): the nodes which are found in the objectSet
+
+    Returns:
+        list
+    """
+
+    parents = []
+    for node in nodes:
+        splitted = node.split("|")
+        items = ["|".join(splitted[0:i]) for i in range(2, len(splitted))]
+        parents.extend(items)
+
+    return list(set(parents))
+
+
+def get_all_children(nodes):
+    """Return all children of `nodes` including each instanced child.
+
+    Using maya.cmds.listRelatives(allDescendents=True) includes only the first
+    instance. As such, this function acts as an optimal replacement with a
+    focus on a fast query.
+
+    """
+
+    sel = om.MSelectionList()
+    traversed = set()
+    iterator = om.MItDag(om.MItDag.kDepthFirst)
+    for node in nodes:
+
+        if node in traversed:
+            # Ignore if already processed as a child
+            # before
+            continue
+
+        sel.clear()
+        sel.add(node)
+        dag = sel.getDagPath(0)
+
+        iterator.reset(dag)
+        iterator.next()  # ignore self
+        while not iterator.isDone():
+
+            path = iterator.fullPathName()
+
+            if path in traversed:
+                iterator.prune()
+                iterator.next()
+                continue
+
+            traversed.add(path)
+            iterator.next()
+
+    return list(traversed)
 
 
 class CollectInstances(pyblish.api.ContextPlugin):
@@ -76,19 +136,15 @@ class CollectInstances(pyblish.api.ContextPlugin):
             # Collect members
             members = cmds.ls(members, long=True) or []
 
-            # `maya.cmds.listRelatives(noIntermediate=True)` only works when
-            # `shapes=True` argument is passed, since we also want to include
-            # transforms we filter afterwards.
-            children = cmds.listRelatives(members,
-                                          allDescendents=True,
-                                          fullPath=True) or []
+            dag_members = cmds.ls(members, type="dagNode", long=True)
+            children = get_all_children(dag_members)
             children = cmds.ls(children, noIntermediate=True, long=True)
 
             parents = []
             if data.get("includeParentHierarchy", True):
                 # If `includeParentHierarchy` then include the parents
                 # so they will also be picked up in the instance by validators
-                parents = self.get_all_parents(members)
+                parents = get_all_parents(dag_members)
             members_hierarchy = list(set(members + children + parents))
 
             # Create the instance
@@ -124,21 +180,3 @@ class CollectInstances(pyblish.api.ContextPlugin):
         context[:] = sorted(context, key=sort_by_family)
 
         return context
-
-    def get_all_parents(self, nodes):
-        """Get all parents by using string operations (optimization)
-
-        Args:
-            nodes (list): the nodes which are found in the objectSet
-
-        Returns:
-            list
-        """
-
-        parents = []
-        for node in nodes:
-            splitted = node.split("|")
-            items = ["|".join(splitted[0:i]) for i in range(2, len(splitted))]
-            parents.extend(items)
-
-        return list(set(parents))

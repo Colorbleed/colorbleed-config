@@ -20,7 +20,7 @@ class CollectAnimationOutputGeometry(pyblish.api.InstancePlugin):
     label = "Collect Animation Output Geometry"
     hosts = ["maya"]
 
-    ignore_type = ["constraints"]
+    ignore_type = ["constraint"]
 
     def process(self, instance):
         """Collect the hierarchy nodes"""
@@ -52,5 +52,6 @@ class CollectAnimationOutputGeometry(pyblish.api.InstancePlugin):
             hierarchy = [node for node in hierarchy if node not in ignore]
 
         # Store data in the instance for the validator
-        instance.data["out_hierarchy"] = hierarchy
+        instance.data["outMembers"] = members
+        instance.data["outMembersHierarchy"] = hierarchy
 

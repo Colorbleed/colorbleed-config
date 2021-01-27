@@ -38,7 +38,7 @@ class CreateRenderGlobals(avalon.maya.Creator):
         self.data["suspendPublishJob"] = False
         self.data["extendFrames"] = False
         self.data["overrideExistingFrame"] = True
-        self.data["useLegacyRenderLayers"] = True
+        self.data["useLegacyRenderLayers"] = not cmds.mayaHasRenderSetup()
         self.data["priority"] = 50
         self.data["framesPerTask"] = 1
         self.data["whitelist"] = False
@@ -47,6 +47,11 @@ class CreateRenderGlobals(avalon.maya.Creator):
         self.data["primaryPool"] = pools
         # We add a string "-" to allow the user to not set any secondary pools
         self.data["secondaryPool"] = ["-"] + pools
+
+        # Custom frame list so one can submit e.g. specific ranges
+        # of frames in one go: 1-100, 300-500
+        self.data["useCustomFrameList"] = False
+        self.data["frameList"] = ""
 
         self.options = {"useSelection": False}  # Force no content
 

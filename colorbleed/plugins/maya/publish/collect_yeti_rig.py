@@ -31,16 +31,25 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
             "Yeti Rig must have an input_SET")
 
         input_connections = self.collect_input_connections(instance)
+        instance.data["rigsettings"] = {"inputs": input_connections}
 
         # Collect any textures if used
         yeti_resources = []
         yeti_nodes = cmds.ls(instance[:], type="pgYetiMaya", long=True)
+        failed = False
         for node in yeti_nodes:
             # Get Yeti resources (textures)
-            resources = self.get_yeti_resources(node)
+            try:
+                resources = self.get_yeti_resources(node)
+            except RuntimeError as exc:
+                # Allow each resource collection to fail so the user
+                # gets the warning messages for all resources
+                failed = True
+                continue
             yeti_resources.extend(resources)
 
-        instance.data["rigsettings"] = {"inputs": input_connections}
+        if failed:
+            raise RuntimeError("Failed to collect yeti resources.")
 
         instance.data["resources"] = yeti_resources
 
@@ -111,6 +120,7 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
         Returns:
             list
         """
+        self.log.info("Collecting resources for %s" % node)
 
         # Get the image search path value (this can return None if not set)
         attr = "{}.imageSearchPath".format(node)
@@ -123,13 +133,7 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
 
         # List all related textures
         texture_filenames = cmds.pgYetiCommand(node, listTextures=True)
-        self.log.info("Found %i texture(s)" % len(texture_filenames))
-
-        # Get all reference nodes
-        reference_nodes = cmds.pgYetiGraph(node,
-                                           listNodes=True,
-                                           type="reference")
-        self.log.info("Found %i reference node(s)" % len(reference_nodes))
+        self.log.debug("Found %i texture node(s)" % len(texture_filenames))
 
         if texture_filenames and not image_search_paths:
             raise ValueError("pgYetiMaya node '%s' is missing the path to the "
@@ -144,6 +148,9 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
                 self.log.debug("Texture is absolute path, ignoring "
                                "image search paths for: %s" % texture)
                 files = self.search_textures(texture)
+                if not files:
+                    self.log.error(
+                        "No texture at absolute path: %s" % texture)
             else:
                 for root in image_search_paths:
                     filepath = os.path.join(root, texture)
@@ -151,11 +158,12 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
                     if files:
                         # Break out on first match in search paths..
                         break
-
-            if not files:
-                self.log.warning(
-                    "No texture found for: %s "
-                    "(searched: %s)" % (texture, image_search_paths))
+                    else:
+                        self.log.warning("No texture at path: %s" % filepath)
+                else:
+                    # Found no files..
+                    self.log.error("No texture found for "
+                                   "relative path: %s" % texture)
 
             item = {
                 "files": files,
@@ -174,9 +182,14 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
             if not resource['files']:
                 invalid_resources.append(resource)
         if invalid_resources:
-            raise RuntimeError("Invalid resources")
+            raise RuntimeError("Invalid texture resources")
 
         # Collect all referenced files
+        reference_nodes = cmds.pgYetiGraph(node,
+                                           listNodes=True,
+                                           type="reference")
+        self.log.debug("Found %i reference node(s)" % len(reference_nodes))
+
         for reference_node in reference_nodes:
             ref_file = cmds.pgYetiGraph(node,
                                         node=reference_node,
@@ -226,21 +239,19 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
         filename = os.path.basename(filepath)
 
         # Collect full sequence if it matches a sequence pattern
-        if len(filename.split(".")) > 2:
+        # For UDIM based textures (tiles)
+        if "<UDIM>" in filename:
+            sequences = self.get_sequence(filepath,
+                                          pattern="<UDIM>")
+            if sequences:
+                return sequences
 
-            # For UDIM based textures (tiles)
-            if "<UDIM>" in filename:
-                sequences = self.get_sequence(filepath,
-                                              pattern="<UDIM>")
-                if sequences:
-                    return sequences
-
-            # Frame/time - Based textures (animated masks f.e)
-            elif "%04d" in filename:
-                sequences = self.get_sequence(filepath,
-                                              pattern="%04d")
-                if sequences:
-                    return sequences
+        # Frame/time - Based textures (animated masks f.e)
+        elif "%04d" in filename:
+            sequences = self.get_sequence(filepath,
+                                          pattern="%04d")
+            if sequences:
+                return sequences
 
         # Assuming it is a fixed name (single file)
         if os.path.exists(filepath):
@@ -267,16 +278,14 @@ class CollectYetiRig(pyblish.api.InstancePlugin):
             list: file sequence.
 
         """
-        from avalon.vendor import clique
 
-        escaped = re.escape(filepath)
-        re_pattern = escaped.replace(pattern, "-?[0-9]+")
-
+        escaped = re.escape(os.path.basename(filepath))
+        re_pattern = escaped.replace(re.escape(pattern), "-?[0-9]+")
         source_dir = os.path.dirname(filepath)
-        files = [f for f in os.listdir(source_dir)
+        if not os.path.exists(source_dir):
+            return []
+
+        files = [os.path.join(source_dir, f) for f in os.listdir(source_dir)
                  if re.match(re_pattern, f)]
 
-        pattern = [clique.PATTERNS["frames"]]
-        collection, remainder = clique.assemble(files, patterns=pattern)
-
-        return collection
+        return files

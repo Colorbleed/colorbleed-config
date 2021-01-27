@@ -1,5 +1,65 @@
 import os
 from avalon import api, io
+from maya import cmds
+
+# List of 3rd Party Channels Mapping names for VRayVolumeGrid
+# See: https://docs.chaosgroup.com/display/VRAY4MAYA/Input
+#      #Input-3rdPartyChannelsMapping
+THIRD_PARTY_CHANNELS = {
+    2: "Smoke",
+    1: "Temperature",
+    10: "Fuel",
+    4: "Velocity.x",
+    5: "Velocity.y",
+    6: "Velocity.z",
+    7: "Red",
+    8: "Green",
+    9: "Blue",
+    14: "Wavelet Energy",
+    19: "Wavelet.u",
+    20: "Wavelet.v",
+    21: "Wavelet.w",
+    # These are not in UI or documentation but V-Ray does seem to set these.
+    15: "AdvectionOrigin.x",
+    16: "AdvectionOrigin.y",
+    17: "AdvectionOrigin.z",
+
+}
+
+
+def _fix_duplicate_vvg_callbacks():
+    """Workaround to kill duplicate VRayVolumeGrids attribute callbacks.
+
+    This fixes a huge lag in Maya on switching 3rd Party Channels Mappings
+    or to different .vdb file paths because it spams an attribute changed
+    callback: `vvgUserChannelMappingsUpdateUI`.
+
+    ChaosGroup bug ticket: 154-008-9890
+
+    Found with:
+        - Maya 2019.2 on Windows 10
+        - V-Ray: V-Ray Next for Maya, update 1 version 4.12.01.00001
+
+    """
+
+    jobs = cmds.scriptJob(listJobs=True)
+
+    matched = set()
+    for entry in jobs:
+        # Remove the number
+        index, callback = entry.split(":", 1)
+        callback = callback.strip()
+
+        # Detect whether it is a `vvgUserChannelMappingsUpdateUI`
+        # attribute change callback
+        if callback.startswith('"-runOnce" 1 "-attributeChange" "'):
+            if '"vvgUserChannelMappingsUpdateUI(' in callback:
+                if callback in matched:
+                    # If we've seen this callback before then
+                    # delete the duplicate callback
+                    cmds.scriptJob(kill=int(index))
+                else:
+                    matched.add(callback)
 
 
 class LoadVDBtoVRay(api.Loader):
@@ -15,7 +75,6 @@ class LoadVDBtoVRay(api.Loader):
 
     def load(self, context, name, namespace, data):
 
-        from maya import cmds
         import avalon.maya.lib as lib
         from avalon.maya.pipeline import containerise
 
@@ -92,19 +151,74 @@ class LoadVDBtoVRay(api.Loader):
         else:
             # The path points to the publish .vdb sequence folder so we
             # find the first file in there that ends with .vdb
-            files = sorted(os.listdir(path))
-            first = next((x for x in files if x.endswith(".vdb")), None)
-            if first is None:
-                raise RuntimeError("Couldn't find first .vdb file of "
-                                   "sequence in: %s" % path)
-            filename = os.path.join(path, first)
+            files = sorted(x for x in os.listdir(path) if x.endswith(".vdb"))
+            if not files:
+                raise RuntimeError("Couldn't find .vdb files in: %s" % path)
+
+            if len(files) == 1:
+                # Ensure check for single file is also done in folder
+                fname = files[0]
+            else:
+                # Sequence
+                from avalon.vendor import clique
+                # todo: check support for negative frames as input
+                collections, remainder = clique.assemble(files)
+                assert len(collections) == 1, (
+                    "Must find a single image sequence, "
+                    "found: %s" % (collections,)
+                )
+                fname = collections[0].format('{head}{padding}{tail}')
+
+            filename = os.path.join(path, fname)
 
         # Suppress preset pop-up if we want.
         popup_attr = "{0}.inDontOfferPresets".format(grid_node)
         popup = {popup_attr: not show_preset_popup}
 
+        # Even when not applying a preset V-Ray will reset the 3rd Party
+        # Channels Mapping of the VRayVolumeGrid when setting the .inPath
+        # value. As such we try and preserve the values ourselves.
+        # Reported as ChaosGroup bug ticket: 154-011-2909 
+        # todo(roy): Remove when new V-Ray release preserves values
+        user_mapping = cmds.getAttr(grid_node + ".usrchmap") or ""
+
+        # Fix lag on change, see function docstring
+        # todo(roy): Remove when new V-Ray release fixes duplicate calls
+        _fix_duplicate_vvg_callbacks()
+
         with attribute_values(popup):
             cmds.setAttr(grid_node + ".inPath", filename, type="string")
+
+        # Reapply the 3rd Party channels user mapping when we the user was
+        # was not shown a popup
+        if not show_preset_popup:
+            channels = cmds.getAttr(grid_node + ".usrchmapallch").split(";")
+            channels = set(channels)  # optimize lookup
+            restored_mapping = ""
+            for entry in user_mapping.split(";"):
+                if not entry:
+                    # Ignore empty entries
+                    continue
+
+                # If 3rd Party Channels selection channel still exists then
+                # add it again.
+                index, channel = entry.split(",")
+                attr = THIRD_PARTY_CHANNELS.get(int(index),
+                                                # Fallback for when a mapping
+                                                # was set that is not in the
+                                                # documentation
+                                                "???")
+                if channel in channels:
+                    restored_mapping += entry + ";"
+                else:
+                    self.log.warning("Can't preserve '%s' mapping due to "
+                                     "missing channel '%s' on node: "
+                                     "%s" % (attr, channel, grid_node))
+
+            if not show_preset_popup and restored_mapping:
+                cmds.setAttr(grid_node + ".usrchmap",
+                             restored_mapping,
+                             type="string")
 
     def update(self, container, representation):
 

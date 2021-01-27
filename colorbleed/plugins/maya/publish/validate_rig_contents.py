@@ -23,8 +23,9 @@ class ValidateRigContents(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
+        lookup = set(instance)
         objectsets = ("controls_SET", "out_SET")
-        missing = [obj for obj in objectsets if obj not in instance]
+        missing = [obj for obj in objectsets if obj not in lookup]
         assert not missing, ("%s is missing %s" % (instance, missing))
 
         # Ensure there are at least some transforms or dag nodes
@@ -44,9 +45,13 @@ class ValidateRigContents(pyblish.api.InstancePlugin):
         controls_content = cmds.ls(controls_content, long=True)
 
         # Validate members are inside the hierarchy from root node
-        root_node = cmds.ls(set_members, assemblies=True)
-        hierarchy = cmds.listRelatives(root_node, allDescendents=True,
-                                       fullPath=True)
+        assemblies = cmds.ls(set_members, assemblies=True)
+        assert assemblies, (
+           "Rig has no assembly. Make sure it is not parented to anything."
+        )
+        hierarchy = cmds.listRelatives(assemblies,
+                                       allDescendents=True,
+                                       fullPath=True) or []
         hierarchy = set(hierarchy)
 
         invalid_hierarchy = []

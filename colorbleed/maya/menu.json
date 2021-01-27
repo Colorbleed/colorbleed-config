@@ -23,6 +23,26 @@
 	"type": "separator"
 },
 {
+    "type": "menu",
+	"title": "CG-Wire",
+	"items": [{
+		"type": "action",
+		"command": "$COLORBLEED_SCRIPTS\\cgwire\\go_to_cgwire.py",
+		"sourcetype": "file",
+		"tags": ["cgwire"],
+		"title": "Go to CG-Wire page..",
+		"tooltip": "Go to CG-Wire page for current tasks"
+	},
+    {
+		"type": "action",
+		"command": "$COLORBLEED_SCRIPTS\\cgwire\\submit_screenshot.py",
+		"sourcetype": "file",
+		"tags": ["cgwire"],
+		"title": "Submit Screenshot/Comment",
+		"tooltip": "Submit a screenshot to CG-Wire for current task"
+	}]
+},
+{
 	"type": "menu",
 	"title": "Modeling",
 	"items": [{

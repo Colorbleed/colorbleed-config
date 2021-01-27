@@ -31,6 +31,13 @@ class CollectInstances(pyblish.api.ContextPlugin):
     def process(self, context):
 
         nodes = hou.node("/out").children()
+
+        # Include instances in USD stage only when it exists so it
+        # remains backwards compatible with version before houdini 18
+        stage = hou.node("/stage")
+        if stage:
+            nodes += stage.recursiveGlob("*", filter=hou.nodeTypeFilter.Rop)
+
         for node in nodes:
 
             if not node.parm("id"):
@@ -43,18 +50,13 @@ class CollectInstances(pyblish.api.ContextPlugin):
             assert has_family, "'%s' is missing 'family'" % node.name()
 
             data = lib.read(node)
-            # Check bypass state and reverse
-            data.update({"active": not node.isBypassed()})
-
-            # temporarily translation of `active` to `publish` till issue has
-            # been resolved, https://github.com/pyblish/pyblish-base/issues/307
-            if "active" in data:
-                data["publish"] = data["active"]
 
             data.update(self.get_frame_data(node))
 
             # Create nice name if the instance has a frame range.
             label = data.get("name", node.name())
+            label += " (%s)" % data["asset"]    # include asset in name
+
             if "startFrame" in data and "endFrame" in data:
                 frames = "[{startFrame} - {endFrame}]".format(**data)
                 label = "{} {}".format(label, frames)
@@ -93,6 +95,6 @@ class CollectInstances(pyblish.api.ContextPlugin):
 
         data["startFrame"] = node.evalParm("f1")
         data["endFrame"] = node.evalParm("f2")
-        data["steps"] = node.evalParm("f3")
+        data["byFrameStep"] = node.evalParm("f3")
 
         return data

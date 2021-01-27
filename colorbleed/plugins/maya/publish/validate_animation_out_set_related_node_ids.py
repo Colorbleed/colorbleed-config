@@ -20,7 +20,8 @@ class ValidateOutRelatedNodeIds(pyblish.api.InstancePlugin):
     families = ['colorbleed.animation', "colorbleed.pointcache"]
     hosts = ['maya']
     label = 'Animation Out Set Related Node Ids'
-    actions = [colorbleed.maya.action.SelectInvalidAction, colorbleed.api.RepairAction]
+    actions = [colorbleed.maya.action.SelectInvalidAction,
+               colorbleed.api.RepairAction]
 
     def process(self, instance):
         """Process all meshes"""
@@ -40,7 +41,7 @@ class ValidateOutRelatedNodeIds(pyblish.api.InstancePlugin):
         types_to_skip = ["locator"]
 
         # get asset id
-        nodes = instance.data.get("out_hierarchy", instance[:])
+        nodes = instance.data.get("outMembersHierarchy", instance[:])
         for node in nodes:
 
             # We only check when the node is *not* referenced

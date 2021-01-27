@@ -11,7 +11,7 @@ class ValidateArnoldLayerName(pyblish.api.InstancePlugin):
     order = colorbleed.api.ValidateContentsOrder
     label = "Arnold Preserve Layer Name"
     hosts = ["maya"]
-    families = ["colorbleed.renderlayer"]
+    families = ["colorbleed.renderlayer.arnold"]
     actions = [colorbleed.api.RepairAction]
 
     def process(self, instance):

@@ -9,7 +9,7 @@ class ModelLoader(colorbleed.maya.plugin.ReferenceLoader):
     representations = ["ma"]
 
     label = "Reference Model"
-    order = -10
+    order = -11
     icon = "code-fork"
     color = "orange"
 
@@ -37,7 +37,9 @@ class ModelLoader(colorbleed.maya.plugin.ReferenceLoader):
 class GpuCacheLoader(api.Loader):
     """Load model Alembic as gpuCache"""
 
-    families = ["colorbleed.model"]
+    families = ["colorbleed.model",
+                "colorbleed.pointcache",
+                "colorbleed.animation"]
     representations = ["abc"]
 
     label = "Import Gpu Cache"
@@ -60,14 +62,11 @@ class GpuCacheLoader(api.Loader):
 
         cmds.loadPlugin("gpuCache", quiet=True)
 
-        # Root group
         label = "{}:{}".format(namespace, name)
-        root = cmds.group(name=label, empty=True)
 
         # Create transform with shape
         transform_name = label + "_GPU"
-        transform = cmds.createNode("transform", name=transform_name,
-                                    parent=root)
+        transform = cmds.createNode("transform", name=transform_name)
         cache = cmds.createNode("gpuCache",
                                 parent=transform,
                                 name="{0}Shape".format(transform_name))
@@ -77,9 +76,9 @@ class GpuCacheLoader(api.Loader):
         cmds.setAttr(cache + '.cacheGeomPath', "|", type="string")    # root
 
         # Lock parenting of the transform and cache
-        cmds.lockNode([transform, cache], lock=True)
+        cmds.lockNode(cache, lock=True)
 
-        nodes = [root, transform, cache]
+        nodes = [transform, cache]
         self[:] = nodes
 
         return containerise(

@@ -16,21 +16,23 @@ class ValidateCameraContents(pyblish.api.InstancePlugin):
     """
 
     order = colorbleed.api.ValidateContentsOrder
-    families = ['colorbleed.camera']
-    hosts = ['maya']
-    label = 'Camera Contents'
+    families = ["colorbleed.camera",
+                "colorbleed.review",
+                "usdCamera"]
+    hosts = ["maya"]
+    label = "Camera Contents"
     actions = [colorbleed.maya.action.SelectInvalidAction]
 
     @classmethod
     def get_invalid(cls, instance):
 
         # get cameras
-        members = instance.data['setMembers']
+        members = instance.data["setMembers"]
         shapes = cmds.ls(members, dag=True, shapes=True, long=True)
 
         # single camera
         invalid = []
-        cameras = cmds.ls(shapes, type='camera', long=True)
+        cameras = cmds.ls(shapes, type="camera", long=True)
         if len(cameras) != 1:
             cls.log.warning("Camera instance must have a single camera. "
                             "Found {0}: {1}".format(len(cameras), cameras))
@@ -43,7 +45,7 @@ class ValidateCameraContents(pyblish.api.InstancePlugin):
                 raise RuntimeError("No cameras in instance.")
 
         # non-camera shapes
-        valid_shapes = cmds.ls(shapes, type=('camera', 'locator'), long=True)
+        valid_shapes = cmds.ls(shapes, type=("camera", "locator"), long=True)
         shapes = set(shapes) - set(valid_shapes)
         if shapes:
             shapes = list(shapes)

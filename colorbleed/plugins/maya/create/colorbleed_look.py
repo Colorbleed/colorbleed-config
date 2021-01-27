@@ -1,5 +1,6 @@
 import avalon.maya
 from colorbleed.maya import lib
+from maya import cmds
 
 
 class CreateLook(avalon.maya.Creator):
@@ -12,4 +13,6 @@ class CreateLook(avalon.maya.Creator):
     def __init__(self, *args, **kwargs):
         super(CreateLook, self).__init__(*args, **kwargs)
 
-        self.data["renderlayer"] = lib.get_current_renderlayer()
+        renderlayer = cmds.editRenderLayerGlobals(query=True,
+                                                  currentRenderLayer=True)
+        self.data["renderlayer"] = renderlayer

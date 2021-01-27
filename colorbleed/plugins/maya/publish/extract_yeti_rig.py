@@ -12,7 +12,7 @@ import colorbleed.maya.lib as maya
 @contextlib.contextmanager
 def disconnect_plugs(settings, members):
 
-    members = cmds.ls(members, long=True)
+    members = set(cmds.ls(members, long=True))
     original_connections = []
     try:
         for input in settings["inputs"]:

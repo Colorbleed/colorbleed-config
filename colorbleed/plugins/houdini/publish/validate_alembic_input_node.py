@@ -27,8 +27,18 @@ class ValidateAlembicInputNode(pyblish.api.InstancePlugin):
 
         invalid_prim_types = ["VDB", "Volume"]
         node = instance.data["output_node"]
-
-        geo = node.geometry()
+        
+        if not hasattr(node, "geometry"):
+            # In the case someone has explicitly set an Object
+            # node instead of a SOP node in Geometry context
+            # then for now we ignore - this allows us to also
+            # export object transforms.
+            cls.log.warning("No geometry output node found, skipping check..")
+            return
+        
+        frame = instance.data.get("startFrame", 0)
+        geo = node.geometryAtFrame(frame)
+        
         invalid = False
         for prim_type in invalid_prim_types:
             if geo.countPrimType(prim_type) > 0:

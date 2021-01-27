@@ -6,8 +6,8 @@ import colorbleed.maya.action
 class ValidateAnimationContent(pyblish.api.InstancePlugin):
     """Adheres to the content of 'animation' family
 
-    - Must have collected `out_hierarchy` data.
-    - All nodes in `out_hierarchy` must be in the instance.
+    - Must have collected `outMembersHierarchy` data.
+    - All nodes in `outMembersHierarchy` must be in the instance.
 
     """
 
@@ -28,14 +28,15 @@ class ValidateAnimationContent(pyblish.api.InstancePlugin):
                          "please deactivate by toggling the 'Active' attribute"
                          % instance.name)
 
-        assert 'out_hierarchy' in instance.data, "Missing `out_hierarchy` data"
+        assert 'outMembersHierarchy' in instance.data, \
+            "Missing `outMembersHierarchy` data"
 
-        # All nodes in the `out_hierarchy` must be among the nodes that are
-        # in the instance. The nodes in the instance are found from the top
+        # All nodes in the `outMembersHierarchy` must be among the nodes that
+        # are in the instance. The nodes in the instance are found from the top
         # group, as such this tests whether all nodes are under that top group.
 
         lookup = set(instance[:])
-        invalid = [node for node in instance.data['out_hierarchy'] if
+        invalid = [node for node in instance.data['outMembersHierarchy'] if
                    node not in lookup]
 
         return invalid

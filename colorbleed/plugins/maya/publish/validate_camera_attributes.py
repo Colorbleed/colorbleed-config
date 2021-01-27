@@ -47,7 +47,7 @@ class ValidateCameraAttributes(pyblish.api.InstancePlugin):
 
                 # Check if is default value
                 if value != default_value:
-                    cls.log.warning("Invalid attribute value: {0} "
+                    cls.log.warning("Non-default attribute value: {0} "
                                     "(should be: {1}))".format(plug,
                                                                default_value))
                     invalid.add(cam)
