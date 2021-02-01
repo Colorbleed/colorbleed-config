@@ -140,6 +140,12 @@ class MayaSubmitRenderDeadline(pyblish.api.InstancePlugin):
                 # Use legacy Render Layer system
                 "UseLegacyRenderLayers": legacy_layers,
 
+                # Always force render setup to exclude lights as our pipeline
+                # has the MAYA_RENDER_SETUP_INCLUDE_ALL_LIGHTS environment
+                # variable set to 0 forcing it too. However, without this
+                # plug-in data passed Deadline will force enable it again.
+                "RenderSetupIncludeLights": False,
+
                 # Render only this layer
                 "RenderLayer": renderlayer,
 

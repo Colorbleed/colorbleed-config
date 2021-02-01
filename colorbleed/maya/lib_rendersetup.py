@@ -34,7 +34,7 @@ def get_rendersetup_layer(layer):
 
     Example:
         >>> for legacy_layer in cmds.ls(type="renderLayer"):
-        >>>    print get_rendersetup_layer(layer)
+        >>>    layer = get_rendersetup_layer(legacy_layer)
 
     Returns:
         str or None: Returns renderSetupLayer node name if `layer` is a valid
@@ -51,7 +51,10 @@ def get_rendersetup_layer(layer):
     if not cmds.mayaHasRenderSetup():
         return None
 
-    if cmds.objExists(layer) and cmds.nodeType(layer) == "renderSetupLayer":
+    if not cmds.objExists(layer):
+        return None
+
+    if cmds.nodeType(layer) == "renderSetupLayer":
         return layer
 
     # By default Render Setup renames the legacy renderlayer
