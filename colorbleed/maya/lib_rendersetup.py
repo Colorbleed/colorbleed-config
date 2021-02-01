@@ -20,6 +20,8 @@ ExactMatch = 0
 ParentMatch = 1
 ChildMatch = 2
 
+DefaultRenderLayer = "defaultRenderLayer"
+
 
 def get_rendersetup_layer(layer):
     """Return render setup layer name.
@@ -42,7 +44,7 @@ def get_rendersetup_layer(layer):
 
 
     """
-    if layer == "defaultRenderLayer":
+    if layer == DefaultRenderLayer:
         # defaultRenderLayer doesn't have a `renderSetupLayer`
         return layer
 
@@ -94,11 +96,18 @@ def get_attr_in_layer(node_attr, layer):
 
     def get_default_layer_value(node_attr_):
         """Return attribute value in defaultRenderLayer"""
-        appliers = cmds.ls(cmds.listHistory(node_attr_,
-                                            pruneDagObjects=True),
-                           type="applyOverride")
-        if appliers:
-            node_attr_ = appliers[-1] + ".original"
+        inputs = cmds.listConnections(node_attr_, 
+                                      source=True, 
+                                      destination=False, 
+                                      type="applyOverride") or []
+        if inputs:
+            override = inputs[0]
+            history_overrides = cmds.ls(cmds.listHistory(override,
+                                                         pruneDagObjects=True),
+                                        type="applyOverride")
+            node = history_overrides[-1] if history_overrides else override
+            node_attr_ = node + ".original"
+        
         return pm.getAttr(node_attr_, asString=True)
 
     layer = get_rendersetup_layer(layer)
@@ -238,6 +247,11 @@ def get_attr_overrides(node_attr, layer,
     plug = sel.getPlug(0)
 
     layer = get_rendersetup_layer(layer)
+    if layer == DefaultRenderLayer:
+        # DefaultRenderLayer will never have overrides
+        # since it's the default layer
+        return []
+    
     rs_layer = renderSetup.instance().getRenderLayer(layer)
     if rs_layer is None:
         # Renderlayer does not exist
