@@ -39,7 +39,8 @@ class GpuCacheLoader(api.Loader):
 
     families = ["colorbleed.model",
                 "colorbleed.pointcache",
-                "colorbleed.animation"]
+                "colorbleed.animation",
+                "gpuCache"]
     representations = ["abc"]
 
     label = "Import Gpu Cache"
@@ -97,8 +98,10 @@ class GpuCacheLoader(api.Loader):
         # Update the cache
         members = cmds.sets(container['objectName'], query=True)
         caches = cmds.ls(members, type="gpuCache", long=True)
-
-        assert len(caches) == 1, "This is a bug"
+        
+        if len(caches) > 1:
+            print("Warning: Found more than one gpuCache in instance: %s" % caches)
+        #assert len(caches) == 1, "This is a bug"
 
         for cache in caches:
             cmds.setAttr(cache + ".cacheFileName", path, type="string")
