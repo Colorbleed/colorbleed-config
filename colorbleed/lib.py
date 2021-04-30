@@ -769,10 +769,14 @@ class Integrator(object):
         if current_file is None:
             current_file = context.data["currentFile"]
 
-        # create relative source path for DB
-        relative_path = os.path.relpath(current_file,
-                                        avalon.api.registered_root())
-        source = os.path.join("{root}", relative_path).replace("\\", "/")
+        try:
+            # create relative source in project root for DB
+            relative_path = os.path.relpath(current_file,
+                                            avalon.api.registered_root())
+            source = os.path.join("{root}", relative_path)
+        except ValueError:
+            # store full path if not on the same drive as project root
+            source = current_file.replace("\\", "/")
 
         version_data = {"time": context.data["time"],
                         "author": context.data["user"],
