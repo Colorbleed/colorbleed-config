@@ -8,7 +8,8 @@ class AbcLoader(api.Loader):
 
     families = ["colorbleed.model",
                 "colorbleed.animation",
-                "colorbleed.pointcache"]
+                "colorbleed.pointcache",
+                "gpuCache"]
     label = "Load Alembic"
     representations = ["abc"]
     order = -10
