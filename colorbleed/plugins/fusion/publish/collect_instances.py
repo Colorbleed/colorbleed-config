@@ -19,6 +19,14 @@ def get_comp_render_range(comp):
     return start, end
 
 
+def get_value(tool, attribute, default=None):
+    value = tool.GetInput(attribute)
+    if value is None:
+        return default
+    else:
+        return value
+
+
 class CollectInstances(pyblish.api.ContextPlugin):
     """Collect Fusion saver instances
 
@@ -35,7 +43,10 @@ class CollectInstances(pyblish.api.ContextPlugin):
         """Collect all image sequence tools"""
 
         from avalon.fusion.lib import get_frame_path
-
+        
+        asset = os.environ["AVALON_ASSET"]  # todo: not a constant
+        self.log.info("Current asset: %s" % asset)
+        
         comp = context.data["currentComp"]
 
         # Get all savers in the comp
@@ -43,8 +54,6 @@ class CollectInstances(pyblish.api.ContextPlugin):
         savers = [tool for tool in tools if tool.ID == "Saver"]
 
         start, end = get_comp_render_range(comp)
-        context.data["startFrame"] = start
-        context.data["endFrame"] = end
 
         for tool in savers:
             path = tool["Clip"][comp.TIME_UNDEFINED]
@@ -57,6 +66,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
                                  "has no path set: {}".format(tool.Name))
                 continue
 
+
             filename = os.path.basename(path)
             head, padding, tail = get_frame_path(filename)
             ext = os.path.splitext(path)[1]
@@ -64,13 +74,20 @@ class CollectInstances(pyblish.api.ContextPlugin):
             subset = head.rstrip("_. ")   # subset is head of the filename
 
             # Include start and end render frame in label
-            label = "{subset} ({start}-{end})".format(subset=subset,
-                                                      start=int(start),
-                                                      end=int(end))
+            label = ("{subset} ({asset}) "
+                     "[{start}-{end}]").format(subset=subset,
+                                               asset=asset,
+                                               start=int(start),
+                                               end=int(end))
+
+            icon = "files-o"
+            publish = get_value(tool, "avalon_Publish", default=True)
+            if not publish:
+                icon = "bolt"
 
             instance = context.create_instance(subset)
             instance.data.update({
-                "asset": os.environ["AVALON_ASSET"],  # todo: not a constant
+                "asset": asset,
                 "subset": subset,
                 "path": path,
                 "outputDir": os.path.dirname(path),
@@ -79,7 +96,18 @@ class CollectInstances(pyblish.api.ContextPlugin):
                 "families": ["colorbleed.saver"],
                 "family": "colorbleed.saver",
                 "active": active,
-                "publish": active   # backwards compatibility
+                "publish": active,  # backwards compatibility
+                
+                "icon": icon,
+
+                # Frame ranges
+                "startFrame": start,
+                "endFrame": end,
+                # todo: implement custom frame list
+
+                # We allow preview savers to Render but skip publishing
+                # using a custom attribute
+                "performPublish": publish
             })
 
             instance.append(tool)
