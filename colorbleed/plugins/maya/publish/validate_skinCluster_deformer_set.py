@@ -11,6 +11,10 @@ class ValidateSkinclusterDeformerSet(pyblish.api.InstancePlugin):
     In rare cases it can happen that a mesh has a skinCluster in its history
     but it is *not* included in the deformer relationship history. If this is
     the case then FBX will not export the skinning.
+    
+    This will also happen with instances meshes for which it's valid if at
+    least one of the exported instances IS included in the skincluster's set.
+    TODO: Improve check for that case.
 
     """
 
@@ -19,6 +23,7 @@ class ValidateSkinclusterDeformerSet(pyblish.api.InstancePlugin):
     families = ['colorbleed.fbx']
     label = "Skincluster Deformer Relationships"
     actions = [colorbleed.maya.action.SelectInvalidAction]
+    optional = True
 
     def process(self, instance):
         """Process all the transform nodes in the instance"""
@@ -47,7 +52,7 @@ class ValidateSkinclusterDeformerSet(pyblish.api.InstancePlugin):
                 # Ensure the mesh is also in the skinCluster set
                 # otherwise the skin will not be exported correctly
                 # by the FBX Exporter.
-                deformer_sets = cmds.listSets(object=mesh, type=2)
+                deformer_sets = cmds.listSets(object=mesh, type=2) or []
                 for deformer_set in deformer_sets:
                     used_by = cmds.listConnections(deformer_set + ".usedBy",
                                                    source=True,
