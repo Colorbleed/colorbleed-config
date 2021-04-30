@@ -38,13 +38,15 @@ class CollectDeadlineUser(pyblish.api.ContextPlugin):
     hosts = ["maya", "fusion", "houdini"]
     families = ["colorbleed.renderlayer",
                 "colorbleed.saver.deadline",
-                "colorbleed.usdrender"]
+                "colorbleed.usdrender",
+                "redshift_rop"]
 
     def process(self, context):
         """Inject the current working file"""
 
         # Workaround bug pyblish-base#250
         if not contextplugin_should_run(self, context):
+            self.log.debug("Skipping due to not being related to current families.")
             return
 
         user = deadline_command("GetCurrentUserName").strip()
