@@ -38,7 +38,7 @@ class ValidateOutRelatedNodeIds(pyblish.api.InstancePlugin):
         """Get all nodes which do not match the criteria"""
 
         invalid = []
-        types_to_skip = ["locator"]
+        types_to_skip = ["locator", "deformSine"]
 
         # get asset id
         nodes = instance.data.get("outMembersHierarchy", instance[:])
