@@ -1286,7 +1286,7 @@ def assign_look(nodes, subset="lookDefault"):
     return edits
 
 
-def iter_shader_edits(relationships, shadernodes, nodes, label=None):
+def iter_shader_edits(relationships, shadernodes, nodes_by_id, label=None):
     """Yield edits as a set of actions."""
 
     attributes = relationships.get("attributes", [])
@@ -1296,10 +1296,6 @@ def iter_shader_edits(relationships, shadernodes, nodes, label=None):
     assert shading_engines, "Error in retrieving objectSets from reference"
 
     # region compute lookup
-    nodes_by_id = defaultdict(list)
-    for node in nodes:
-        nodes_by_id[get_id(node)].append(node)
-
     shading_engines_by_id = defaultdict(list)
     for shad in shading_engines:
         shading_engines_by_id[get_id(shad)].append(shad)
@@ -1315,7 +1311,9 @@ def iter_shader_edits(relationships, shadernodes, nodes, label=None):
 
         filtered_nodes = list()
         for uuid, components in member_uuids:
-            nodes = nodes_by_id[uuid]
+            nodes = nodes_by_id.get(uuid, None)
+            if nodes is None:
+                continue
 
             if components:
                 # Assign to the components
@@ -1346,7 +1344,7 @@ def iter_shader_edits(relationships, shadernodes, nodes, label=None):
                "shader": id_shading_engines[0]}
 
     for data in attributes:
-        nodes = nodes_by_id[data["uuid"]]
+        nodes = nodes_by_id.get(data["uuid"], [])
         attr_value = data["attributes"]
         yield {"action": "setattr",
                "uuid": data["uuid"],
@@ -1394,7 +1392,11 @@ def apply_shaders(relationships,
         if layer_name != "defaultRenderLayer":
             is_rendersetup_layer = True
 
-    generator = iter_shader_edits(relationships, shadernodes, nodes)
+    nodes_by_id = defaultdict(list)
+    for node in nodes:
+        nodes_by_id[get_id(node)].append(node)
+
+    generator = iter_shader_edits(relationships, shadernodes, nodes_by_id)
     edits = []
 
     if allow_rendersetup_overrides and is_rendersetup_layer:
