@@ -36,6 +36,13 @@ class PublishImageSequence(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
+        # Allow disabling of a publish but including them with "rendering"
+        # e.g. for previews
+        if not instance.data.get("performPublish", True):
+            self.log.warning("Instance '%s' is not being published. "
+                             "Publish set to False" % instance.data["name"])
+            return
+
         # Skip this plug-in if the ExtractImageSequence failed
         errored_plugins = get_errored_plugins_from_data(instance.context)
         if any(plugin.__name__ == "FusionRenderLocal" for plugin in
@@ -53,9 +60,13 @@ class PublishImageSequence(pyblish.api.InstancePlugin):
         # The instance has most of the information already stored
         metadata = {
             "regex": regex,
-            "startFrame": instance.context.data["startFrame"],
-            "endFrame": instance.context.data["endFrame"],
+            "startFrame": instance.data["startFrame"],
+            "endFrame": instance.data["endFrame"],
             "families": ["colorbleed.imagesequence"],
+            
+            # Store the upstream inputs
+            "inputs": instance.data["inputs"]
+
         }
 
         # Write metadata and store the path in the instance
