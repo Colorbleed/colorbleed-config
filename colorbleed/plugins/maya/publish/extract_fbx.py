@@ -244,8 +244,9 @@ class ExtractFBX(colorbleed.api.Extractor):
             "animationOnly": bool,
             "useSceneName": bool,
             "quaternion": str,  # "euler"
-            "shapes": bool,
+            "shapes": bool,     # blendShape
             "skins": bool,
+            "skeletonDefinitions": bool,
             "constraints": bool,
             "lights": bool,
             "embeddedTextures": bool,
@@ -289,10 +290,11 @@ class ExtractFBX(colorbleed.api.Extractor):
             "quaternion": "euler",
             "shapes": True,
             "skins": True,
+            "skeletonDefinitions": False,
             "constraints": False,
             "lights": True,
             "embeddedTextures": True,
-            "inputConnections": True,
+            "inputConnections": False,
             "upAxis": "y",
             "triangulate": False,
             "scaleFactor": 1.0
