@@ -74,6 +74,8 @@ class HoudiniSubmitRenderDeadline(pyblish.api.InstancePlugin):
                 "Pool": "houdini_redshift",  # todo: remove hardcoded pool
                 "Frames": frames,
 
+                "ChunkSize": instance.data.get("chunkSize", 10),
+
                 "Comment": comment
             },
             "PluginInfo": {

@@ -19,6 +19,9 @@ class CreateRedshiftROP(houdini.Creator):
         subset_no_prefix = subset[len(self.family):]
         subset_no_prefix = subset_no_prefix[0].lower() + subset_no_prefix[1:]
         self.data["subset"] = subset_no_prefix
+        
+        # Add chunk size attribute
+        self.data["chunkSize"] = 10
 
         # Remove the active, we are checking the bypass flag of the nodes
         self.data.pop("active", None)
