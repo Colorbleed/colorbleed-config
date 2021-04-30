@@ -24,6 +24,11 @@ class CollectMayaUnits(pyblish.api.ContextPlugin):
         # `cmds.currentUnit(q=1, time=1)`. Otherwise we
         # have to parse the returned string value to FPS
         fps = mel.eval('currentTimeUnitToFPS()')
+    
+        # validate to up to 3 decimal places so that 
+        # 23.376fps actually is exactly that. No Maya
+        # FPS settings are defined with more decimal points
+        fps = round(fps, 3) 
 
         context.data['linearUnits'] = units
         context.data['angularUnits'] = units_angle

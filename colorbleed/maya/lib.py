@@ -1911,6 +1911,11 @@ def validate_fps():
 
     fps = lib.get_asset_fps()
     current_fps = mel.eval('currentTimeUnitToFPS()')  # returns float
+    
+    # validate to up to 3 decimal places so that  23.376fps actually
+    # is matched correctly. No Maya FPS settings are defined with more 
+    # decimal points than three.
+    current_fps = round(current_fps, 3) 
 
     if current_fps != fps:
 
