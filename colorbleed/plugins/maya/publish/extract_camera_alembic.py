@@ -32,7 +32,7 @@ class ExtractCameraAlembic(colorbleed.api.Extractor):
 
         # get cameras
         members = instance.data['setMembers']
-        cameras = cmds.ls(members, leaf=True, shapes=True, long=True,
+        cameras = cmds.ls(members, leaf=True, long=True,
                           dag=True, type="camera")
 
         # validate required settings
