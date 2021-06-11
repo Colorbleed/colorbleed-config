@@ -566,6 +566,19 @@ def maintained_selection_api():
         om.MGlobal.setActiveSelectionList(original)
 
 
+@contextlib.contextmanager
+def tool(context):
+    """Set a tool context during the context manager.
+
+    """
+    original = cmds.currentCtx()
+    try:
+        cmds.setToolTo(context)
+        yield
+    finally:
+        cmds.setToolTo(original)
+
+
 def polyConstraint(components, *args, **kwargs):
     """Return the list of *components* with the constraints applied.
 
@@ -590,17 +603,19 @@ def polyConstraint(components, *args, **kwargs):
         # and the "Random" setting was activated. To work around this we
         # revert to the original selection using the Maya API. This is safe
         # since we're not generating any undo change anyway.
-        with maintained_selection_api():
-            # Apply constraint using mode=2 (current and next) so
-            # it applies to the selection made before it; because just
-            # a `maya.cmds.select()` call will not trigger the constraint.
-            with reset_polySelectConstraint():
-                cmds.select(components, r=1, noExpand=True)
-                cmds.polySelectConstraint(*args, mode=2, **kwargs)
-                result = cmds.ls(selection=True)
-                cmds.select(clear=True)
-
-    return result
+        with tool("selectSuperContext"):
+            # Selection can be very slow when in a manipulator mode.
+            # So we force the selection context which is fast.
+            with maintained_selection_api():
+                # Apply constraint using mode=2 (current and next) so
+                # it applies to the selection made before it; because just
+                # a `maya.cmds.select()` call will not trigger the constraint.
+                with reset_polySelectConstraint():
+                    cmds.select(components, r=1, noExpand=True)
+                    return cmds.polySelectConstraint(*args, 
+                                                     mode=2, 
+                                                     returnSelection=True, 
+                                                     **kwargs)
 
 
 @contextlib.contextmanager
@@ -1881,26 +1896,70 @@ def set_context_settings():
         None
     """
 
-    # Todo (Wijnand): apply renderer and resolution of project
+    # todo: automatically set context "renderer"
 
     project_data = lib.get_project_data()
     asset_data = lib.get_asset_data()
+    
+    def get_value(keys, default):
+        """Return key, value in this resolved context order:
+            - asset.data[any(key)]
+            - project.data[any(key)]
+            - default
+        """
+        if not isinstance(keys, (list, tuple)):
+            keys = [keys]
+        
+        # Search in asset first for all keys then search
+        # in project for all keys. If not found return default
+        lookup = (asset_data, project_data)
+        for data in lookup:
+            for key in keys:
+                if key in data:
+                    return data[key]
+        
+        return default
 
-    # Set project fps
-    fps = asset_data.get("fps", project_data.get("fps", 25))
+    # Set fps
+    fps = get_value("fps", default=25)
     set_scene_fps(fps)
-
-    # Set project resolution
-    width_key = "resolution_width"
-    height_key = "resolution_height"
-
-    width = asset_data.get(width_key, project_data.get(width_key, 1920))
-    height = asset_data.get(height_key, project_data.get(height_key, 1080))
-
+    
+    # Set frame range
+    frame_start = get_value("frameStart", default=1001)
+    frame_end = get_value("frameEnd", default=1100)
+    set_frame_range(frame_start, frame_end)
+    
+    # Set resolution
+    width = get_value(("resolutionWidth", 
+                       "resolution_width"),    # backwards compatibility
+                      default=1920)
+    height = get_value(("resolutionHeight", 
+                        "resolution_height"),  # backwards compatibility
+                       default=1080)
     set_scene_resolution(width, height)
+    
+    
+def set_frame_range(frame_start, frame_end):
+
+    if frame_start is None or frame_end is None:
+        log.debug("No valid start or end frame to "
+                  "set: (%s-%s)" % (frame_start, frame_end))
+        return
+        
+    # Ensure integers
+    frame_start = int(frame_start)
+    frame_end = int(frame_end)
+    
+    cmds.playbackOptions(animationStartTime=frame_start,
+                         animationEndTime=frame_end,
+                         minTime=frame_start,
+                         maxTime=frame_end)
+    cmds.currentTime(frame_start)
+
+    cmds.setAttr("defaultRenderGlobals.startFrame", frame_start)
+    cmds.setAttr("defaultRenderGlobals.endFrame", frame_end)
 
 
-# Valid FPS
 def validate_fps():
     """Validate current scene FPS and show pop-up when it is incorrect
 
