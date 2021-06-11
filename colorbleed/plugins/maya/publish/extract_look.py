@@ -89,8 +89,12 @@ class ExtractLook(colorbleed.api.Extractor):
             # Preserve color space values (force value after filepath change)
             # This will also trigger in the same order at end of context to
             # ensure after context it's still the original value.
-            color_space_attr = resource['node'] + ".colorSpace"
-            remap[color_space_attr] = cmds.getAttr(color_space_attr)
+            # todo: would be even better if this uses 
+            # "ignoreColorSpaceFileRules" instead?
+            node = resource['node']
+            if cmds.attributeQuery("colorSpace", node=node, exists=True):
+                color_space_attr = node + ".colorSpace"
+                remap[color_space_attr] = cmds.getAttr(color_space_attr)
 
         self.log.info("Finished remapping destinations ...")
 
