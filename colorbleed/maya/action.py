@@ -7,6 +7,18 @@ import pyblish.api
 from ..action import get_errored_instances_from_context
 
 
+def _uniqify(seq): 
+    """make unique but preserve order"""
+    seen = set()
+    result = list()
+    for item in seq:
+        if item in seen: 
+            continue
+        seen.add(item)
+        result.append(item)
+    return result
+
+
 class GenerateUUIDsOnInvalidAction(pyblish.api.Action):
     """Generate UUIDs on the invalid nodes in the instance.
 
@@ -118,7 +130,7 @@ class SelectInvalidAction(pyblish.api.Action):
                                      "but has no selectable nodes.")
 
         # Ensure unique (process each node only once)
-        invalid = list(set(invalid))
+        invalid = _uniqify(invalid)
 
         if invalid:
             self.log.info("Selecting invalid nodes: %s" % ", ".join(invalid))
