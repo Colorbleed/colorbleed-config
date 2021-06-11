@@ -19,7 +19,7 @@ class ValidateRigContents(pyblish.api.InstancePlugin):
     families = ["colorbleed.rig"]
 
     accepted_output = ["mesh", "transform"]
-    accepted_controllers = ["transform"]
+    accepted_controllers = ["transform", "joint"]
 
     def process(self, instance):
 
