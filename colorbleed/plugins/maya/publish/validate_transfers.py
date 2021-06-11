@@ -6,11 +6,16 @@ from collections import defaultdict
 
 
 class ValidateTransfers(pyblish.api.InstancePlugin):
-    """Validates mapped resources.
-
-    This validates:
-        - The resources all transfer to a unique destination.
-
+    """Validates resources all transfer to a unique location.
+    
+    When raising errors there are source files on multiple locations
+    that end up on the same destination, essentially overwriting each other.
+    
+    For example "textures" with the same filenames from different source
+    folders will be considered invalid. For textures the recommended way
+    to debug is to look for similar filenames using:
+        Windows > General Editors > File Path Editor 
+    
     """
 
     order = colorbleed.api.ValidateContentsOrder
@@ -31,15 +36,20 @@ class ValidateTransfers(pyblish.api.InstancePlugin):
             destination = os.path.normpath(destination).lower()
 
             collected[destination].add(source)
+            
+        def nice_path(path):
+            return path.replace("\\", "/")
 
         invalid_destinations = list()
         for destination, sources in collected.items():
             if len(sources) > 1:
                 invalid_destinations.append(destination)
-
-                self.log.error("Non-unique file transfer for resources: "
-                               "{0} (sources: {1})".format(destination,
-                                                           list(sources)))
+                
+                # Log the issue to the user
+                self.log.error("Non-unique file transfer for destination: "
+                               "{0}".format(nice_path(destination))
+                for source in sources:
+                    self.log.warning("Source: %s" % nice_path(source)) 
 
         if invalid_destinations:
             raise RuntimeError("Invalid transfers in queue.")
