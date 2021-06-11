@@ -106,7 +106,7 @@ class ExtractCameraMayaAscii(colorbleed.api.Extractor):
 
         # get cameras
         members = instance.data['setMembers']
-        cameras = cmds.ls(members, leaf=True, shapes=True, long=True,
+        cameras = cmds.ls(members, leaf=True, long=True,
                           dag=True, type="camera")
 
         range_with_handles = [framerange[0] - handles,
@@ -133,38 +133,40 @@ class ExtractCameraMayaAscii(colorbleed.api.Extractor):
                         frame_range=range_with_handles,
                         step=step
                     )
-                    baked_shapes = cmds.ls(baked,
-                                           type="camera",
-                                           dag=True,
-                                           shapes=True,
-                                           long=True)
+                    try:
+                        baked_shapes = cmds.ls(baked,
+                                                           type="camera",
+                                                           dag=True,
+                                                           long=True)
 
-                    # Fix PLN-178: Don't allow background color to be non-black
-                    for cam in baked_shapes:
-                        attrs = {"backgroundColorR": 0.0,
-                                 "backgroundColorG": 0.0,
-                                 "backgroundColorB": 0.0,
-                                 "overscan": 1.0}
-                        for attr, value in attrs.items():
-                            plug = "{0}.{1}".format(cam, attr)
-                            unlock(plug)
-                            cmds.setAttr(plug, value)
+                        # Fix PLN-178: Don't allow background color to be non-black
+                        for cam in baked_shapes:
+                            attrs = {"backgroundColorR": 0.0,
+                                     "backgroundColorG": 0.0,
+                                     "backgroundColorB": 0.0,
+                                     "overscan": 1.0}
+                            for attr, value in attrs.items():
+                                plug = "{0}.{1}".format(cam, attr)
+                                unlock(plug)
+                                cmds.setAttr(plug, value)
 
-                    self.log.info("Performing extraction..")
-                    cmds.select(baked_shapes, noExpand=True)
-                    cmds.file(path,
-                              force=True,
-                              typ="mayaAscii",
-                              exportSelected=True,
-                              preserveReferences=False,
-                              constructionHistory=False,
-                              channels=True,  # allow animation
-                              constraints=False,
-                              shader=False,
-                              expressions=False)
-
-                    # Delete the baked hierarchy
-                    cmds.delete(baked)
+                        self.log.info("Performing extraction..")
+                        cmds.select(baked_shapes, noExpand=True)
+                        cmds.file(path,
+                                  force=True,
+                                  typ="mayaAscii",
+                                  exportSelected=True,
+                                  preserveReferences=False,
+                                  constructionHistory=False,
+                                  channels=True,  # allow animation
+                                  constraints=False,
+                                  shader=False,
+                                  expressions=False)
+                    finally:
+                        # Use try..finally so that baked camera is always
+                        # deleted, even when a command errors above.
+                        # Delete the baked hierarchy
+                        cmds.delete(baked)
 
                     massage_ma_file(path)
 
