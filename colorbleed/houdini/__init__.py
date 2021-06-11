@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import contextlib
 
 import hou
 
@@ -132,6 +133,26 @@ def _set_asset_fps():
 
 def on_pyblish_instance_toggled(instance, new_value, old_value):
     """Toggle saver tool passthrough states on instance toggles."""
+    
+    @contextlib.contextmanager
+    def main_take(no_update=True):
+        """Enter root take during context"""
+        original_take = hou.takes.currentTake()
+        original_update_mode = hou.updateModeSetting()
+        root = hou.takes.rootTake()
+        has_changed = False
+        try:
+            if original_take != root:
+                has_changed = True
+                if no_update:
+                    hou.setUpdateMode(hou.updateMode.Manual)
+                hou.takes.setCurrentTake(root)
+                yield
+        finally:
+            if has_changed:
+                if no_update:
+                    hou.setUpdateMode(original_update_mode)
+                hou.takes.setCurrentTake(original_take)
 
     if not instance.data.get("_allowToggleBypass", True):
         return
@@ -153,6 +174,10 @@ def on_pyblish_instance_toggled(instance, new_value, old_value):
               "updating anyway.." % instance_node.path())
 
     try:
-        instance_node.bypass(not new_value)
+        # Go into the main take, because when in another take changing
+        # the bypass state of a note cannot be done due to it being locked
+        # by default.
+        with main_take(no_update=True):
+            instance_node.bypass(not new_value)
     except hou.PermissionError as exc:
         log.warning("%s - %s", instance_node.path(), exc)
