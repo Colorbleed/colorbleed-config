@@ -1,5 +1,16 @@
 import pyblish.api
 import colorbleed.api
+import hou
+
+
+def cook_in_range(node, start, end):
+    current = hou.intFrame()
+    if start >= current >= end:
+        # Allow cooking current frame since we're in frame range
+        node.cook(force=False)
+    else:
+        node.cook(force=False, frame_range=(start, start))
+    
 
 
 def get_errors(node):
@@ -32,6 +43,19 @@ class ValidateNoErrors(pyblish.api.InstancePlugin):
 
         for node in validate_nodes:
             self.log.debug("Validating for errors: %s" % node.path())
+            errors = get_errors(node)
+            
+            if errors:
+                # If there are current errors, then try an unforced cook
+                # to see whether the error will disappear.
+                self.log.debug("Recooking to revalidate error"
+                                     " is up to date for: %s" % node.path())
+                current_frame = hou.intFrame()
+                start = instance.data.get("startFrame", current_frame)
+                end = instance.data.get("endFrame", current_frame)
+                cook_in_range(node, start=start, end=end)
+            
+            # Check for errors again after the forced recook
             errors = get_errors(node)
             if errors:
                 self.log.error(errors)
