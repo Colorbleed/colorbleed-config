@@ -44,6 +44,12 @@ def get_renderer_variables(renderer):
                                          firstImageName=True)[0]
         filename_base = os.path.basename(filename_0)
         extension = os.path.splitext(filename_base)[-1].strip(".")
+        
+        print("Found extension: %s" % extension)
+        if renderer == "arnold" and extension == "gif":
+            # HACK!!!
+            print("Fixing .gif -> .exr")
+            extension = "exr"
 
     return {"ext": extension,
             "padding": padding}
