@@ -45,7 +45,7 @@ class ValidateTransformZero(pyblish.api.Validator):
 
         """
 
-        transforms = cmds.ls(instance, type="transform")
+        transforms = cmds.ls(instance, type="transform", long=True)
 
         invalid = []
         for transform in transforms:
@@ -53,6 +53,13 @@ class ValidateTransformZero(pyblish.api.Validator):
             if not all(abs(x-y) < cls._tolerance
                        for x, y in zip(cls._identity, mat)):
                 invalid.append(transform)
+                
+        # Return the objects for selection in the order of highest in hierarchy 
+        # first. That gives the best results when user tends to do freeze
+        # transform directly after whilst there is hierarchy on the nodes.
+        invalid = sorted(invalid, key=len)
+        for x in invalid:
+            print x
 
         return invalid
 
