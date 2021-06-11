@@ -1,6 +1,6 @@
 from maya import cmds
 import maya.api.OpenMaya as om
-import pymel.core as pm
+import logging
 
 import maya.app.renderSetup.model.utils as utils
 from maya.app.renderSetup.model import (
@@ -21,6 +21,8 @@ ParentMatch = 1
 ChildMatch = 2
 
 DefaultRenderLayer = "defaultRenderLayer"
+
+log = logging.getLogger(__name__)
 
 
 def get_rendersetup_layer(layer):
@@ -90,6 +92,9 @@ def get_attr_in_layer(node_attr, layer):
         object: attribute value in layer
 
     """
+    
+    # Delay pymel import to here because it's slow to load
+    import pymel.core as pm
 
     def _layer_needs_update(layer):
         """Return whether layer needs updating."""
@@ -102,6 +107,10 @@ def get_attr_in_layer(node_attr, layer):
         inputs = cmds.listConnections(node_attr_, 
                                       source=True, 
                                       destination=False, 
+                                      # We want to skip conversion nodes since
+                                      # an override to `endFrame` could have
+                                      # a `unitToTimeConversion` node in-between
+                                      skipConversionNodes=True,
                                       type="applyOverride") or []
         if inputs:
             override = inputs[0]
@@ -231,7 +240,7 @@ def get_attr_overrides(node_attr, layer,
             #             fails on some attribute plugs. For example overrides
             #             to the defaultRenderGlobals.endFrame
             #             (Tested in Maya 2020.2)
-            print("Workaround for %s" % override)
+            log.debug("Workaround for %s" % override)
             from maya.app.renderSetup.common.utils import findPlug
 
             attr = override.attributeName()
