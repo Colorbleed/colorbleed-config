@@ -111,7 +111,15 @@ def on_init(_):
     # work correctly on scene open
     cmds.loadPlugin("AbcImport", quiet=True)
     cmds.loadPlugin("AbcExport", quiet=True)
-
+    
+    try:
+        # Try and load Maya Security tools by default
+        print("Loading Maya Security tools..")
+        cmds.loadPlugin("MayaScanner", quiet=True)
+        cmds.loadPlugin("MayaScannerCB", quiet=True)
+    except RuntimeError as exc:
+        log.warning("Maya Security Scanning Tools could not be loaded: %s", exc)
+        
     # Process everything below only when not in headless batch mode
     # since they are purely cosmetic UI changes for the artists.
     if IS_HEADLESS:
