@@ -43,15 +43,64 @@ def get_look_attrs(node):
 
     # For shapes allow render stat changes
     if cmds.objectType(node, isAType="shape"):
+        # The 'changedSinceFileOpen' flag typically only makes sense
+        # for changed on referenced files. Thus will only capture
+        # correctly if the look is done on referenced geometry.
         attrs = cmds.listAttr(node, changedSinceFileOpen=True) or []
         for attr in attrs:
             if attr in SHAPE_ATTRS:
                 result.append(attr)
+                
+        for attr in attrs:
+            # Include any Arnold attribute changes
+            if attr.startswith("ai"):
+                result.append(attr)
 
     return result
+    
+
+def get_file_node_attrs():
+
+    cmds.filePathEditor(refresh=True)
+    node_attrs = {}
+    for registered in cmds.filePathEditor(query=True, listRegisteredTypes=True):
+    
+        if registered == "reference":
+            # Ignore references
+            continue
+            
+        if registered == "file":
+            # Somehow the registered type just lists "file"
+            # without the attribute (similar to references)
+            node = "file"
+            attr = "fileTextureName"
+    
+        elif "." in registered:
+            node, attr = registered.split(".", 1)
+            
+        else:
+            # No attribute specified in the registered type
+            # and thus it's non trivial to get the path?
+            # todo: log this more from a debug - however using 
+            #       "logging" separate from Plug-in doesn't work with Pyblish?
+            print("Unsupported file dependency type: %s" % registered)
+            continue
+            
+        node_attrs[node] = attr
+        
+    return node_attrs
+    
+# Cache once on plug-in load
+FILE_ATTR = get_file_node_attrs()
 
 
-def node_uses_image_sequence(node):
+def get_file_node_attr(node):
+    node_type = cmds.nodeType(node)
+    attribute_name = FILE_ATTR[node_type]
+    return "{}.{}".format(node, attribute_name)
+
+
+def has_sequence_pattern(filepath):
     """Return whether file node uses an image sequence or single image.
 
     Determine if a node uses an image sequence or just a single image,
@@ -64,18 +113,13 @@ def node_uses_image_sequence(node):
         bool: True if node uses an image sequence
 
     """
-
-    # useFrameExtension indicates an explicit image sequence
-    node_path = get_file_node_path(node).lower()
-
+    filepath_lower = filepath.lower()
     # The following tokens imply a sequence
     patterns = ["<udim>", "<tile>", "<uvtile>", "u<u>_v<v>", "<frame0"]
-
-    return (cmds.getAttr('%s.useFrameExtension' % node) or
-            any(pattern in node_path for pattern in patterns))
+    return any(pattern in filepath_lower for pattern in patterns)
 
 
-def seq_to_glob(path):
+def seq_to_glob(path, force_use_file_sequence=False):
     """Takes an image sequence path and returns it in glob format,
     with the frame number replaced by a '*'.
 
@@ -87,6 +131,10 @@ def seq_to_glob(path):
 
     Args:
         path (str): the image sequence path
+        force_use_file_sequence (bool): When enabled parse the file
+            name as a file sequence even when no pattern is present.
+            As such a filename like hello.0123.exr is changed to
+            hello.*.exr.
 
     Returns:
         str: Return glob string that matches the filename pattern.
@@ -117,16 +165,17 @@ def seq_to_glob(path):
     if has_pattern:
         return path
 
-    base = os.path.basename(path)
-    matches = list(re.finditer(r'\d+', base))
-    if matches:
-        match = matches[-1]
-        new_base = '{0}*{1}'.format(base[:match.start()],
-                                    base[match.end():])
-        head = os.path.dirname(path)
-        return os.path.join(head, new_base)
-    else:
-        return path
+    if force_use_file_sequence:
+        base = os.path.basename(path)
+        matches = list(re.finditer(r'\d+', base))
+        if matches:
+            match = matches[-1]
+            new_base = '{0}*{1}'.format(base[:match.start()],
+                                        base[match.end():])
+            head = os.path.dirname(path)
+            return os.path.join(head, new_base)
+            
+    return path
 
 
 def get_file_node_path(node):
@@ -139,26 +188,33 @@ def get_file_node_path(node):
         str: the file path in use
 
     """
-    # if the path appears to be sequence, use computedFileTextureNamePattern,
-    # this preserves the <> tag
-    if cmds.attributeQuery('computedFileTextureNamePattern',
-                           node=node,
-                           exists=True):
-        plug = '{0}.computedFileTextureNamePattern'.format(node)
-        texture_pattern = cmds.getAttr(plug)
+    
+    if cmds.nodeType(node) == "file":
+        # Special case for file nodes
+        # if the path appears to be sequence, use computedFileTextureNamePattern,
+        # this preserves the <> tag
+        if cmds.attributeQuery('computedFileTextureNamePattern',
+                               node=node,
+                               exists=True):
+            plug = '{0}.computedFileTextureNamePattern'.format(node)
+            texture_pattern = cmds.getAttr(plug)
 
-        patterns = ["<udim>",
-                    "<tile>",
-                    "u<u>_v<v>",
-                    "<f>",
-                    "<frame0",
-                    "<uvtile>"]
-        lower = texture_pattern.lower()
-        if any(pattern in lower for pattern in patterns):
-            return texture_pattern
+            patterns = ["<udim>",
+                        "<tile>",
+                        "u<u>_v<v>",
+                        "<f>",
+                        "<frame0",
+                        "<uvtile>"]
+            lower = texture_pattern.lower()
+            if any(pattern in lower for pattern in patterns):
+                return texture_pattern
 
-    # otherwise use fileTextureName
-    return cmds.getAttr('{0}.fileTextureName'.format(node))
+        # otherwise use fileTextureName
+        return cmds.getAttr('{0}.fileTextureName'.format(node))
+    
+    else:
+        attribute = get_file_node_attr(node)
+        return cmds.getAttr(attribute)
 
 
 def get_file_node_files(node):
@@ -173,9 +229,18 @@ def get_file_node_files(node):
 
     """
 
+    attr = get_file_node_attr(node)
+    
+    # Node has .useFrameExtension and it is enabled, then it's a sequence
+    # This is supported by for example 'file' and 'aiImage' nodes.
+    uses_frame_extension = False
+    if cmds.attributeQuery("useFrameExtension", exists=True, node=node):
+        frame_extension_attr = "{0}.useFrameExtension".format(node)
+        uses_frame_extension = cmds.getAttr(frame_extension_attr)
+    
     path = get_file_node_path(node)
     path = cmds.workspace(expandName=path)
-    if node_uses_image_sequence(node):
+    if uses_frame_extension or has_sequence_pattern(path):
         glob_pattern = seq_to_glob(path)
         return glob.glob(glob_pattern)
     elif os.path.exists(path):
@@ -202,7 +267,7 @@ class CollectLook(pyblish.api.InstancePlugin):
 
     """
 
-    order = pyblish.api.CollectorOrder + 0.4
+    order = pyblish.api.CollectorOrder + 0.41
     families = ["colorbleed.look"]
     label = "Collect Look"
     hosts = ["maya"]
@@ -217,6 +282,10 @@ class CollectLook(pyblish.api.InstancePlugin):
 
         self.log.info("Looking for look associations "
                       "for %s" % instance.data['name'])
+                      
+        # Get the cached node types
+        file_node_types = FILE_ATTR.keys()
+        print(file_node_types)
 
         # Discover related object sets
         self.log.info("Gathering sets..")
@@ -262,7 +331,7 @@ class CollectLook(pyblish.api.InstancePlugin):
             self.log.info("Found the following sets:\n{}".format(looksets))
             # Get the entire node chain of the look sets
             history = cmds.listHistory(looksets)
-            files = cmds.ls(history, type="file", long=True)
+            files = cmds.ls(history, type=file_node_types, long=True)
 
         # Collect textures if any file nodes are found
         instance.data["resources"] = [self.collect_resource(n)
@@ -395,20 +464,22 @@ class CollectLook(pyblish.api.InstancePlugin):
             dict
         """
 
-        attribute = "{}.fileTextureName".format(node)
+        node_type = cmds.nodeType(node)
+        attribute = get_file_node_attr(node)
         source = cmds.getAttr(attribute)
-
-        # Compare with the computed file path, e.g. the one with the <UDIM>
-        # pattern in it, to generate some logging information about this
-        # difference
-        computed_attribute = "{}.computedFileTextureNamePattern".format(node)
-        computed_source = cmds.getAttr(computed_attribute)
-        if source != computed_source:
-            self.log.debug("Detected computed file pattern difference "
-                           "from original pattern: {0} "
-                           "({1} -> {2})".format(node,
-                                                 source,
-                                                 computed_source))
+        
+        if node_type == "file":
+            # Compare with the computed file path, e.g. the one with the <UDIM>
+            # pattern in it, to generate some logging information about this
+            # difference
+            computed_attribute = "{}.computedFileTextureNamePattern".format(node)
+            computed_source = cmds.getAttr(computed_attribute)
+            if source != computed_source:
+                self.log.debug("Detected computed file pattern difference "
+                               "from original pattern: {0} "
+                               "({1} -> {2})".format(node,
+                                                     source,
+                                                     computed_source))
 
         # We replace backslashes with forward slashes because V-Ray
         # can't handle the UDIM files with the backslashes in the
@@ -425,7 +496,9 @@ class CollectLook(pyblish.api.InstancePlugin):
                            "node %s: %s" % (node, files[0]))
 
         # Define the resource
-        return {"node": node,
-                "attribute": attribute,
-                "source": source,  # required for resources
-                "files": files}  # required for resources
+        return {
+            "node": node,
+            "attribute": attribute,
+            "source": source,  # required for resources
+            "files": files     # required for resources
+        }
