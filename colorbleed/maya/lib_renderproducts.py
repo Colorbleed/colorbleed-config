@@ -764,15 +764,12 @@ class RenderProductsRedshift(ARenderProducts):
             # by themselves are not multipart files.
             aov_multipart = not multipart
                 
+            # Redshift skips rendering of masterlayer without AOV suffix
+            # when a Beauty AOV is rendered. It overrides the main layer.
             if aov_type == "Beauty":
                 has_beauty_aov = True
                 
             aov_name = self._get_attr("%s.name" % aov)
-            
-            # todo: Redshift skips rendering of masterlayer without AOV suffix
-            #       when a Beauty AOV is rendered. It overrides the main layer.
-            #       >>> cmds.getAttr(aov + ".aovType") == "Beauty"
-            #       Reference: https://github.com/Colorbleed/colorbleed-config/blob/153f1cfa7e46dec32dc65a4b7e7fa6c0d40f6adf/colorbleed/plugins/maya/publish/collect_render_layer_aovs.py#L178-L182
                 
             # Support light Groups
             light_groups = []
