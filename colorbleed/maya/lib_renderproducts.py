@@ -76,7 +76,6 @@ R_SUBSTITUTE_CAMERA_TOKEN = re.compile(r"%c|<camera>", re.IGNORECASE)
 R_SUBSTITUTE_SCENE_TOKEN = re.compile(r"%s|<scene>", re.IGNORECASE)
 
 RENDERER_NAMES = {
-    "mentalray": "MentalRay",
     "vray": "V-Ray",
     "arnold": "Arnold",
     "renderman": "Renderman",
@@ -85,7 +84,6 @@ RENDERER_NAMES = {
 
 # not sure about the renderman image prefix
 IMAGE_PREFIXES = {
-    "mentalray": "defaultRenderGlobals.imageFilePrefix",
     "vray": "vraySettings.fileNamePrefix",
     "arnold": "defaultRenderGlobals.imageFilePrefix",
     "renderman": "rmanGlobals.imageFileFormat",
@@ -162,8 +160,7 @@ def get(layer, render_instance=None):
         "arnold": RenderProductsArnold,
         "vray": RenderProductsVray,
         "redshift": RenderProductsRedshift,
-        "mentalray": RenderProductsMentalray,
-        "renderman": RenderProductsRenderman,
+        "renderman": RenderProductsRenderman
     }.get(renderer_name.lower(), None)
     if Renderer is None:
         raise UnsupportedRendererException(
@@ -882,31 +879,6 @@ class RenderProductsRenderman(ARenderProducts):
         return new_files
 
 
-class RenderProductsMentalray(ARenderProducts):
-    """Skeleton unimplemented class for Mentalray renderer."""
-    
-    renderer = "mentalray"
-
-    def __init__(self, layer, render_instance):
-        """Constructor.
-
-        Raises:
-            :exc:`UnimplementedRendererException`: as it is not implemented.
-
-        """
-        super(RenderProductsMentalray, self).__init__(layer, render_instance)
-        raise UnimplementedRendererException("Mentalray not implemented")
-
-    def get_render_products(self):
-        """Get all AOVs.
-
-        See Also:
-            :func:`ARenderProducts.get_render_products()`
-
-        """
-        return []
-
-
 class AOVError(Exception):
     """Custom exception for determining AOVs."""
 
@@ -915,11 +887,4 @@ class UnsupportedRendererException(Exception):
     """Custom exception.
 
     Raised when requesting data from unsupported renderer.
-    """
-
-
-class UnimplementedRendererException(Exception):
-    """Custom exception.
-
-    Raised when requesting data from renderer that is not implemented yet.
     """
