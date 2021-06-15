@@ -34,6 +34,7 @@ class GenerateUUIDsOnInvalidAction(pyblish.api.Action):
     label = "Regenerate UUIDs"
     on = "failed"  # This action is only available on a failed plug-in
     icon = "wrench"  # Icon from Awesome Icon
+    allow_referenced = False
 
     def process(self, context, plugin):
 
@@ -53,7 +54,7 @@ class GenerateUUIDsOnInvalidAction(pyblish.api.Action):
 
             # Don't allow referenced nodes to get their ids regenerated to
             # avoid loaded content getting messed up with reference edits
-            if invalid:
+            if invalid and not self.allow_referenced:
                 referenced = {node for node in invalid if
                               cmds.referenceQuery(node, isNodeReferenced=True)}
                 if referenced:

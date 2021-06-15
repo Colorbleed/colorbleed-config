@@ -1,8 +1,15 @@
 import pyblish.api
 import colorbleed.api
 import colorbleed.maya.action
+from colorbleed.maya.action import GenerateUUIDsOnInvalidAction
 
 from colorbleed.maya import lib
+
+
+class ForceGenerateUUIDsOnInvalidAction(GenerateUUIDsOnInvalidAction):
+    label = "Force UUID regeneration"
+    allow_referenced = True
+    families = ["colorbleed.pointcache"]
 
 
 class ValidateNodeIDs(pyblish.api.InstancePlugin):
@@ -26,7 +33,8 @@ class ValidateNodeIDs(pyblish.api.InstancePlugin):
                 "colorbleed.yetiRig"]
 
     actions = [colorbleed.maya.action.SelectInvalidAction,
-               colorbleed.maya.action.GenerateUUIDsOnInvalidAction]
+               colorbleed.maya.action.GenerateUUIDsOnInvalidAction,
+               ForceGenerateUUIDsOnInvalidAction]
 
     def process(self, instance):
         """Process all meshes"""
