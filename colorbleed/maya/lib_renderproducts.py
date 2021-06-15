@@ -5,7 +5,7 @@ This module is used in :mod:`collect_render` and :mod:`collect_vray_scene`.
 
 Note:
     To implement new renderer, just create new class inheriting from
-    :class:`AExpectedFiles` and add it to :func:`ExpectedFiles.get()`.
+    :class:`ARenderProducts` and add it to :func:`RenderProducts.get()`.
 
 Attributes:
     R_SINGLE_FRAME (:class:`re.Pattern`): Find single frame number.
@@ -39,6 +39,7 @@ Todo:
 # WIP redo from OpenPype implementation
 # Source: https://github.com/pypeclub/OpenPype/blob/aaf8048eb883733d9679915a70049d50440cdb8c/openpype/hosts/maya/api/expected_files.py
 
+import logging
 import types
 import re
 import os
@@ -48,8 +49,11 @@ import six
 import attr
 
 from . import lib
+from . import lib_rendersetup
 
 from maya import cmds, mel
+
+log = logging.getLogger(__name__)
 
 R_SINGLE_FRAME = re.compile(r"^(-?)\d+$")
 R_FRAME_RANGE = re.compile(r"^(?P<sf>(-?)\d+)-(?P<ef>(-?)\d+)$")
@@ -100,107 +104,104 @@ class LayerMetadata(object):
     renderer = attr.ib()
     defaultExt = attr.ib()
     filePrefix = attr.ib()
-    enabledAOVs = attr.ib()
     frameStep = attr.ib(default=1)
     padding = attr.ib(default=4)
+    renderProducts = attr.ib(init=False, default=attr.Factory(list))
+   
 
+@attr.s    
+class RenderProduct(object):
+    """Describes an image or other file-like artifact produced by a render.
+    
+    Warning:
+        This currently does NOT return as a product PER render camera.
+        A single Render Product will generate files per camera. E.g. with two
+        cameras each render product generates two sequences on disk assuming
+        the file path prefix correctly uses the <Camera> tokens.
+    
+    """
+    productName = attr.ib()
+    ext = attr.ib()                             # extension
+    aov = attr.ib(default=None)                 # source aov
+    driver = attr.ib(default=None)              # source driver
+    multipart = attr.ib(default=False)          # multichannel file
+    
+    
+def get(layer, render_instance=None):
+    """Get render details and products for given renderer and render layer.
 
-# todo: Simplify the API - this can work fine wiht ExpectedFiles class
-#       removed and just a simple `get_renderlayer_info` function exposed
-#       which returns a `LayerMetadata` like above INCLUDING the output
-#       files.
-class ExpectedFiles:
-    """Class grouping functionality for all supported renderers.
+    Args:
+        layer (str): Name of render layer
+        render_instance (pyblish.api.Instance): Publish instance.
+            If not provided an empty mock instance is used.
 
-    Attributes:
-        multipart (bool): Flag if multipart exrs are used.
+    Returns:
+        ARenderProducts: The correct RenderProducts instance for that
+            renderlayer.
+
+    Raises:
+        :exc:`UnsupportedRendererException`: If requested renderer
+            is not supported. It needs to be implemented by extending
+            :class:`ARenderProducts` and added to this methods ``if``
+            statement.
 
     """
-    multipart = False
 
-    def __init__(self, render_instance):
-        """Constructor."""
-        self._render_instance = render_instance
-        self._renderer = None
-
-    def get(self, layer):
-        """Get expected files for given renderer and render layer.
-
-        Args:
-            renderer (str): Name of renderer
-            layer (str): Name of render layer
-
-        Returns:
-            dict: Expected rendered files by AOV
-
-        Raises:
-            :exc:`UnsupportedRendererException`: If requested renderer
-                is not supported. It needs to be implemented by extending
-                :class:`AExpectedFiles` and added to this methods ``if``
-                statement.
-
-        """
+    if render_instance is None:
+        # For now produce a mock instance
+        class Instance(object):
+            data = {}
+        render_instance = Instance()
         
-        self.layer = layer
-        renderer_name = lib.get_attr_in_layer(
-            "defaultRenderGlobals.currentRenderer", 
-            layer=layer
+    renderer_name = lib.get_attr_in_layer(
+        "defaultRenderGlobals.currentRenderer", 
+        layer=layer
+    )
+    
+    Renderer = {
+        "arnold": RenderProductsArnold,
+        "vray": RenderProductsVray,
+        "redshift": RenderProductsRedshift,
+        "mentalray": RenderProductsMentalray,
+        "renderman": RenderProductsRenderman,
+    }.get(renderer_name.lower(), None)
+    if Renderer is None:
+        raise UnsupportedRendererException(
+            "unsupported {}".format(renderer_name)
         )
         
-        Renderer = {
-            "arnold": ExpectedFilesArnold,
-            "vray": ExpectedFilesVray,
-            "redshift": ExpectedFilesRedshift,
-            "mentalray": ExpectedFilesMentalray,
-            "renderman": ExpectedFilesRenderman,
-
-        }.get(renderer_name.lower(), None)
-        if Renderer is None:
-            raise UnsupportedRendererException(
-                "unsupported {}".format(renderer_name)
-            )
-        
-        renderer = Renderer(layer, self._render_instance)
-        
-        self._renderer = renderer
-        return self._get_files(renderer)
-
-    def _get_files(self, renderer):
-        # type: (AExpectedFiles) -> list
-        files = renderer.get_files()
-        self.multipart = renderer.multipart
-        return files
+    return Renderer(layer, render_instance)
 
 
 @six.add_metaclass(ABCMeta)
-class AExpectedFiles:
+class ARenderProducts:
     """Abstract class with common code for all renderers.
 
     Attributes:
         renderer (str): name of renderer.
-        layer (str): name of render layer.
-        multipart (bool): flag for multipart exrs.
 
     """
 
     renderer = None
-    layer = None
-    multipart = False
-
+        
     def __init__(self, layer, render_instance):
         """Constructor."""
         self.layer = layer
         self.render_instance = render_instance
+        self.multipart = False
+        
+        # Initialize
+        self.layer_data = self._get_layer_data()
+        self.layer_data.renderProducts = self.get_render_products()
 
     @abstractmethod
-    def get_aovs(self):
+    def get_render_products(self):
         """To be implemented by renderer class.
         
-        This should return a list of tuples.
-        Each tuple is formatted as: (AOV name, output extension)
+        This should return a list of RenderProducts.
         
         Returns:
-            list: List of 2-tuples of (AOV name, output extension)
+            list: List of RenderProduct
             
         """
 
@@ -217,7 +218,7 @@ class AExpectedFiles:
             (str): sanitized camera name
 
         Example:
-            >>> AExpectedFiles.sanizite_camera_name('test:camera_01')
+            >>> ARenderProducts.sanizite_camera_name('test:camera_01')
             test_camera_01
 
         """
@@ -273,24 +274,30 @@ class AExpectedFiles:
         scene_name, _ = os.path.splitext(scene_basename)
 
         file_prefix = self.get_renderer_prefix()
-
+        
         if not file_prefix:
-            raise RuntimeError("Image prefix not set")
-
+            # Fall back to scene name by default
+            log.debug("Image prefix not set, using <Scene>")
+            file_prefix = "<Scene>"
+        
         layer_name = self.layer
+        
+        # If the Render Layer belongs to a Render Setup layer then the
+        # output name is based on the Render Setup Layer name without
+        # the `rs_` prefix.
+        rs_layer = lib_rendersetup.get_rendersetup_layer(layer_name)
+        if rs_layer:
+            layer_name = rs_layer
+
         if self.layer == "defaultRenderLayer":
             # defaultRenderLayer renders as masterLayer
             layer_name = "masterLayer"
-        
-        elif self.layer.startswith("rs_"):
-            layer_name = self.layer[3:]
             
         # todo: Support Custom Frames sequences 0,5-10,100-120
         #       Deadline allows submitting renders with a custom frame list
         #       to support those cases we might want to allow 'custom frames'
         #       to be overridden to `ExpectFiles` class?
-
-        return LayerMetadata(
+        layer_data = LayerMetadata(
             frameStart=int(self.get_render_attribute("startFrame")),
             frameEnd=int(self.get_render_attribute("endFrame")),
             frameStep=int(self.get_render_attribute("byFrameStep")),
@@ -302,11 +309,11 @@ class AExpectedFiles:
             layerName=layer_name,
             renderer=self.renderer,
             defaultExt=self._get_attr("defaultRenderGlobals.imfPluginKey"),
-            filePrefix=file_prefix,
-            enabledAOVs=self.get_aovs()
+            filePrefix=file_prefix
         )
+        return layer_data
 
-    def _generate_single_file_sequence(
+    def _generate_file_sequence(
             self, layer_data, 
             force_aov_name=None, 
             force_ext=None,
@@ -344,51 +351,21 @@ class AExpectedFiles:
                 )
         return expected_files
 
-    def _generate_aov_file_sequences(self, layer_data):
-        # type: (LayerMetadata) -> dict
-        expected_files = {}
-        for aov in sorted(layer_data.enabledAOVs):
-            for cam in layer_data.cameras:
-            
-                aov_name = aov[0]
-                aov_ext = aov[1]
-            
-                aov_files = self._generate_single_file_sequence(
-                    layer_data, 
-                    force_aov_name=aov_name,
-                    force_ext=aov_ext,
-                    force_cameras=[cam]
-                )
-            
-                # if we have more then one renderable camera, append
-                # camera name to AOV to allow per camera AOVs.
-                # todo: confirm this actually happens even when <Camera>
-                #       render token is in the file path prefix
-                aov_name = aov[0]
-                if len(layer_data.cameras) > 1:
-                    aov_name = "{}_{}".format(aov[0],
-                                              self.sanitize_camera_name(cam))
-
-                expected_files[aov_name] = aov_files
-
-        return expected_files
-
-    def get_files(self):
+    def get_files(self, product, camera):
         """Return list of expected files.
 
         It will translate render token strings  ('<RenderPass>', etc.) to
         their values. This task is tricky as every renderer deals with this
-        differently. It depends on `get_aovs()` abstract method implemented
-        for every supported renderer.
-
+        differently. That's why we expose `get_files` as a method on the
+        Renderer class so it can be overridden for complex cases.
+        
         """
-        layer_data = self._get_layer_data()
-
-        expected_files = []
-        if layer_data.enabledAOVs:
-            return self._generate_aov_file_sequences(layer_data)
-        else:
-            return self._generate_single_file_sequence(layer_data)
+        return self._generate_file_sequence(
+            self.layer_data, 
+            force_aov_name=product.productName,
+            force_ext=product.ext,
+            force_cameras=[camera]
+        )
 
     def get_renderable_cameras(self):
         # type: () -> list
@@ -417,8 +394,12 @@ class AExpectedFiles:
         return [get_name(cam) for cam in renderable_cameras]
 
 
-class ExpectedFilesArnold(AExpectedFiles):
+class RenderProductsArnold(ARenderProducts):
     """Expected files for Arnold renderer.
+    
+    References:
+        mtoa.utils.getFileName()
+        mtoa.utils.ui.common.updateArnoldTargetFilePreview()
 
     Attributes:
         aiDriverExtension (dict): Arnold AOV driver extension mapping.
@@ -426,7 +407,8 @@ class ExpectedFilesArnold(AExpectedFiles):
         renderer (str): name of renderer.
 
     """
-
+    
+    renderer = "arnold"
     aiDriverExtension = {
         "jpeg": "jpg",
         "exr": "exr",
@@ -436,17 +418,86 @@ class ExpectedFilesArnold(AExpectedFiles):
         "mtoa_shaders": "ass",  # TODO: research what those last two should be
         "maya": "",
     }
+        
+    def _get_aov_render_products(self, aov):
+        """Return all render products for the AOV"""
+        
+        products = list()
+        aov_name = self._get_attr("%s.name" % aov)
+        ai_drivers = cmds.listConnections("{}.outputs".format(aov),
+                                          source=True, 
+                                          destination=False, 
+                                          type="aiAOVDriver") or []
+                                          
+        for ai_driver in ai_drivers:
+            # todo: check aiAOVDriver.prefix as it could have 
+            #       a custom path prefix set for this driver
+            
+            # Skip Drivers set only for GUI
+            # 0: GUI, 1: Batch, 2: GUI and Batch
+            output_mode = self._get_attr("{}.outputMode".format(ai_driver))
+            if output_mode == 0: # GUI only
+                log.warning("%s has Output Mode set to GUI, skipping...", ai_driver)
+                continue
+        
+            ai_translator = self._get_attr("{}.aiTranslator".format(ai_driver))
+            try:
+                ext = self.aiDriverExtension[ai_translator]
+            except KeyError:
+                raise AOVError(
+                    "Unrecognized arnold driver format for AOV - {}".format(aov_name)
+                )
+                
+            # If aov RGBA is selected, arnold will translate it to `beauty`
+            name = aov_name
+            if name == "RGBA":
+                name = "beauty"
+                
+            # Support Arnold light groups for AOVs
+            # Global AOV: When disabled the main layer is not written: `{pass}`
+            # All Light Groups: When enabled, a `{pass}_lgroups` file is written
+            #                   this output is always merged into a single product.
+            # - Light Groups List: When set, a product per light group is written.
+            #                      e.g. {pass}_front, {pass}_rim
+            global_aov = self._get_attr("{}.globalAov".format(aov))
+            if global_aov:
+                product = RenderProduct(productName=name, 
+                                        ext=ext, 
+                                        aov=aov_name,
+                                        driver=ai_driver)
+                products.append(product)
+                
+            all_light_groups = self._get_attr("{}.lightGroups".format(aov))
+            if all_light_groups:
+                # All light groups is enabled. A single multipart Render Product
+                product = RenderProduct(productName=name + "_lgroups",
+                                        ext=ext,
+                                        aov=aov_name,
+                                        driver=ai_driver,
+                                        # Always multichannel output
+                                        multipart=True)
+                products.append(product)
+            else:
+                value = self._get_attr("{}.lightGroupsList".format(aov))
+                if not value:
+                    continue
+                selected_light_groups = value.strip().split()
+                for light_group in selected_light_groups:
+                    # Render Product per selected light group
+                    aov_light_group_name = "{}_{}".format(name, light_group)
+                    product = RenderProduct(productName=aov_light_group_name,
+                                            aov=aov_name,
+                                            driver=ai_driver,
+                                            ext=ext)
+                    products.append(product)
+                    
+        return products
 
-    def __init__(self, layer, render_instance):
-        """Constructor."""
-        super(ExpectedFilesArnold, self).__init__(layer, render_instance)
-        self.renderer = "arnold"
-
-    def get_aovs(self):
+    def get_render_products(self):
         """Get all AOVs.
 
         See Also:
-            :func:`AExpectedFiles.get_aovs()`
+            :func:`ARenderProducts.get_render_products()`
 
         Raises:
             :class:`AOVError`: If AOV cannot be determined.
@@ -476,160 +527,75 @@ class ExpectedFilesArnold(AExpectedFiles):
         use_ref_aovs = self.render_instance.data.get(
             "useReferencedAovs", False) or False
 
-        ai_aovs = cmds.ls(type="aiAOV")
+        aovs = cmds.ls(type="aiAOV")
         if not use_ref_aovs:
             ref_aovs = cmds.ls(type="aiAOV", referencedNodes=True)
-            ai_aovs = list(set(ai_aovs) - set(ref_aovs))
-
-        enabled_aovs = []
-        for aov in ai_aovs:
+            aovs = list(set(aovs) - set(ref_aovs))
+                    
+        products = []
+        
+        # Append the AOV products
+        for aov in aovs:
             enabled = self._get_attr("{}.enabled".format(aov))
             if not enabled:
                 continue
-            
-            aov_name = self._get_attr("%s.name" % aov)
-            ai_drivers = cmds.listConnections("{}.outputs".format(aov),
-                                              source=True, 
-                                              destination=False, 
-                                              type="aiAOVDriver") or []
-                                              
-            if len(ai_drivers) > 1:
-                # todo: the code below for multiple drivers is functional however
-                #       the ExpectedFiles class merges into a dict by AOV key
-                #       and thus overwrites it into just one aov output, losing
-                #       the multiple drivers.
-                raise NotImplementedError("Multiple drivers per AOV not implemented")
-                                              
-            for ai_driver in ai_drivers:
-                # todo: check aiAOVDriver.outputMode as it could have 
-                #       disabled an output driver for batch mode
-                # todo: check aiAOVDriver.prefix as it could have 
-                #       a custom path prefix set for this driver
-            
-                ai_translator = self._get_attr("{}.aiTranslator".format(ai_driver))
-                try:
-                    aov_ext = self.aiDriverExtension[ai_translator]
-                except KeyError:
-                    msg = (
-                        "Unrecognized arnold " "driver format for AOV - {}"
-                    ).format(aov_name)
-                    raise AOVError(msg)
-                    
-                # If aov RGBA is selected, arnold will translate it to `beauty`
-                if aov_name == "RGBA":
-                    aov_name = "beauty"
-                    
-                # Support Arnold light groups for AOVs
-                all_light_groups = self._get_attr("{}.lightGroups".format(aov))
-                light_groups = []
-                if all_light_groups:
-                    # All light groups is enabled
-                    light_groups = self._get_arnold_light_groups()
-                else:
-                    value = cmds.getAttr("{}.lightGroupsList".format(aov))
-                    selected_light_groups = value.strip().split()
-                    light_groups = selected_light_groups
-
-                if light_groups:
-                    for light_group in light_groups:
-                        aov_light_group_name = "{}_{}".format(aov_name, light_group)
-                        enabled_aovs.append((aov_light_group_name, aov_ext))
-                else:
-                    enabled_aovs.append((aov_name, aov_ext))
                 
-        # Append 'beauty' as this is arnolds
-        # default. If <RenderPass> token is specified and no AOVs are
-        # defined, this will be used.
-        enabled_aovs.append(
-            (u"beauty", self._get_attr("defaultRenderGlobals.imfPluginKey"))
-        )
-        return enabled_aovs
-        
-    @staticmethod
-    def _get_arnold_light_groups():
-        # reference: {arnold}\scripts\mtoa\ui\ae\aiAOVTemplate.py
-        # loop over all light groups in the scene
-        lights = cmds.ls(exactType=['pointLight',
-                                    'directionalLight',
-                                    'spotLight',
-                                    'areaLight',
-                                    'aiAreaLight',
-                                    'aiSkyDomeLight',
-                                    'aiMeshLight',
-                                    'aiPhotometricLight'])
-
-        existing_groups = set()
-        for light in lights:
-            light_group = cmds.getAttr(light + ".aiAov")
-            if light_group:
-                existing_groups.add(light_group)
-
-        return sorted(list(existing_groups))
+            # For now stick to the legacy output format.
+            aov_products = self._get_aov_render_products(aov)
+            products.extend(aov_products)
+            
+        if not any(product.aov == "RGBA" for product in products):
+            # Append default 'beauty' as this is arnolds default. 
+            # If <RenderPass> token is specified and no AOVs are defined, this will be used.
+            default_ext = self._get_attr("defaultRenderGlobals.imfPluginKey")
+            
+            # For legibility add the beauty layer as first entry
+            products.insert(0, RenderProduct(productName="beauty",
+                                             ext=default_ext,
+                                             driver="defaultArnoldDriver"))
+            
+        # TODO: Output Denoising AOVs?
+                
+        return products
 
 
-class ExpectedFilesVray(AExpectedFiles):
+class RenderProductsVray(ARenderProducts):
     """Expected files for V-Ray renderer."""
-
-    def __init__(self, layer, render_instance):
-        """Constructor."""
-        super(ExpectedFilesVray, self).__init__(layer, render_instance)
-        self.renderer = "vray"
+    
+    renderer = "vray"
 
     def get_renderer_prefix(self):
         """Get image prefix for V-Ray.
 
-        This overrides :func:`AExpectedFiles.get_renderer_prefix()` as
+        This overrides :func:`ARenderProducts.get_renderer_prefix()` as
         we must add `<aov>` token manually.
 
         See also:
-            :func:`AExpectedFiles.get_renderer_prefix()`
+            :func:`ARenderProducts.get_renderer_prefix()`
 
         """
-        prefix = super(ExpectedFilesVray, self).get_renderer_prefix()
+        prefix = super(RenderProductsVray, self).get_renderer_prefix()
         prefix = "{}_<aov>".format(prefix)
         return prefix
 
     def _get_layer_data(self):
         # type: () -> LayerMetadata
         """Override to get vray specific extension."""
-        layer_data = super(ExpectedFilesVray, self)._get_layer_data()
+        layer_data = super(RenderProductsVray, self)._get_layer_data()
+        
         default_ext = self._get_attr("vraySettings.imageFormatStr")
         if default_ext in ["exr (multichannel)", "exr (deep)"]:
             default_ext = "exr"
         layer_data.defaultExt = default_ext
         layer_data.padding = self._get_attr("vraySettings.fileNamePadding")
+        
         return layer_data
 
-    def get_files(self):
-        """Get expected files.
-
-        This overrides :func:`AExpectedFiles.get_files()` as we
-        we need to add one sequence for plain beauty if AOVs are enabled
-        as vray output beauty without 'beauty' in filename.
-
-        """
-        expected_files = super(ExpectedFilesVray, self).get_files()
-
-        layer_data = self._get_layer_data()
-        
-        # remove 'beauty' from filenames as vray doesn't output it
-        update = {}
-        if layer_data.enabledAOVs:
-            for aov, seqs in expected_files.items():
-                if aov == "beauty":
-                    new_list = []
-                    for seq in seqs:
-                        new_list.append(seq.replace("_beauty", ""))
-                    update[aov] = new_list
-            expected_files.update(update)
-            
-        return expected_files
-
-    def get_aovs(self):
+    def get_render_products(self):
         """Get all AOVs.
 
         See Also:
-            :func:`AExpectedFiles.get_aovs()`
+            :func:`ARenderProducts.get_render_products()`
 
         """
         if not cmds.ls("vraySettings", type="VRaySettingsNode"):
@@ -651,10 +617,8 @@ class ExpectedFilesVray(AExpectedFiles):
             default_ext = "exr"
 
         # add beauty as default
-        enabled_aovs = []
-        enabled_aovs.append(
-            (u"beauty", default_ext)
-        )
+        products = []
+        products.append(RenderProduct(productName="", ext=default_ext))
 
         # handle aovs from references
         use_ref_aovs = self.render_instance.data.get(
@@ -662,24 +626,24 @@ class ExpectedFilesVray(AExpectedFiles):
 
         # this will have list of all aovs no matter if they are coming from
         # reference or not.
-        vr_aovs = cmds.ls(
-            type=["VRayRenderElement", "VRayRenderElementSet"]) or []
+        aov_types = ["VRayRenderElement", "VRayRenderElementSet"]
+        aovs = cmds.ls(type=aov_types)
         if not use_ref_aovs:
-            ref_aovs = cmds.ls(
-                type=["VRayRenderElement", "VRayRenderElementSet"],
-                referencedNodes=True) or []
-            # get difference
-            vr_aovs = list(set(vr_aovs) - set(ref_aovs))
+            ref_aovs = cmds.ls(type=aov_types, referencedNodes=True) or []
+            aovs = list(set(aovs) - set(ref_aovs))
 
-        for aov in vr_aovs:
+        for aov in aovs:
             enabled = self._get_attr("{}.enabled".format(aov))
             if not enabled:
                 continue
                 
             aov_name = self._get_vray_aov_name(aov)
-            enabled_aovs.append((aov_name, default_ext))
+            product = RenderProduct(productName=aov_name,
+                                    ext=default_ext,
+                                    aov=aov)
+            products.append(product)
 
-        return enabled_aovs
+        return products
 
     @staticmethod
     def _get_vray_aov_name(node):
@@ -727,90 +691,38 @@ class ExpectedFilesVray(AExpectedFiles):
             return final_name
 
 
-class ExpectedFilesRedshift(AExpectedFiles):
+class RenderProductsRedshift(ARenderProducts):
     """Expected files for Redshift renderer.
 
     Attributes:
 
         unmerged_aovs (list): Name of aovs that are not merged into resulting
-            exr and we need them specified in expectedFiles output.
+            exr and we need them specified in Render Products output.
 
     """
 
+    renderer = "redshift"
     unmerged_aovs = {"Cryptomatte"}
-
-    def __init__(self, layer, render_instance):
-        """Construtor."""
-        super(ExpectedFilesRedshift, self).__init__(layer, render_instance)
-        self.renderer = "redshift"
 
     def get_renderer_prefix(self):
         """Get image prefix for Redshift.
 
-        This overrides :func:`AExpectedFiles.get_renderer_prefix()` as
+        This overrides :func:`ARenderProducts.get_renderer_prefix()` as
         we must add `<aov>` token manually.
 
         See also:
-            :func:`AExpectedFiles.get_renderer_prefix()`
+            :func:`ARenderProducts.get_renderer_prefix()`
 
         """
-        prefix = super(ExpectedFilesRedshift, self).get_renderer_prefix()
+        prefix = super(RenderProductsRedshift, self).get_renderer_prefix()
         prefix = "{}.<aov>".format(prefix)
         return prefix
 
-    def get_files(self):
-        """Get expected files.
-
-        This overrides :func:`AExpectedFiles.get_files()` as we
-        we need to add one sequence for plain beauty if AOVs are enabled
-        as vray output beauty without 'beauty' in filename.
-
-        """
-        expected_files = super(ExpectedFilesRedshift, self).get_files()
-        layer_data = self._get_layer_data()
-
-        # Redshift doesn't merge Cryptomatte AOV to final exr. We need to check
-        # for such condition and add it to list of expected files.
-        # Always include cryptomatte as separate output files
-        for aov in layer_data.enabledAOVs:
-            if aov[0].lower() == "cryptomatte":
-                aov_name = aov[0]
-                sequence = self._generate_single_file_sequence(
-                    layer_data,
-                    force_aov_name=aov_name
-                )
-                expected_files[aov_name] = sequence
-
-        if layer_data.enabledAOVs:
-            # When a Beauty AOV is added manually, it will be rendered as
-            # 'Beauty_other' in file name and "standard" beauty will have
-            # 'Beauty' in its name. When disabled, standard output will be
-            # without `Beauty`.
-            if expected_files.get(u"Beauty"):
-                # Rename Beauty to Beauty_Other
-                sequence = expected_files.pop(u"Beauty")
-                sequence = [
-                    item.replace(".Beauty", ".Beauty_other")
-                    for item in sequence
-                ]
-                expected_files[u"Beauty_other"] = sequence
-                
-                # Add the new Beauty AOV
-                expected_files[u"Beauty"] = self._generate_single_file_sequence(  # noqa: E501
-                    layer_data, force_aov_name="Beauty"
-                )
-            else:
-                expected_files[u"Beauty"] = self._generate_single_file_sequence(  # noqa: E501
-                    layer_data
-                )
-
-        return expected_files
-
-    def get_aovs(self):
+    def get_render_products(self):
         """Get all AOVs.
 
         See Also:
-            :func:`AExpectedFiles.get_aovs()`
+            :func:`ARenderProducts.get_render_products()`
 
         """
         
@@ -834,25 +746,27 @@ class ExpectedFilesRedshift(AExpectedFiles):
         
         use_ref_aovs = self.render_instance.data.get(
             "useReferencedAovs", False) or False
-
-        rs_aovs = cmds.ls(type="RedshiftAOV")
+    
+        aovs = cmds.ls(type="RedshiftAOV")
         if not use_ref_aovs:
             ref_aovs = cmds.ls(type="RedshiftAOV", referencedNodes=True)
-            rs_aovs = list(set(ai_aovs) - set(ref_aovs))
+            aovs = list(set(aovs) - set(ref_aovs))
 
-        enabled_aovs = []
-        for aov in rs_aovs:
+        products = []
+        has_beauty_aov = False
+        for aov in aovs:
             enabled = self._get_attr("{}.enabled".format(aov))
-            print(aov)
             if not enabled:
                 continue
                 
-            # If AOVs are merged into multipart exr, append AOV only if it
-            # is in the list of AOVs that renderer cannot (or will not)
-            # merge into final exr.
-            aov_name = self._get_attr("%s.name" % aov)
-            if self.multipart and aov_name not in self.unmerged_aovs:
+            aov_type = self._get_attr("%s.aovType" % aov)
+            if self.multipart and aov_type not in self.unmerged_aovs:
                 continue
+                
+            if aov_type == "Beauty":
+                has_beauty_aov = True
+                
+            aov_name = self._get_attr("%s.name" % aov)
             
             # todo: Redshift skips rendering of masterlayer without AOV suffix
             #       when a Beauty AOV is rendered. It overrides the main layer.
@@ -876,37 +790,49 @@ class ExpectedFilesRedshift(AExpectedFiles):
                 if light_groups:
                     for light_group in light_groups:
                         aov_light_group_name = "{}_{}".format(aov_name, light_group)
-                        enabled_aovs.append((aov_light_group_name, aov_ext))
+                        product = RenderProduct(productName=aov_light_group_name,
+                                                aov=aov_name,
+                                                ext=aov_ext)
+                        products.append(product)
 
             # Redshift AOV Light Select always renders the global AOV
             # even when light groups are present so we don't need to
             # exclude it when light groups are active
-            enabled_aovs.append((aov_name, aov_ext))
+            product = RenderProduct(productName=aov_name,
+                                    aov=aov_name,
+                                    ext=aov_ext)
+            products.append(product)
+            
+        
+        # When a Beauty AOV is added manually, it will be rendered as
+        # 'Beauty_other' in file name and "standard" beauty will have
+        # 'Beauty' in its name. When disabled, standard output will be
+        # without `Beauty`.
+        beauty_name = "Beauty_other" if has_beauty_aov else ""
+        products.append(RenderProduct(productName=beauty_name,
+                                      ext=aov_ext))
 
-        return enabled_aovs
+        return products
 
     @staticmethod
     def _get_redshift_light_groups():
         return sorted(mel.eval("redshiftAllAovLightGroups"))
 
 
-class ExpectedFilesRenderman(AExpectedFiles):
+class RenderProductsRenderman(ARenderProducts):
     """Expected files for Renderman renderer.
 
     Warning:
         This is very rudimentary and needs more love and testing.
     """
+    
+    renderer = "renderman"
 
-    def __init__(self, layer, render_instance):
-        """Constructor."""
-        super(ExpectedFilesRenderman, self).__init__(layer, render_instance)
-        self.renderer = "renderman"
-
-    def get_aovs(self):
+    def get_render_products(self):
         """Get all AOVs.
 
         See Also:
-            :func:`AExpectedFiles.get_aovs()`
+            :func:`ARenderProducts.get_render_products()`
 
         """
         enabled_aovs = []
@@ -929,7 +855,7 @@ class ExpectedFilesRenderman(AExpectedFiles):
     def get_files(self):
         """Get expected files.
 
-        This overrides :func:`AExpectedFiles.get_files()` as we
+        This overrides :func:`ARenderProducts.get_files()` as we
         we need to add one sequence for plain beauty if AOVs are enabled
         as vray output beauty without 'beauty' in filename.
 
@@ -942,7 +868,7 @@ class ExpectedFilesRenderman(AExpectedFiles):
         layer_data = self._get_layer_data()
         new_expected_files = {}
 
-        expected_files = super(ExpectedFilesRenderman, self).get_files()
+        expected_files = super(RenderProductsRenderman, self).get_files()
         # we always get beauty
         for aov, files in expected_files.items():
             new_files = []
@@ -956,8 +882,10 @@ class ExpectedFilesRenderman(AExpectedFiles):
         return new_expected_files
 
 
-class ExpectedFilesMentalray(AExpectedFiles):
+class RenderProductsMentalray(ARenderProducts):
     """Skeleton unimplemented class for Mentalray renderer."""
+    
+    renderer = "mentalray"
 
     def __init__(self, layer, render_instance):
         """Constructor.
@@ -966,14 +894,14 @@ class ExpectedFilesMentalray(AExpectedFiles):
             :exc:`UnimplementedRendererException`: as it is not implemented.
 
         """
-        super(ExpectedFilesMentalray, self).__init__(layer, render_instance)
+        super(RenderProductsMentalray, self).__init__(layer, render_instance)
         raise UnimplementedRendererException("Mentalray not implemented")
 
-    def get_aovs(self):
+    def get_render_products(self):
         """Get all AOVs.
 
         See Also:
-            :func:`AExpectedFiles.get_aovs()`
+            :func:`ARenderProducts.get_render_products()`
 
         """
         return []
