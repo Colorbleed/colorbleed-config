@@ -738,11 +738,11 @@ class RenderProductsRedshift(ARenderProducts):
         # due to some AOVs still being written into separate files, 
         # like Cryptomatte.
         # AOVs are merged in multi-channel file
-        self.multipart = bool(self._get_attr("redshiftOptions.exrForceMultilayer"))
+        multipart = bool(self._get_attr("redshiftOptions.exrForceMultilayer"))
 
         # Get Redshift Extension from image format
         image_format = self._get_attr("redshiftOptions.imageFormat")  # integer
-        aov_ext = mel.eval("redshiftGetImageExtension(%i)" % image_format)
+        ext = mel.eval("redshiftGetImageExtension(%i)" % image_format)
         
         use_ref_aovs = self.render_instance.data.get(
             "useReferencedAovs", False) or False
@@ -760,8 +760,12 @@ class RenderProductsRedshift(ARenderProducts):
                 continue
                 
             aov_type = self._get_attr("%s.aovType" % aov)
-            if self.multipart and aov_type not in self.unmerged_aovs:
+            if multipart and aov_type not in self.unmerged_aovs:
                 continue
+                
+            # Any AOVs that still get processed, like Cryptomatte
+            # by themselves are not multipart files.
+            aov_multipart = not multipart
                 
             if aov_type == "Beauty":
                 has_beauty_aov = True
@@ -787,30 +791,32 @@ class RenderProductsRedshift(ARenderProducts):
                         selected_light_groups = value.strip().split()
                         light_groups = selected_light_groups
 
-                if light_groups:
-                    for light_group in light_groups:
-                        aov_light_group_name = "{}_{}".format(aov_name, light_group)
-                        product = RenderProduct(productName=aov_light_group_name,
-                                                aov=aov_name,
-                                                ext=aov_ext)
-                        products.append(product)
+                for light_group in light_groups:
+                    aov_light_group_name = "{}_{}".format(aov_name, light_group)
+                    product = RenderProduct(productName=aov_light_group_name,
+                                            aov=aov_name,
+                                            ext=ext,
+                                            multipart=aov_multipart)
+                    products.append(product)
 
             # Redshift AOV Light Select always renders the global AOV
             # even when light groups are present so we don't need to
             # exclude it when light groups are active
             product = RenderProduct(productName=aov_name,
                                     aov=aov_name,
-                                    ext=aov_ext)
-            products.append(product)
-            
+                                    ext=ext,
+                                    multipart=aov_multipart)
+            products.append(product)   
         
         # When a Beauty AOV is added manually, it will be rendered as
         # 'Beauty_other' in file name and "standard" beauty will have
         # 'Beauty' in its name. When disabled, standard output will be
         # without `Beauty`.
         beauty_name = "Beauty_other" if has_beauty_aov else ""
-        products.append(RenderProduct(productName=beauty_name,
-                                      ext=aov_ext))
+        products.insert(0,
+                        RenderProduct(productName=beauty_name,
+                                      ext=ext,
+                                      multipart=multipart))
 
         return products
 
@@ -835,7 +841,7 @@ class RenderProductsRenderman(ARenderProducts):
             :func:`ARenderProducts.get_render_products()`
 
         """
-        enabled_aovs = []
+        products = []
 
         default_ext = "exr"
         displays = cmds.listConnections("rmanGlobals.displays")
@@ -848,16 +854,14 @@ class RenderProductsRenderman(ARenderProducts):
             if aov_name == "rmanDefaultDisplay":
                 aov_name = "beauty"
                 
-            enabled_aovs.append((aov_name, default_ext))
+            product = RenderProduct(productName=aov_name,
+                                    ext=default_ext)
+            products.append(product)
 
-        return enabled_aovs
+        return products
 
-    def get_files(self):
+    def get_files(self, product, camera):
         """Get expected files.
-
-        This overrides :func:`ARenderProducts.get_files()` as we
-        we need to add one sequence for plain beauty if AOVs are enabled
-        as vray output beauty without 'beauty' in filename.
 
         In renderman we hack it with prepending path. This path would
         normally be translated from `rmanGlobals.imageOutputDir`. We skip
@@ -865,21 +869,17 @@ class RenderProductsRenderman(ARenderProducts):
         to mess around with this settings anyway and it is enforced in
         render settings validator.
         """
-        layer_data = self._get_layer_data()
-        new_expected_files = {}
+        files = super(RenderProductsRenderman, self).get_files(product, camera)
 
-        expected_files = super(RenderProductsRenderman, self).get_files()
-        # we always get beauty
-        for aov, files in expected_files.items():
-            new_files = []
-            for file in files:
-                new_file = "{}/{}/{}".format(
-                    layer_data["sceneName"], layer_data["layerName"], file
-                )
-                new_files.append(new_file)
-            new_expected_files[aov] = new_files
+        layer_data = self.layer_data
+        new_files = []
+        for file in files:
+            new_file = "{}/{}/{}".format(
+                layer_data["sceneName"], layer_data["layerName"], file
+            )
+        new_files.append(new_file)
 
-        return new_expected_files
+        return new_files
 
 
 class RenderProductsMentalray(ARenderProducts):
