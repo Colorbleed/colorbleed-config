@@ -242,8 +242,15 @@ class ARenderProducts:
             raise UnsupportedRendererException(
                 "Unsupported renderer {}".format(self.renderer)
             )
+            
+        file_prefix = self._get_attr(file_prefix_attr)
         
-        return self._get_attr(file_prefix_attr)
+        if not file_prefix:
+            # Fall back to scene name by default
+            log.debug("Image prefix not set, using <Scene>")
+            file_prefix = "<Scene>"
+        
+        return file_prefix
 
     def get_render_attribute(self, attribute):
         """Get attribute from render options.
@@ -271,11 +278,6 @@ class ARenderProducts:
         scene_name, _ = os.path.splitext(scene_basename)
 
         file_prefix = self.get_renderer_prefix()
-        
-        if not file_prefix:
-            # Fall back to scene name by default
-            log.debug("Image prefix not set, using <Scene>")
-            file_prefix = "<Scene>"
         
         layer_name = self.layer
         
@@ -397,6 +399,15 @@ class RenderProductsArnold(ARenderProducts):
     References:
         mtoa.utils.getFileName()
         mtoa.utils.ui.common.updateArnoldTargetFilePreview()
+        
+    Notes:
+        - Output Denoising AOVs are not currently included.
+        - Only Frame/Animation ext: name.#.ext is supported.
+        - Use Custom extension is not supported.
+        - <RenderPassType> and <RenderPassFileGroup> tokens not tested
+        - With Merge AOVs but <RenderPass> in File Name Prefix Arnold
+          will still NOT merge the aovs.
+        - File Path Prefix overrides per AOV driver are not implemented
 
     Attributes:
         aiDriverExtension (dict): Arnold AOV driver extension mapping.
@@ -415,6 +426,20 @@ class RenderProductsArnold(ARenderProducts):
         "mtoa_shaders": "ass",  # TODO: research what those last two should be
         "maya": "",
     }
+    
+    def get_renderer_prefix(self):
+    
+        prefix = super(RenderProductsArnold, self).get_renderer_prefix()
+        merge_aovs = self._get_attr("defaultArnoldDriver.mergeAOVs")
+        if not merge_aovs and "<renderpass>" not in prefix.lower():
+            # When Merge AOVs is disabled and <renderpass> token not present
+            # then Arnold prepends <RenderPass>/ to the output path.
+            # todo: It's untested what happens if AOV driver has an
+            #       an explicit override path prefix.
+            prefix = "<RenderPass>/" + prefix
+            
+        return prefix
+        
         
     def _get_aov_render_products(self, aov):
         """Return all render products for the AOV"""
@@ -509,13 +534,22 @@ class RenderProductsArnold(ARenderProducts):
             # anyway.
             return []
         
-        if not (
-            self._get_attr("defaultArnoldRenderOptions.aovMode")
-            and not self._get_attr("defaultArnoldDriver.mergeAOVs")  # noqa: W503, E501
-        ):
-            # AOVs are merged in multi-channel file
-            self.multipart = True
-            return []
+        default_ext = self._get_attr("defaultRenderGlobals.imfPluginKey")
+        beauty_product = RenderProduct(productName="beauty",
+                                       ext=default_ext,
+                                       driver="defaultArnoldDriver")
+        
+        # AOVs > Legacy > Maya Render View > Mode       
+        aovs_enabled = bool(self._get_attr("defaultArnoldRenderOptions.aovMode"))
+        if not aovs_enabled:
+            return [beauty_product]
+            
+        # Common > File Output > Merge AOVs or <RenderPass>
+        # We don't need to check for Merge AOVs due to overridden `get_renderer_prefix()`
+        has_renderpass_token = "<renderpass>" in self.layer_data.filePrefix.lower()
+        if not has_renderpass_token:
+            beauty_product.multipart = True
+            return [beauty_product]
 
         # AOVs are set to be rendered separately. We should expect
         # <RenderPass> token in path.
@@ -542,14 +576,10 @@ class RenderProductsArnold(ARenderProducts):
             products.extend(aov_products)
             
         if not any(product.aov == "RGBA" for product in products):
-            # Append default 'beauty' as this is arnolds default. 
-            # If <RenderPass> token is specified and no AOVs are defined, this will be used.
-            default_ext = self._get_attr("defaultRenderGlobals.imfPluginKey")
-            
+            # Append default 'beauty' as this is arnolds default.
+            # However, it is excluded whenever a RGBA pass is enabled.
             # For legibility add the beauty layer as first entry
-            products.insert(0, RenderProduct(productName="beauty",
-                                             ext=default_ext,
-                                             driver="defaultArnoldDriver"))
+            products.insert(0, beauty_product)
             
         # TODO: Output Denoising AOVs?
                 
