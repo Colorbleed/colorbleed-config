@@ -557,8 +557,18 @@ class RenderProductsArnold(ARenderProducts):
 
 
 class RenderProductsVray(ARenderProducts):
-    """Expected files for V-Ray renderer."""
+    """Expected files for V-Ray renderer.
     
+    Notes:
+        - "Disabled" animation incorrectly returns frames in filename
+        - "Renumber Frames" is not supported
+    
+    Reference:
+        vrayAddRenderElementImpl() in vrayCreateRenderElementsTab.mel
+    
+    """
+    # todo: detect whether rendering with V-Ray GPU + whether AOV is supported
+   
     renderer = "vray"
 
     def get_renderer_prefix(self):
@@ -572,7 +582,7 @@ class RenderProductsVray(ARenderProducts):
 
         """
         prefix = super(RenderProductsVray, self).get_renderer_prefix()
-        prefix = "{}_<aov>".format(prefix)
+        prefix = "{}.<aov>".format(prefix)
         return prefix
 
     def _get_layer_data(self):
@@ -604,18 +614,18 @@ class RenderProductsVray(ARenderProducts):
             return []
 
         image_format_str = self._get_attr("vraySettings.imageFormatStr")
-        if image_format_str == "exr (multichannel)":
-            # AOVs are merged in m-channel file
-            self.multipart = True
-            return []
-            
         default_ext = image_format_str
-        if default_ext in ["exr (multichannel)", "exr (deep)"]:
+        if default_ext in {"exr (multichannel)", "exr (deep)"}:
             default_ext = "exr"
 
         # add beauty as default
         products = []
         products.append(RenderProduct(productName="", ext=default_ext))
+        
+        if image_format_str == "exr (multichannel)":
+            # AOVs are merged in m-channel file, only main layer is rendered
+            self.multipart = True
+            return products
 
         # handle aovs from references
         use_ref_aovs = self.render_instance.data.get(
@@ -633,7 +643,21 @@ class RenderProductsVray(ARenderProducts):
             enabled = self._get_attr("{}.enabled".format(aov))
             if not enabled:
                 continue
-                
+
+            class_type = self._get_attr(aov + ".vrayClassType")
+            if class_type == "LightMixElement":
+                # Special case which doesn't define a name by itself but
+                # instead seems to output multiple Render Products,
+                # specifically "Self_Illumination" and "Environment"
+                product_names = ["Self_Illumination", "Environment"]
+                for name in product_names:
+                    product = RenderProduct(productName=name, 
+                                            ext=default_ext, 
+                                            aov=aov)
+                    products.append(product)
+                # Continue as we've processed this special case AOV
+                continue
+
             aov_name = self._get_vray_aov_name(aov)
             product = RenderProduct(productName=aov_name,
                                     ext=default_ext,
@@ -642,8 +666,18 @@ class RenderProductsVray(ARenderProducts):
 
         return products
 
-    @staticmethod
-    def _get_vray_aov_name(node):
+    def _get_vray_aov_attr(self, node, key):
+        """Get value for attribute that starts with key in name"""
+        attrs = cmds.listAttr(node, string="{}*".format(key))
+        if not attrs:
+            return None
+            
+        assert len(attrs) == 1, "Found more than one attribute: %s" % attrs
+        attr = attrs[0]
+        
+        return self._get_attr("{}.{}".format(node, attr))
+
+    def _get_vray_aov_name(self, node):
         """Get AOVs name from Vray.
 
         Args:
@@ -653,39 +687,60 @@ class RenderProductsVray(ARenderProducts):
             str: aov name.
 
         """
-        vray_name = None
-        vray_explicit_name = None
-        vray_file_name = None
-        for node_attr in cmds.listAttr(node):
-            if node_attr.startswith("vray_filename"):
-                vray_file_name = cmds.getAttr("{}.{}".format(node, node_attr))
-            elif node_attr.startswith("vray_name"):
-                vray_name = cmds.getAttr("{}.{}".format(node, node_attr))
-            elif node_attr.startswith("vray_explicit_name"):
-                vray_explicit_name = cmds.getAttr(
-                    "{}.{}".format(node, node_attr))
-
-            if vray_file_name is not None and vray_file_name != "":
-                final_name = vray_file_name
-            elif vray_explicit_name is not None and vray_explicit_name != "":
-                final_name = vray_explicit_name
-            elif vray_name is not None and vray_name != "":
-                final_name = vray_name
-            else:
-                continue
-            # special case for Material Select elements - these are named
-            # based on the material they are connected to.
-            if "vray_mtl_mtlselect" in cmds.listAttr(node):
-                connections = cmds.listConnections(
-                    "{}.vray_mtl_mtlselect".format(node))
+        
+        vray_explicit_name = self._get_vray_aov_attr(node, "vray_explicit_name")
+        vray_filename = self._get_vray_aov_attr(node, "vray_filename")
+        vray_name = self._get_vray_aov_attr(node, "vray_name")
+        final_name = vray_explicit_name or vray_filename or vray_name or None
+        
+        class_type = self._get_attr(node + ".vrayClassType")
+        if not vray_explicit_name:
+            # Explicit name takes precedence and overrides completely
+            # otherwise add the connected node names to the special cases
+            # Any namespace colon ':' gets replaced to underscore '_' 
+            # so we sanitize using `sanitize_camera_name`
+            def _get_source_name(node, attr):
+                """Return sanitized name of input connection to attribute"""
+                plug = "{}.{}".format(node, attr)
+                connections = cmds.listConnections(plug,
+                                                   source=True,
+                                                   destination=False)
                 if connections:
-                    final_name += '_{}'.format(str(connections[0]))
-                    
-            # todo: implement special case for VRayExtraTex and
-            #       for velocity channels
-            #       reference: https://github.com/Colorbleed/colorbleed-config/blob/153f1cfa7e46dec32dc65a4b7e7fa6c0d40f6adf/colorbleed/plugins/maya/publish/collect_render_layer_aovs.py#L115-L146
+                    return self.sanitize_camera_name(connections[0])
+                
+            if class_type == "MaterialSelectElement":
+                # Name suffix is based on the connected material or set
+                attrs = [
+                    "vray_mtllist_mtlselect",
+                    "vray_mtl_mtlselect"
+                ]
+                for attr in attrs:
+                    name = _get_source_name(node, attr)
+                    if name:
+                        final_name += '_{}'.format(name)
+                        break
+                else:
+                    log.warning("Material Select Element has no "
+                                "selected materials: %s", node)
+                
+            elif class_type == "ExtraTexElement":
+                # Name suffix is based on the connected textures
+                extratex_type = self._get_attr(node + ".vray_type_extratex")
+                attr = {
+                    0: "vray_texture_extratex",
+                    1: "vray_float_texture_extratex",
+                    2: "vray_int_texture_extratex",
+                }.get(extratex_type)
+                name = _get_source_name(node, attr)
+                if name:
+                    final_name += '_{}'.format(name)
+                else:
+                    log.warning("Extratex Element has no incoming "
+                                "texture in: %s", plug)
+                
+        assert final_name, "Output filename not defined for AOV: %s" % node
 
-            return final_name
+        return final_name
 
 
 class RenderProductsRedshift(ARenderProducts):
