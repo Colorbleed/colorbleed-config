@@ -406,7 +406,8 @@ class RenderProductsArnold(ARenderProducts):
         - Use Custom extension is not supported.
         - <RenderPassType> and <RenderPassFileGroup> tokens not tested
         - With Merge AOVs but <RenderPass> in File Name Prefix Arnold
-          will still NOT merge the aovs.
+          will still NOT merge the aovs. This class correctly resolves
+          it - but user should be aware.
         - File Path Prefix overrides per AOV driver are not implemented
 
     Attributes:
@@ -415,7 +416,7 @@ class RenderProductsArnold(ARenderProducts):
         renderer (str): name of renderer.
 
     """
-    
+
     renderer = "arnold"
     aiDriverExtension = {
         "jpeg": "jpg",
@@ -426,7 +427,7 @@ class RenderProductsArnold(ARenderProducts):
         "mtoa_shaders": "ass",  # TODO: research what those last two should be
         "maya": "",
     }
-    
+
     def get_renderer_prefix(self):
     
         prefix = super(RenderProductsArnold, self).get_renderer_prefix()
@@ -439,8 +440,7 @@ class RenderProductsArnold(ARenderProducts):
             prefix = "<RenderPass>/" + prefix
             
         return prefix
-        
-        
+
     def _get_aov_render_products(self, aov):
         """Return all render products for the AOV"""
         
@@ -775,6 +775,9 @@ class RenderProductsVray(ARenderProducts):
 
 class RenderProductsRedshift(ARenderProducts):
     """Expected files for Redshift renderer.
+    
+    Notes:
+        - `get_files()` only supports rendering with frames, like "animation"
 
     Attributes:
 
