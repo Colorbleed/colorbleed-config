@@ -104,8 +104,9 @@ class LayerMetadata(object):
     filePrefix = attr.ib()
     frameStep = attr.ib(default=1)
     padding = attr.ib(default=4)
-    renderProducts = attr.ib(init=False, default=attr.Factory(list))
-   
+    
+    # Render Products
+    products = attr.ib(init=False, default=attr.Factory(list))
 
 @attr.s    
 class RenderProduct(object):
@@ -189,7 +190,7 @@ class ARenderProducts:
         
         # Initialize
         self.layer_data = self._get_layer_data()
-        self.layer_data.renderProducts = self.get_render_products()
+        self.layer_data.products = self.get_render_products()
 
     @abstractmethod
     def get_render_products(self):
@@ -647,10 +648,18 @@ class RenderProductsVray(ARenderProducts):
         default_ext = image_format_str
         if default_ext in {"exr (multichannel)", "exr (deep)"}:
             default_ext = "exr"
-
-        # add beauty as default
+            
         products = []
-        products.append(RenderProduct(productName="", ext=default_ext))
+        
+        # add beauty as default when not disabled
+        dont_save_rgb = self._get_attr("vraySettings.dontSaveRgbChannel")
+        if not dont_save_rgb:
+            products.append(RenderProduct(productName="", ext=default_ext))
+            
+        # separate alpha file
+        separate_alpha = self._get_attr("vraySettings.separateAlpha")
+        if separate_alpha:
+            products.append(RenderProduct(productName="Alpha", ext=default_ext))
         
         if image_format_str == "exr (multichannel)":
             # AOVs are merged in m-channel file, only main layer is rendered
@@ -696,9 +705,29 @@ class RenderProductsVray(ARenderProducts):
 
         return products
 
-    def _get_vray_aov_attr(self, node, key):
-        """Get value for attribute that starts with key in name"""
-        attrs = cmds.listAttr(node, string="{}*".format(key))
+    def _get_vray_aov_attr(self, node, prefix):
+        """Get value for attribute that starts with key in name
+        
+        V-Ray AOVs have attribute names that include the type
+        of AOV in the attribute name, for example:
+            - vray_filename_rawdiffuse
+            - vray_filename_velocity
+            - vray_name_gi
+            - vray_explicit_name_extratex
+            
+        To simplify querying the "vray_filename" or "vray_name"
+        attributes we just find the first attribute that has
+        that particular "{prefix}_" in the attribute name.
+        
+        Args:
+            node (str): AOV node name
+            prefix (str): Prefix of the attribute name.
+        
+        Returns:
+            Value of the attribute if it exists, else None
+        
+        """
+        attrs = cmds.listAttr(node, string="{}_*".format(prefix))
         if not attrs:
             return None
             
