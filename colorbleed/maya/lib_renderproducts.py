@@ -27,8 +27,6 @@ Attributes:
         token in image prefixes.
     R_SUBSTITUTE_CAMERA_TOKEN (:class:`re.Pattern`): Find and substitute camera
         token in image prefixes.
-    RENDERER_NAMES (dict): Renderer names mapping between reported name and
-        *human readable* name.
     IMAGE_PREFIXES (dict): Mapping between renderers and their respective
         image prefix attribute names.
 
@@ -69,13 +67,6 @@ R_SUBSTITUTE_LAYER_TOKEN = re.compile(
 )
 R_SUBSTITUTE_CAMERA_TOKEN = re.compile(r"%c|<camera>", re.IGNORECASE)
 R_SUBSTITUTE_SCENE_TOKEN = re.compile(r"%s|<scene>", re.IGNORECASE)
-
-RENDERER_NAMES = {
-    "vray": "V-Ray",
-    "arnold": "Arnold",
-    "renderman": "Renderman",
-    "redshift": "Redshift",
-}
 
 # not sure about the renderman image prefix
 IMAGE_PREFIXES = {
