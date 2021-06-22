@@ -23,9 +23,9 @@ class SetDressLoader(api.Loader):
             suffix="_",
         )
 
-        from colorbleed import setdress_api
+        from colorbleed.maya import api_setdress
 
-        containers = setdress_api.load_package(filepath=self.fname,
+        containers = api_setdress.load_package(filepath=self.fname,
                                                name=name,
                                                namespace=namespace)
 
@@ -45,19 +45,19 @@ class SetDressLoader(api.Loader):
 
     def update(self, container, representation):
 
-        from colorbleed import setdress_api
-        return setdress_api.update_package(container,
+        from colorbleed.maya import api_setdress
+        return api_setdress.update_package(container,
                                            representation)
 
     def remove(self, container):
         """Remove all sub containers"""
 
         from avalon import api
-        from colorbleed import setdress_api
+        from colorbleed.maya import api_setdress
         import maya.cmds as cmds
 
         # Remove all members
-        member_containers = setdress_api.get_contained_containers(container)
+        member_containers = api_setdress.get_contained_containers(container)
         for member_container in member_containers:
             self.log.info("Removing container %s",
                           member_container['objectName'])
