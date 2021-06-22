@@ -147,6 +147,18 @@ def any_deprecated():
 def notify_loaded_representations(parent=None,
                                   outdated=True,
                                   deprecated=True):
+    """Show a pop-up dialog to the user if any of the issues are found.
+
+    Args:
+        parent (QtCore.QObject): The parent Qt object to parent the
+            pop-up dialog to.
+        outdated (bool): Whether to check for outdated containers
+        deprecated (bool): Whether to check for deprecated assets or subsets
+
+    Returns:
+        None
+
+    """
 
     def show_popup(warnings):
 
