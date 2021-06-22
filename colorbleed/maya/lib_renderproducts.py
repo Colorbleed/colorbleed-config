@@ -94,6 +94,7 @@ class LayerMetadata(object):
     # Render Products
     products = attr.ib(init=False, default=attr.Factory(list))
 
+
 @attr.s
 class RenderProduct(object):
     """Describes an image or other file-like artifact produced by a render.
@@ -143,18 +144,18 @@ def get(layer, render_instance=None):
         layer=layer
     )
 
-    Renderer = {
+    renderer = {
         "arnold": RenderProductsArnold,
         "vray": RenderProductsVray,
         "redshift": RenderProductsRedshift,
         "renderman": RenderProductsRenderman
     }.get(renderer_name.lower(), None)
-    if Renderer is None:
+    if renderer is None:
         raise UnsupportedRendererException(
             "unsupported {}".format(renderer_name)
         )
 
-    return Renderer(layer, render_instance)
+    return renderer(layer, render_instance)
 
 
 @six.add_metaclass(ABCMeta)
@@ -350,7 +351,7 @@ class ARenderProducts:
             ):
                 frame_str = str(frame).rjust(layer_data.padding, "0")
                 expected_files.append(
-                    "{}.{}.{}".format(file_prefix,frame_str, ext)
+                    "{}.{}.{}".format(file_prefix, frame_str, ext)
                 )
         return expected_files
 
@@ -409,9 +410,10 @@ class RenderProductsArnold(ARenderProducts):
         - Only Frame/Animation ext: name.#.ext is supported.
         - Use Custom extension is not supported.
         - <RenderPassType> and <RenderPassFileGroup> tokens not tested
-        - With Merge AOVs but <RenderPass> in File Name Prefix Arnold
+        - With Merge AOVs but no <RenderPass> in File Name Prefix Arnold
           will still NOT merge the aovs. This class correctly resolves
-          it - but user should be aware.
+          it - but user should be aware. However, light groups DO get merged
+          in that scenario.
         - File Path Prefix overrides per AOV driver are not implemented
 
     Attributes:
@@ -462,7 +464,7 @@ class RenderProductsArnold(ARenderProducts):
             # Skip Drivers set only for GUI
             # 0: GUI, 1: Batch, 2: GUI and Batch
             output_mode = self._get_attr(ai_driver, "outputMode")
-            if output_mode == 0: # GUI only
+            if output_mode == 0:  # GUI only
                 log.warning("%s has Output Mode set to GUI, "
                             "skipping...", ai_driver)
                 continue
@@ -495,9 +497,15 @@ class RenderProductsArnold(ARenderProducts):
                                         driver=ai_driver)
                 products.append(product)
 
+            # todo: When Merge AOVs is enabled then light groups don't
+            #       get written to Separate Render Produts but are included
+            #       with the AOV layer. (Still need to test whether also
+            #       the case when selecting all light groups checkbox)
+
             all_light_groups = self._get_attr(aov, "lightGroups")
             if all_light_groups:
-                # All light groups is enabled. A single multipart Render Product
+                # All light groups is enabled. A single multipart
+                # Render Product suffixed _lgroups is created
                 product = RenderProduct(productName=name + "_lgroups",
                                         ext=ext,
                                         aov=aov_name,
