@@ -87,6 +87,102 @@ def any_outdated():
     return False
 
 
+def any_deprecated():
+    """Return whether the current scene has any deprecated content"""
+
+    # Get project groups
+    project = io.find_one({"type": "project"},
+                          projection={"config.groups": True})
+    groups = project.get("config", {}).get("groups", [])
+    groups_for_deprecated = [group["name"] for group in groups if
+                             "deprecated" in group.get("tags", [])]
+
+    processed = set()
+    host = avalon.api.registered_host()
+    for container in host.ls():
+
+        representation_id = io.ObjectId(container['representation'])
+        if representation_id in processed:
+            continue
+        processed.add(representation_id)
+
+        representation = io.find_one({"_id": representation_id})
+        if not representation:
+            log.debug("Container '{objectName}' has an invalid "
+                      "representation, it is missing in the "
+                      "database".format(**container))
+            continue
+
+        # Version
+        if representation["parent"] in processed:
+            continue
+        version = io.find_one({"_id": representation["parent"]})
+        processed.add(version["_id"])
+
+        # Subset
+        if version["parent"] in processed:
+            continue
+        subset = io.find_one({"_id": version["parent"]})
+        processed.add(subset["_id"])
+
+        # Check subset deprecated
+        subset_group = subset.get("data", {}).get("subsetGroup", None)
+        if subset_group in groups_for_deprecated:
+            return True
+
+        # Asset
+        if subset["parent"] in processed:
+            continue
+        asset = io.find_one({"_id": subset["parent"]})
+        processed.add(asset["_id"])
+
+        # Check asset deprecated status
+        tags = asset.get("data", {}).get("tags", [])
+        if isinstance(tags, (list, tuple)) and "deprecated" in tags:
+            return True
+
+    return False
+
+
+def notify_loaded_representations(parent=None,
+                                  outdated=True,
+                                  deprecated=True):
+
+    def show_popup(warnings):
+
+        msg = ", ".join(warnings)
+
+        if parent is None:
+            log.info("Skipping outdated content pop-up "
+                     "because host window can't be found.")
+            return
+
+        from .widgets import popup
+
+        # Show outdated pop-up
+        def _on_show_inventory():
+            import avalon.tools.cbsceneinventory as tool
+            tool.show(parent=parent)
+
+        dialog = popup.Popup(parent=parent)
+        dialog.setWindowTitle("Scene has outdated content".format())
+        dialog.setMessage("There are {msg} containers in "
+                          "your scene.".format(msg=msg))
+        dialog.on_clicked.connect(_on_show_inventory)
+        dialog.show()
+
+    warnings = []
+    if outdated and any_outdated():
+        log.warning("Scene has outdated content.")
+        warnings.append("outdated")
+    if deprecated and any_deprecated():
+        log.warning("Scene has deprecated content.")
+        warnings.append("deprecated")
+
+    if warnings:
+        show_popup(warnings)
+
+
 def update_task_from_path(path):
     """Update the context using the current scene state.
 

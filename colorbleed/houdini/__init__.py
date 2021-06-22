@@ -13,7 +13,7 @@ from avalon.houdini import pipeline as houdini
 from colorbleed.houdini import lib
 
 from colorbleed.lib import (
-    any_outdated,
+    notify_loaded_representations,
     update_task_from_path
 )
 
@@ -91,29 +91,8 @@ def on_open(*args):
     # ensure it is using correct FPS for the asset
     lib.validate_fps()
 
-    if any_outdated():
-        from ..widgets import popup
-
-        log.warning("Scene has outdated content.")
-
-        # Get main window
-        parent = hou.ui.mainQtWindow()
-        if parent is None:
-            log.info("Skipping outdated content pop-up "
-                     "because Houdini window can't be found.")
-        else:
-
-            # Show outdated pop-up
-            def _on_show_inventory():
-                import avalon.tools.cbsceneinventory as tool
-                tool.show(parent=parent)
-
-            dialog = popup.Popup(parent=parent)
-            dialog.setWindowTitle("Houdini scene has outdated content")
-            dialog.setMessage("There are outdated containers in "
-                              "your Houdini scene.")
-            dialog.on_clicked.connect(_on_show_inventory)
-            dialog.show()
+    parent = hou.ui.mainQtWindow()
+    notify_loaded_representations(parent=parent)
 
 
 def on_new(_):
@@ -133,7 +112,7 @@ def _set_asset_fps():
 
 def on_pyblish_instance_toggled(instance, new_value, old_value):
     """Toggle saver tool passthrough states on instance toggles."""
-    
+
     @contextlib.contextmanager
     def main_take(no_update=True):
         """Enter root take during context"""

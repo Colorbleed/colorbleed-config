@@ -13,7 +13,7 @@ from pyblish import api as pyblish
 
 from ..lib import (
     update_task_from_path,
-    any_outdated
+    notify_loaded_representations
 )
 from . import menu
 from . import lib
@@ -111,7 +111,7 @@ def on_init(_):
     # work correctly on scene open
     cmds.loadPlugin("AbcImport", quiet=True)
     cmds.loadPlugin("AbcExport", quiet=True)
-    
+
     try:
         # Try and load Maya Security tools by default
         print("Loading Maya Security tools..")
@@ -119,7 +119,7 @@ def on_init(_):
         cmds.loadPlugin("MayaScannerCB", quiet=True)
     except RuntimeError as exc:
         log.warning("Maya Security Scanning Tools could not be loaded: %s", exc)
-        
+
     # Process everything below only when not in headless batch mode
     # since they are purely cosmetic UI changes for the artists.
     if IS_HEADLESS:
@@ -166,7 +166,6 @@ def on_open(_):
     """On scene open let's assume the containers have changed."""
 
     from avalon.vendor.Qt import QtWidgets
-    from ..widgets import popup
 
     # Update current task for the current scene
     update_task_from_path(cmds.file(query=True, sceneName=True))
@@ -175,30 +174,11 @@ def on_open(_):
     # ensure it is using correct FPS for the asset
     lib.validate_fps()
 
-    if any_outdated():
-        log.warning("Scene has outdated content.")
-
-        # Find maya main window
-        top_level_widgets = {w.objectName(): w for w in
-                             QtWidgets.QApplication.topLevelWidgets()}
-        parent = top_level_widgets.get("MayaWindow", None)
-
-        if parent is None:
-            log.info("Skipping outdated content pop-up "
-                     "because Maya window can't be found.")
-        else:
-
-            # Show outdated pop-up
-            def _on_show_inventory():
-                import avalon.tools.cbsceneinventory as tool
-                tool.show(parent=parent)
-
-            dialog = popup.Popup(parent=parent)
-            dialog.setWindowTitle("Maya scene has outdated content")
-            dialog.setMessage("There are outdated containers in "
-                              "your Maya scene.")
-            dialog.on_clicked.connect(_on_show_inventory)
-            dialog.show()
+    # Find maya main window
+    top_level_widgets = {w.objectName(): w for w in
+                         QtWidgets.QApplication.topLevelWidgets()}
+    parent = top_level_widgets.get("MayaWindow", None)
+    notify_loaded_representations(parent=parent)
 
 
 def on_new(_):
