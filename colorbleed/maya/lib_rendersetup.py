@@ -85,31 +85,31 @@ def get_attr_in_layer(node_attr, layer):
         >>> get_attr_in_layer("transform.translate", layer="layer3")
 
     Args:
-        attr (str): attribute name as 'node.attribute'
+        node_attr (str): attribute name as 'node.attribute'
         layer (str): layer name
 
     Returns:
         object: attribute value in layer
 
     """
-    
+
     # Delay pymel import to here because it's slow to load
     import pymel.core as pm
 
-    def _layer_needs_update(layer):
+    def _layer_needs_update(layer_):
         """Return whether layer needs updating."""
         # Use `getattr` as e.g. DefaultRenderLayer does not have the attribute
-        return getattr(layer, "needsMembershipUpdate", False) or \
-               getattr(layer, "needsApplyUpdate", False)
+        return (getattr(layer_, "needsMembershipUpdate", False) or
+                getattr(layer_, "needsApplyUpdate", False))
 
     def get_default_layer_value(node_attr_):
         """Return attribute value in defaultRenderLayer"""
-        inputs = cmds.listConnections(node_attr_, 
-                                      source=True, 
-                                      destination=False, 
+        inputs = cmds.listConnections(node_attr_,
+                                      source=True,
+                                      destination=False,
                                       # We want to skip conversion nodes since
                                       # an override to `endFrame` could have
-                                      # a `unitToTimeConversion` node in-between
+                                      # a `unitToTimeConversion` node input
                                       skipConversionNodes=True,
                                       type="applyOverride") or []
         if inputs:
@@ -119,7 +119,7 @@ def get_attr_in_layer(node_attr, layer):
                                         type="applyOverride")
             node = history_overrides[-1] if history_overrides else override
             node_attr_ = node + ".original"
-        
+
         return pm.getAttr(node_attr_, asString=True)
 
     layer = get_rendersetup_layer(layer)
@@ -217,12 +217,12 @@ def get_attr_overrides(node_attr, layer,
 
     """
 
-    def get_mplug_children(plug):
+    def get_mplug_children(mplug):
         """Return children MPlugs of compound MPlug"""
         children = []
-        if plug.isCompound:
-            for i in range(plug.numChildren()):
-                children.append(plug.child(i))
+        if mplug.isCompound:
+            for i in range(mplug.numChildren()):
+                children.append(mplug.child(i))
         return children
 
     def get_mplug_names(mplug):
@@ -263,7 +263,7 @@ def get_attr_overrides(node_attr, layer,
         # DefaultRenderLayer will never have overrides
         # since it's the default layer
         return []
-    
+
     rs_layer = renderSetup.instance().getRenderLayer(layer)
     if rs_layer is None:
         # Renderlayer does not exist
