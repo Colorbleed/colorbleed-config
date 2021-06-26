@@ -150,6 +150,7 @@ class CollectMayaRenderlayers(pyblish.api.ContextPlugin):
                     subset = "{0}_{1}".format(nice_name, layername)
                     self.log.info(subset)
                 else:
+                    self.log.debug("Using single render camera: %s" % camera)
                     subset = layername
 
                 # Always end with start frame and end frame in label

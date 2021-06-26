@@ -36,6 +36,7 @@ import logging
 import types
 import re
 import os
+from functools import partial
 from abc import ABCMeta, abstractmethod
 
 import six
@@ -317,42 +318,47 @@ class ARenderProducts:
         )
         return layer_data
 
-    def _generate_file_sequence(
-            self, layer_data,
-            force_aov_name=None,
-            force_ext=None,
-            force_cameras=None):
+    def get_file_pattern(self, product, camera=None):
+        layer_data = self.layer_data
+        aov_name = product.productName or ""
+        ext = product.ext or layer_data.defaultExt
+        file_prefix = layer_data.filePrefix
+        mappings = (
+            (R_SUBSTITUTE_SCENE_TOKEN, layer_data.sceneName),
+            (R_SUBSTITUTE_LAYER_TOKEN, layer_data.layerName),
+            (R_SUBSTITUTE_CAMERA_TOKEN, self.sanitize_camera_name(camera)),
+            # this is required to remove unfilled aov token, for example
+            # in Redshift
+            (R_REMOVE_AOV_TOKEN, "") if not aov_name \
+            else (R_SUBSTITUTE_AOV_TOKEN, aov_name),
+
+            (R_CLEAN_FRAME_TOKEN, ""),
+            (R_CLEAN_EXT_TOKEN, ""),
+        )
+
+        for regex, value in mappings:
+            file_prefix = re.sub(regex, value, file_prefix)
+
+        frame_placeholder = str("#").rjust(layer_data.padding, "#")
+
+        return "{}.{}.{}".format(file_prefix, frame_placeholder, ext)
+
+    def _generate_file_sequence(self, layer_data, file_prefix):
         # type: (LayerMetadata, str, str) -> list
+
+        # Replace the #### number for the frame numbers
+        def replace_fn(frame, match):
+            padding = len(match.group(1))
+            return str(frame).rjust(padding, "0")
+
         expected_files = []
-        cameras = force_cameras if force_cameras else layer_data.cameras
-        ext = force_ext or layer_data.defaultExt
-        for cam in cameras:
-            file_prefix = layer_data.filePrefix
-            mappings = (
-                (R_SUBSTITUTE_SCENE_TOKEN, layer_data.sceneName),
-                (R_SUBSTITUTE_LAYER_TOKEN, layer_data.layerName),
-                (R_SUBSTITUTE_CAMERA_TOKEN, self.sanitize_camera_name(cam)),
-                # this is required to remove unfilled aov token, for example
-                # in Redshift
-                (R_REMOVE_AOV_TOKEN, "") if not force_aov_name \
-                else (R_SUBSTITUTE_AOV_TOKEN, force_aov_name),
-
-                (R_CLEAN_FRAME_TOKEN, ""),
-                (R_CLEAN_EXT_TOKEN, ""),
-            )
-
-            for regex, value in mappings:
-                file_prefix = re.sub(regex, value, file_prefix)
-
-            for frame in range(
-                    int(layer_data.frameStart),
-                    int(layer_data.frameEnd) + 1,
-                    int(layer_data.frameStep),
-            ):
-                frame_str = str(frame).rjust(layer_data.padding, "0")
-                expected_files.append(
-                    "{}.{}.{}".format(file_prefix, frame_str, ext)
-                )
+        for frame in range(
+                int(layer_data.frameStart),
+                int(layer_data.frameEnd) + 1,
+                int(layer_data.frameStep),
+        ):
+            fname = re.sub("(#+)", partial(replace_fn, frame), file_prefix)
+            expected_files.append(fname)
         return expected_files
 
     def get_files(self, product, camera):
@@ -364,12 +370,10 @@ class ARenderProducts:
         Renderer class so it can be overridden for complex cases.
 
         """
-        return self._generate_file_sequence(
-            self.layer_data,
-            force_aov_name=product.productName,
-            force_ext=product.ext,
-            force_cameras=[camera]
-        )
+
+        prefix = self.get_file_pattern(product, camera)
+        return self._generate_file_sequence(self.layer_data,
+                                            file_prefix=prefix)
 
     def get_renderable_cameras(self):
         # type: () -> list
@@ -540,6 +544,8 @@ class RenderProductsArnold(ARenderProducts):
 
         """
 
+        products = []
+
         if not cmds.ls("defaultArnoldRenderOptions", type="aiOptions"):
             # this occurs when Render Setting windows was not opened yet. In
             # such case there are no Arnold options created so query for AOVs
@@ -581,8 +587,6 @@ class RenderProductsArnold(ARenderProducts):
             ref_aovs = cmds.ls(type="aiAOV", referencedNodes=True)
             aovs = list(set(aovs) - set(ref_aovs))
 
-        products = []
-
         # Append the AOV products
         for aov in aovs:
             enabled = self._get_attr(aov, "enabled")
@@ -599,7 +603,34 @@ class RenderProductsArnold(ARenderProducts):
             # For legibility add the beauty layer as first entry
             products.insert(0, beauty_product)
 
-        # TODO: Output Denoising AOVs?
+        # Arnold Output Denoising AOVs
+        output_denoising_aovs = bool(
+            self._get_attr("defaultArnoldRenderOptions.outputVarianceAOVs")
+        )
+        if output_denoising_aovs:
+            # Whenever a Z, N or diffuse_albedo aov exists and Arnold Output
+            # Denoising AOVs is enabled then Arnold will instead write out
+            # those layers with the _noice suffix. So we remove those products
+            def should_remove(product):
+                aov_name = product.aov
+                if aov_name in {"N", "Z", "diffuse_albedo"}:
+                    return True
+                return False
+
+            products = [p for p in products if not should_remove(p)]
+
+            for name in ["diffuse_albedo_noice",
+                         "Z_noice",
+                         "N_noice",
+                         "variance"]:
+                label = name
+                if label.endswith("_noice"):
+                    label = label[:-len("_noice")]
+                product = RenderProduct(productName=name,
+                                        aov=label,
+                                        driver="outputVarianceAOVs",
+                                        ext=default_ext)
+                products.append(product)
 
         return products
 
