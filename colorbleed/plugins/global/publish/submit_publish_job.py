@@ -287,7 +287,13 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
                 "JobDependency0": job["_id"],
                 "UserName": job["Props"]["User"],
                 "Comment": instance.context.data.get("comment", ""),
-                "InitialStatus": state
+                "InitialStatus": state,
+                
+                # Error out early on this job since it's unlikely
+                # a subsequent publish will suddenly succeed and
+                # this avoids trying to create tons of publishes
+                "OverrideJobFailureDetection": True,
+                "FailureDetectionJobErrors": 3  
             },
             "PluginInfo": {
                 "Version": "3.6",
