@@ -5,7 +5,7 @@ import colorbleed.api
 import colorbleed.maya.lib as lib
 
 
-class ValidateArnoldLayerName(pyblish.api.InstancePlugin):
+class ValidateArnoldFrameAnimationExt(pyblish.api.InstancePlugin):
     """Validate frame/animation ext formatting with Arnold"""
 
     order = colorbleed.api.ValidateContentsOrder
