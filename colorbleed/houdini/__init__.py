@@ -117,21 +117,22 @@ def on_pyblish_instance_toggled(instance, new_value, old_value):
     def main_take(no_update=True):
         """Enter root take during context"""
         original_take = hou.takes.currentTake()
-        original_update_mode = hou.updateModeSetting()
         root = hou.takes.rootTake()
-        has_changed = False
+        if original_take == root:
+            # No need for change when already in root take
+            yield
+            return
+
+        original_update_mode = hou.updateModeSetting()
         try:
-            if original_take != root:
-                has_changed = True
-                if no_update:
-                    hou.setUpdateMode(hou.updateMode.Manual)
-                hou.takes.setCurrentTake(root)
-                yield
+            if no_update:
+                hou.setUpdateMode(hou.updateMode.Manual)
+            hou.takes.setCurrentTake(root)
+            yield
         finally:
-            if has_changed:
-                if no_update:
-                    hou.setUpdateMode(original_update_mode)
-                hou.takes.setCurrentTake(original_take)
+            if no_update:
+                hou.setUpdateMode(original_update_mode)
+            hou.takes.setCurrentTake(original_take)
 
     if not instance.data.get("_allowToggleBypass", True):
         return
