@@ -1,6 +1,47 @@
 import pyblish.api
 
 import maya.cmds as cmds
+import maya.api.OpenMaya as om
+
+
+def get_all_children(nodes):
+    """Return all children of `nodes` including each instanced child.
+
+    Using maya.cmds.listRelatives(allDescendents=True) includes only the first
+    instance. As such, this function acts as an optimal replacement with a
+    focus on a fast query.
+
+    """
+
+    sel = om.MSelectionList()
+    traversed = set()
+    iterator = om.MItDag(om.MItDag.kDepthFirst)
+    for node in nodes:
+
+        if node in traversed:
+            # Ignore if already processed as a child
+            # before
+            continue
+
+        sel.clear()
+        sel.add(node)
+        dag = sel.getDagPath(0)
+
+        iterator.reset(dag)
+        iterator.next()  # ignore self
+        while not iterator.isDone():
+
+            path = iterator.fullPathName()
+
+            if path in traversed:
+                iterator.prune()
+                iterator.next()
+                continue
+
+            traversed.add(path)
+            iterator.next()
+
+    return list(traversed)
 
 
 class CollectAnimationOutputGeometry(pyblish.api.InstancePlugin):
@@ -37,9 +78,7 @@ class CollectAnimationOutputGeometry(pyblish.api.InstancePlugin):
         members = cmds.ls(cmds.sets(out_set, query=True), long=True)
 
         # Get all the relatives of the members
-        descendants = cmds.listRelatives(members,
-                                         allDescendents=True,
-                                         fullPath=True) or []
+        descendants = get_all_children(members)
         descendants = cmds.ls(descendants, noIntermediate=True, long=True)
 
         # Add members and descendants together for a complete overview
