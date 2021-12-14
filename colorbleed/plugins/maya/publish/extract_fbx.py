@@ -385,7 +385,7 @@ class ExtractFBX(colorbleed.api.Extractor):
         # Apply the FBX overrides through MEL since the commands
         # only work correctly in MEL according to online
         # available discussions on the topic
-        for option, value in options.iteritems():
+        for option, value in options.items():
             key = option[0].upper() + option[1:]  # uppercase first letter
 
             # Boolean must be passed as lower-case strings

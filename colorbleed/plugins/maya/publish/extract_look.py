@@ -77,7 +77,7 @@ class ExtractLook(colorbleed.api.Extractor):
         self.log.info("Extract sets (Maya ASCII) ...")
         lookdata = instance.data["lookData"]
         relationships = lookdata["relationships"]
-        sets = relationships.keys()
+        sets = list(relationships.keys())
 
         resources = instance.data["resources"]
 

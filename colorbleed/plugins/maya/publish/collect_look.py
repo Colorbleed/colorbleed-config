@@ -50,46 +50,47 @@ def get_look_attrs(node):
         for attr in attrs:
             if attr in SHAPE_ATTRS:
                 result.append(attr)
-                
+
         for attr in attrs:
             # Include any Arnold attribute changes
             if attr.startswith("ai"):
                 result.append(attr)
 
     return result
-    
+
 
 def get_file_node_attrs():
 
     cmds.filePathEditor(refresh=True)
     node_attrs = {}
-    for registered in cmds.filePathEditor(query=True, listRegisteredTypes=True):
-    
+    for registered in cmds.filePathEditor(query=True,
+                                          listRegisteredTypes=True):
+
         if registered == "reference":
             # Ignore references
             continue
-            
+
         if registered == "file":
             # Somehow the registered type just lists "file"
             # without the attribute (similar to references)
             node = "file"
             attr = "fileTextureName"
-    
+
         elif "." in registered:
             node, attr = registered.split(".", 1)
-            
+
         else:
             # No attribute specified in the registered type
             # and thus it's non trivial to get the path?
-            # todo: log this more from a debug - however using 
+            # todo: log this more from a debug - however using
             #       "logging" separate from Plug-in doesn't work with Pyblish?
             print("Unsupported file dependency type: %s" % registered)
             continue
-            
+
         node_attrs[node] = attr
-        
+
     return node_attrs
-    
+
 # Cache once on plug-in load
 FILE_ATTR = get_file_node_attrs()
 
@@ -174,7 +175,7 @@ def seq_to_glob(path, force_use_file_sequence=False):
                                         base[match.end():])
             head = os.path.dirname(path)
             return os.path.join(head, new_base)
-            
+
     return path
 
 
@@ -188,11 +189,10 @@ def get_file_node_path(node):
         str: the file path in use
 
     """
-    
+
     if cmds.nodeType(node) == "file":
-        # Special case for file nodes
-        # if the path appears to be sequence, use computedFileTextureNamePattern,
-        # this preserves the <> tag
+        # Special case for file nodes. If the path appears to be sequence, use
+        # 'computedFileTextureNamePattern' this preserves the <> tag
         if cmds.attributeQuery('computedFileTextureNamePattern',
                                node=node,
                                exists=True):
@@ -211,7 +211,7 @@ def get_file_node_path(node):
 
         # otherwise use fileTextureName
         return cmds.getAttr('{0}.fileTextureName'.format(node))
-    
+
     else:
         attribute = get_file_node_attr(node)
         return cmds.getAttr(attribute)
@@ -230,14 +230,14 @@ def get_file_node_files(node):
     """
 
     attr = get_file_node_attr(node)
-    
+
     # Node has .useFrameExtension and it is enabled, then it's a sequence
     # This is supported by for example 'file' and 'aiImage' nodes.
     uses_frame_extension = False
     if cmds.attributeQuery("useFrameExtension", exists=True, node=node):
         frame_extension_attr = "{0}.useFrameExtension".format(node)
         uses_frame_extension = cmds.getAttr(frame_extension_attr)
-    
+
     path = get_file_node_path(node)
     path = cmds.workspace(expandName=path)
     if uses_frame_extension or has_sequence_pattern(path):
@@ -282,10 +282,9 @@ class CollectLook(pyblish.api.InstancePlugin):
 
         self.log.info("Looking for look associations "
                       "for %s" % instance.data['name'])
-                      
+
         # Get the cached node types
         file_node_types = FILE_ATTR.keys()
-        print(file_node_types)
 
         # Discover related object sets
         self.log.info("Gathering sets..")
@@ -326,7 +325,7 @@ class CollectLook(pyblish.api.InstancePlugin):
 
         # Collect file nodes used by shading engines (if we have any)
         files = list()
-        looksets = sets.keys()
+        looksets = list(sets.keys())    # Py3: enforce list for maya.cmds
         if looksets:
             self.log.info("Found the following sets:\n{}".format(looksets))
             # Get the entire node chain of the look sets
@@ -467,12 +466,14 @@ class CollectLook(pyblish.api.InstancePlugin):
         node_type = cmds.nodeType(node)
         attribute = get_file_node_attr(node)
         source = cmds.getAttr(attribute)
-        
+
         if node_type == "file":
             # Compare with the computed file path, e.g. the one with the <UDIM>
             # pattern in it, to generate some logging information about this
             # difference
-            computed_attribute = "{}.computedFileTextureNamePattern".format(node)
+            computed_attribute = "{}.computedFileTextureNamePattern".format(
+                node
+            )
             computed_source = cmds.getAttr(computed_attribute)
             if source != computed_source:
                 self.log.debug("Detected computed file pattern difference "
