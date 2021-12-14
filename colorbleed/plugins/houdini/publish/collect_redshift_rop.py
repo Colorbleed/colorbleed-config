@@ -55,7 +55,7 @@ def evalParmNoFrame(node, parm, pad_character="#"):
 
 
 class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
-    """Collect USD Render Products
+    """Collect Redshift ROP Render Products
 
     Collects the instance.data["files"] for the render products.
 
