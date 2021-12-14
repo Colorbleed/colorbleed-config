@@ -25,6 +25,19 @@ def get_reference_node_parents(ref):
     return parents
 
 
+def set_namespace(node, namespace):
+    """Add node to the namespace"""
+    from maya import cmds
+
+    name = node.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
+    cmds.rename(node, namespace + ":" + name)
+
+
+def get_namespace(node):
+    """Return namespace from node name"""
+    return node.rsplit("|", 1)[-1].rsplit(":", 1)[0]
+
+
 class ReferenceLoader(api.Loader):
     """A basic ReferenceLoader for Maya
 
@@ -77,17 +90,9 @@ class ReferenceLoader(api.Loader):
         if not nodes:
             # Do nothing if empty list
             return nodes
-
-        from maya import cmds
-
-        # Bug: In Maya instanced referenced meshes lose their shader on scene
-        #      open assignments when the shape is in an objectSet. So we
-        #      exclude *all!* shape nodes from containerizing to avoid it.
-        #      For more information, see:
-        #      https://gitter.im/getavalon/Lobby?at=5db97984a03ae1584f367117
-        shapes = set(cmds.ls(nodes, shapes=True, long=True))
-        return [node for node in cmds.ls(nodes, long=True)
-                if node not in shapes]
+        
+        # Containerize only the Reference node
+        return [self._get_reference_node(nodes)]
 
     def process_reference(self, context, name, namespace, data):
         """To be implemented by subclass"""
@@ -178,6 +183,12 @@ class ReferenceLoader(api.Loader):
                 raise
 
             self.log.warning("Ignoring file read error:\n%s", exc)
+            
+        # Ensure reference node is included in the returned content
+        # because cmds.file(returnNewNodes=True) doesn't return it since
+        # the reference node already existed. Similarly cmds.referenceQuery
+        # doesn't return it either. So for updating we can safely return it.
+        content.append(reference_node)
 
         # Fix PLN-40 for older containers created with Avalon that had the
         # `.verticesOnlySet` set to True.
@@ -242,3 +253,70 @@ class ReferenceLoader(api.Loader):
                            deleteNamespaceContent=True)
         except RuntimeError:
             pass
+
+    def switch(self, container, representation):
+        self.update(container, representation)
+
+        from avalon import pipeline
+        import avalon.maya.lib as lib
+        from maya import cmds
+
+        # Define namespace similar to how the default loader does it on load
+        # but using the new representation so we can update the namespace
+        context = pipeline.get_representation_context(representation)
+        asset = context['asset']
+        namespace = lib.unique_namespace(
+            asset["name"] + "_",
+            prefix="_" if asset["name"][0].isdigit() else "",
+            suffix="_",
+        )
+
+        # Update the namespace, this requires the reference to be loaded
+        # But since we update the first it will always be loaded.
+        node = container["objectName"]
+        members = cmds.sets(node, query=True)
+        reference_node = self._get_reference_node(members)
+        assert reference_node, ("Imported container not supported; "
+                                "container must be referenced.")
+        fname = cmds.referenceQuery(reference_node, filename=True)
+        cmds.file(fname, edit=True, namespace=namespace)
+
+        # Workaround: Maya doesn't automatically rename the Reference Group
+        # and Locator namespace so let's do that manually.
+        associated_nodes = self._get_associated_nodes(reference_node)
+        old_namespaces = set()
+        for node in associated_nodes:
+            old_namespaces.add(get_namespace(node))
+            set_namespace(node, namespace)
+
+        # Also rename the actual name of the group node
+        def _get_group(nodes):
+            """Assume group is the one without shape nodes"""
+            groups = [n for n in nodes if
+                      not cmds.listRelatives(n, shapes=True)]
+            if len(groups) > 1:
+                raise RuntimeError(
+                    "More than a single reference node group found: %s" %
+                    groups)
+            if groups:
+                return groups[0]
+
+        associated_nodes = self._get_associated_nodes(reference_node)
+        group_node = _get_group(associated_nodes)
+        if group_node:
+            new_group_name = context["subset"]["name"]
+            cmds.rename(group_node, namespace + ":" + new_group_name)
+
+        # Delete old namespaces of associated nodes when empty now
+        for old_namespace in old_namespaces:
+            is_empty = not cmds.namespaceInfo(old_namespace,
+                                              listNamespace=True)
+            if is_empty:
+                cmds.namespace(removeNamespace=old_namespace)
+
+    def _get_associated_nodes(self, reference_node):
+        from maya import cmds
+
+        return cmds.listConnections(reference_node + ".associatedNode[0]",
+                                    source=True,
+                                    destination=True) or []
