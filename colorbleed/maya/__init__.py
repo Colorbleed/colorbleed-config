@@ -138,6 +138,8 @@ def on_init(_):
     # Add extra menu entry to Maya's Avalon Menu for "Remote Publish..."
     safe_deferred(_add_remote_publish_to_avalon_menu)
 
+    safe_deferred(_unload_autoloader_plugin())
+
 
 def on_before_save(return_code, _):
     """Run validation for scene's FPS prior to saving"""
@@ -245,3 +247,22 @@ def _add_remote_publish_to_avalon_menu():
                              "be published there..",
                   insertAfter=publish_menu_item,
                   parent=avalon_menu)
+
+
+def _unload_autoloader_plugin():
+    """Ensure autoLoader plug-in is unloaded.
+
+    The autoLoader plug-in is known  to cause some performance lag especially
+    with many paths/files in MAYA_MODULE_PATH on a network share. Since
+    we don't care about Maya Modules being updated as maya is running
+    we disable it.
+
+    """
+    plugin = "autoLoader"
+    if cmds.pluginInfo(plugin, query=True, loaded=True):
+        print("Unloading: %s" % plugin)
+        cmds.unloadPlugin(plugin)
+
+    # Disable auto loader for autoLoader (the irony)
+    if cmds.pluginInfo(plugin, query=True, autoload=True):
+        cmds.pluginInfo(plugin, edit=True, autoload=False)
