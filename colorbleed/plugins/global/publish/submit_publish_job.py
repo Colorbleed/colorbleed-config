@@ -102,7 +102,7 @@ def get_resources(version, extension=None):
 
 
 def get_resource_files(resources, frame_range, override=True):
-    res_collections, _ = clique.assemble(resources)
+    res_collections, _ = clique.assemble(resources, minimum_items=1)
     assert len(res_collections) == 1, "Multiple collections found"
     res_collection = res_collections[0]
 
@@ -229,7 +229,8 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
                 "colorbleed.renderlayer",
                 "colorbleed.vrayscene",
                 "colorbleed.usdrender",
-                "redshift_rop"]
+                "redshift_rop",
+                "arnold_rop"]
     targets = ["local"]
 
     def process(self, instance):
@@ -288,12 +289,12 @@ class SubmitDependentImageSequenceJobDeadline(pyblish.api.InstancePlugin):
                 "UserName": job["Props"]["User"],
                 "Comment": instance.context.data.get("comment", ""),
                 "InitialStatus": state,
-                
+
                 # Error out early on this job since it's unlikely
                 # a subsequent publish will suddenly succeed and
                 # this avoids trying to create tons of publishes
                 "OverrideJobFailureDetection": True,
-                "FailureDetectionJobErrors": 3  
+                "FailureDetectionJobErrors": 3
             },
             "PluginInfo": {
                 "Version": "3.6",

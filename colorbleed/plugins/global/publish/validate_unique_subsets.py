@@ -9,10 +9,16 @@ class ValidateUniqueSubsets(pyblish.api.ContextPlugin):
     Instances are allowed to overlap in the subset name however they should
     then each not overlap in any way for their families.
 
+    # TODO
+    This check is done per asset it's publishing to. So you *can* publish
+    lookDefault subsets to two different assets simultaneously.
+    # TODO ^^^
+
     """
 
     order = pyblish.api.ValidatorOrder
     label = "Validate Subsets Unique"
+    optional = True
 
     def process(self, context):
 

@@ -18,7 +18,8 @@ class CollectRenderSubsets(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.45
     families = ["colorbleed.renderlayer",
                 "colorbleed.usdrender",
-                "redshift_rop"]
+                "redshift_rop",
+                "arnold_rop"]
     label = "Collect Render Subsets"
 
     def process(self, instance):

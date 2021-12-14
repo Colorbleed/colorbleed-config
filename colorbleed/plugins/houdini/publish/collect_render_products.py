@@ -44,7 +44,14 @@ def get_var_changed(variable=None):
 
 
 class CollectRenderProducts(pyblish.api.InstancePlugin):
-    """Collect USD Render Products"""
+    """Collect USD Render Products
+
+    Collects the instance.data["files"] for the render products.
+
+    Provides:
+        instance    -> files
+
+    """
 
     label = "Collect Render Products"
     order = pyblish.api.CollectorOrder + 0.4

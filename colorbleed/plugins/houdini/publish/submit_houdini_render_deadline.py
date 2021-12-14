@@ -27,7 +27,8 @@ class HoudiniSubmitRenderDeadline(pyblish.api.InstancePlugin):
     order = pyblish.api.IntegratorOrder
     hosts = ["houdini"]
     families = ["colorbleed.usdrender",
-                "redshift_rop"]
+                "redshift_rop",
+                "arnold_rop"]
     targets = ["local"]
 
     def process(self, instance):
