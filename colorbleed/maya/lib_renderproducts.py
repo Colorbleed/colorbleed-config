@@ -502,7 +502,7 @@ class RenderProductsArnold(ARenderProducts):
                 products.append(product)
 
             # todo: When Merge AOVs is enabled then light groups don't
-            #       get written to Separate Render Produts but are included
+            #       get written to Separate Render Products but are included
             #       with the AOV layer. (Still need to test whether also
             #       the case when selecting all light groups checkbox)
 
@@ -677,6 +677,18 @@ class RenderProductsVray(ARenderProducts):
 
         return layer_data
 
+    def _is_glare_channel_saved(self):
+
+        # Whether Glare / Lens Effects is enabled in V-Ray Frame Buffer
+        glare_enabled = bool(int(cmds.vray("vfbControl", "-glare")[0]))
+
+        # This returns a list with a single string when glare Lens Effects
+        # output is enabled  but returns an empty list when deactivated.
+        # The value can be ["renderelem"], ["image"] or []
+        glare_mode = cmds.vray("vfbControl", "-glaremode")
+
+        return glare_enabled and "renderelem" in glare_mode
+
     def get_render_products(self):
         """Get all AOVs.
 
@@ -710,14 +722,18 @@ class RenderProductsVray(ARenderProducts):
             products.append(RenderProduct(productName="Alpha",
                                           ext=default_ext))
 
+        # include Glare output when set to be saved in V-Ray Frame Buffer
+        if self._is_glare_channel_saved():
+            products.append(RenderProduct(productName="Glare",
+                                          ext=default_ext))
+
         if image_format_str == "exr (multichannel)":
             # AOVs are merged in m-channel file, only main layer is rendered
             self.multipart = True
             return products
 
         # handle aovs from references
-        use_ref_aovs = self.render_instance.data.get(
-            "useReferencedAovs", False) or False
+        use_ref_aovs = self._get_attr("vraySettings.relements_usereferenced")
 
         # this will have list of all aovs no matter if they are coming from
         # reference or not.
