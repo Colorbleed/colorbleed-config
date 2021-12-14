@@ -2,6 +2,7 @@ from maya import cmds
 import maya.api.OpenMaya as om
 
 import pyblish.api
+import colorbleed.maya.lib as lib
 
 
 def get_all_parents(nodes):
@@ -107,7 +108,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
                                              exists=True)
             assert has_family, "\"%s\" was missing a family" % objset
 
-            members = cmds.sets(objset, query=True)
+            members = lib.get_container_members(objset)
             if members is None:
                 self.log.warning("Skipped empty instance: \"%s\" " % objset)
                 continue

@@ -92,26 +92,11 @@ def collect_input_containers(containers, nodes):
         list: Input avalon containers
 
     """
-
-    # Instead of querying all members of each set and then doing a
-    # lookup for many nodes we just check for destination connections
-    # to sets with which we assume membership. This makes the query
-    # much faster for large scenes.
-    connected_sets = set(cmds.listConnections(nodes,
-                                              source=False,
-                                              destination=True,
-                                              plugs=False,
-                                              connections=False,
-                                              t="objectSet",
-                                              exactType=True) or [])
-
-    containers_with_members = []
-    for container in containers:
-        node = container["objectName"]
-        if node in connected_sets:
-            containers_with_members.append(container)
-
-    return containers_with_members
+    
+    # Assume the containers have collected their cached '_members' data
+    # in the collector.
+    return [container for container in containers 
+            if any(node in container["_members"] for node in nodes)]
 
 
 class CollectUpstreamInputs(pyblish.api.InstancePlugin):
@@ -140,6 +125,9 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
             # Query the scenes' containers if there's no cache yet
             host = api.registered_host()
             scene_containers = list(host.ls())
+            for container in scene_containers:
+                # Embed the members into the container dictionary
+                container["_members"] = lib.get_container_members(container)
             instance.context.data["__cache_containers"] = scene_containers
 
         # Collect the relevant input containers for this instance
@@ -219,6 +207,8 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
             for shape in shapes:
                 shape_shaders = lib.get_shader_in_layer(shape,
                                                         layer=renderlayer)
+                if not shape_shaders:
+                    continue
                 shaders.update(shape_shaders)
             members.extend(shaders)
 
