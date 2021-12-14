@@ -61,7 +61,7 @@ class VdbLoader(api.Loader):
         # The path is either a single file or sequence in a folder.
         is_single_file = os.path.isfile(path)
         if is_single_file:
-            filename = path
+            filepath = path
         else:
             # The path points to the publish .vdb sequence folder so we
             # find the first file in there that ends with .vdb
@@ -71,15 +71,26 @@ class VdbLoader(api.Loader):
                 raise RuntimeError("Couldn't find first .vdb file of "
                                    "sequence in: %s" % path)
 
-            # Set <frame>.vdb to $F.vdb
-            first = re.sub(r"\.(\d+)\.vdb$", ".$F.vdb", first)
+            # Set <frame>.vdb to $F.vdb with the right padding amount
+            # Get frame padding from the first file
+            frame_str = first.rsplit(".", 2)[1]
+            padding = len(frame_str)
+            if frame_str.startswith("-"):
+                # Remove any negative sign from padding
+                padding -= 1
 
-            filename = os.path.join(path, first)
+            padding_str = "$F" if padding <= 1 else "$F{}".format(padding)
 
-        filename = os.path.normpath(filename)
-        filename = filename.replace("\\", "/")
+            filename = re.sub(r"\.(\d+)\.vdb$",
+                              ".{}.vdb".format(padding_str),
+                              first)
 
-        return filename
+            filepath = os.path.join(path, filename)
+
+        filepath = os.path.normpath(filepath)
+        filepath = filepath.replace("\\", "/")
+
+        return filepath
 
     def update(self, container, representation):
 
