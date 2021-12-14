@@ -30,9 +30,6 @@ class ModelLoader(colorbleed.maya.plugin.ReferenceLoader):
 
         return nodes
 
-    def switch(self, container, representation):
-        self.update(container, representation)
-
 
 class GpuCacheLoader(api.Loader):
     """Load model Alembic as gpuCache"""
@@ -98,7 +95,7 @@ class GpuCacheLoader(api.Loader):
         # Update the cache
         members = cmds.sets(container['objectName'], query=True)
         caches = cmds.ls(members, type="gpuCache", long=True)
-        
+
         if len(caches) > 1:
             print("Warning: Found more than one gpuCache in instance: %s" % caches)
         #assert len(caches) == 1, "This is a bug"

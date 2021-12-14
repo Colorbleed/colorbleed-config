@@ -40,6 +40,3 @@ class CameraLoader(colorbleed.maya.plugin.ReferenceLoader):
         self[:] = nodes
 
         return nodes
-
-    def switch(self, container, representation):
-        self.update(container, representation)

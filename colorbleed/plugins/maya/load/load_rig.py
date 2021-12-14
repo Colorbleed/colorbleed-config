@@ -65,6 +65,3 @@ class RigLoader(colorbleed.maya.plugin.ReferenceLoader):
                        family="colorbleed.animation",
                        options={"useSelection": True},
                        data={"dependencies": dependency})
-
-    def switch(self, container, representation):
-        self.update(container, representation)
