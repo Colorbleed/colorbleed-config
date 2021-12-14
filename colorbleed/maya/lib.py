@@ -258,7 +258,7 @@ def empty_sets(sets, force=False):
             cmds.connectAttr(src, dest)
 
         # Restore original members
-        for origin_set, members in original.iteritems():
+        for origin_set, members in original.items():
             cmds.sets(members, forceElement=origin_set)
 
 
@@ -393,7 +393,7 @@ def get_shader_assignments_from_shapes(shapes, components=True):
 
         # Build a mapping from parent to shapes to include in lookup.
         transforms = {shape.rsplit("|", 1)[0]: shape for shape in shapes}
-        lookup = set(shapes + transforms.keys())
+        lookup = set(shapes + list(transforms.keys()))
 
         component_assignments = defaultdict(list)
         for shading_group in assignments.keys():
@@ -481,7 +481,7 @@ def displaySmoothness(nodes,
         yield
     finally:
         # Revert state
-        for node, state in originals.iteritems():
+        for node, state in originals.items():
             if state:
                 cmds.displaySmoothness(node, **state)
 
@@ -524,7 +524,7 @@ def no_display_layers(nodes):
         yield
     finally:
         # Restore original members
-        for layer, members in original.iteritems():
+        for layer, members in original.items():
             cmds.editDisplayLayerMembers(layer, members, noRecurse=True)
 
 
@@ -612,9 +612,9 @@ def polyConstraint(components, *args, **kwargs):
                 # a `maya.cmds.select()` call will not trigger the constraint.
                 with reset_polySelectConstraint():
                     cmds.select(components, r=1, noExpand=True)
-                    return cmds.polySelectConstraint(*args, 
-                                                     mode=2, 
-                                                     returnSelection=True, 
+                    return cmds.polySelectConstraint(*args,
+                                                     mode=2,
+                                                     returnSelection=True,
                                                      **kwargs)
 
 
@@ -1136,6 +1136,41 @@ def set_attribute(attribute, value, node):
         cmds.setAttr(node_attr, value)
 
 
+def get_container_members(container):
+    """Returns the members of a container.
+
+    This includes the nodes from any loaded references in the container.
+    """
+    if isinstance(container, dict):
+        # Assume it's a container dictionary
+        container = container["objectName"]
+
+    members = cmds.sets(container, query=True) or []
+    members = cmds.ls(members, long=True, objectsOnly=True) or []
+    members = set(members)
+
+    # Include any referenced nodes from any reference in the container
+    # This is required since we've removed adding ALL nodes of a reference
+    # into the container set and only add the reference node now.
+    for ref in cmds.ls(members, exactType="reference", objectsOnly=True):
+
+        # Ignore any `:sharedReferenceNode`
+        if ref.rsplit(":", 1)[-1].startswith("sharedReferenceNode"):
+            continue
+
+        # Ignore _UNKNOWN_REF_NODE_ (PLN-160)
+        if ref.rsplit(":", 1)[-1].startswith("_UNKNOWN_REF_NODE_"):
+            continue
+
+        reference_members = cmds.referenceQuery(ref, nodes=True)
+        reference_members = cmds.ls(reference_members,
+                                    long=True,
+                                    objectsOnly=True)
+        members.update(reference_members)
+
+    return members
+
+
 # region LOOKDEV
 def list_looks(asset_id):
     """Return all look subsets for the given asset
@@ -1221,7 +1256,7 @@ def assign_look_by_version(nodes, version_id):
             container_node = pipeline.load(Loader, look_representation)
 
     # Get container members
-    shader_nodes = cmds.sets(container_node, query=True)
+    shader_nodes = get_container_members(container_node)
 
     # Load relationships
     shader_relation = api.get_representation_path(json_representation)
@@ -1646,7 +1681,7 @@ def get_container_transforms(container, members=None, root=False):
     """
 
     if not members:
-        members = cmds.sets(container["objectName"], query=True)
+        members = get_container_members(container["objectName"])
 
     results = cmds.ls(members, type="transform", long=True)
     if root:
@@ -1900,7 +1935,7 @@ def set_context_settings():
 
     project_data = lib.get_project_data()
     asset_data = lib.get_asset_data()
-    
+
     def get_value(keys, default):
         """Return key, value in this resolved context order:
             - asset.data[any(key)]
@@ -1909,7 +1944,7 @@ def set_context_settings():
         """
         if not isinstance(keys, (list, tuple)):
             keys = [keys]
-        
+
         # Search in asset first for all keys then search
         # in project for all keys. If not found return default
         lookup = (asset_data, project_data)
@@ -1917,39 +1952,39 @@ def set_context_settings():
             for key in keys:
                 if key in data:
                     return data[key]
-        
+
         return default
 
     # Set fps
     fps = get_value("fps", default=25)
     set_scene_fps(fps)
-    
+
     # Set frame range
     frame_start = get_value("frameStart", default=1001)
     frame_end = get_value("frameEnd", default=1100)
     set_frame_range(frame_start, frame_end)
-    
+
     # Set resolution
-    width = get_value(("resolutionWidth", 
+    width = get_value(("resolutionWidth",
                        "resolution_width"),    # backwards compatibility
                       default=1920)
-    height = get_value(("resolutionHeight", 
+    height = get_value(("resolutionHeight",
                         "resolution_height"),  # backwards compatibility
                        default=1080)
     set_scene_resolution(width, height)
-    
-    
+
+
 def set_frame_range(frame_start, frame_end):
 
     if frame_start is None or frame_end is None:
         log.debug("No valid start or end frame to "
                   "set: (%s-%s)" % (frame_start, frame_end))
         return
-        
+
     # Ensure integers
     frame_start = int(frame_start)
     frame_end = int(frame_end)
-    
+
     cmds.playbackOptions(animationStartTime=frame_start,
                          animationEndTime=frame_end,
                          minTime=frame_start,
@@ -1970,11 +2005,11 @@ def validate_fps():
 
     fps = lib.get_asset_fps()
     current_fps = mel.eval('currentTimeUnitToFPS()')  # returns float
-    
+
     # validate to up to 3 decimal places so that  23.376fps actually
-    # is matched correctly. No Maya FPS settings are defined with more 
+    # is matched correctly. No Maya FPS settings are defined with more
     # decimal points than three.
-    current_fps = round(current_fps, 3) 
+    current_fps = round(current_fps, 3)
 
     if current_fps != fps:
 

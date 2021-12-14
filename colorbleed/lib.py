@@ -23,7 +23,13 @@ log = logging.getLogger(__name__)
 def pairwise(iterable):
     """s -> (s0,s1), (s2,s3), (s4, s5), ..."""
     a = iter(iterable)
-    return itertools.izip(a, a)
+
+    if sys.version_info[0] == 2:
+        izip = itertools.izip
+    else:
+        izip = zip
+
+    return izip(a, a)
 
 
 def grouper(iterable, n, fillvalue=None):
@@ -35,7 +41,13 @@ def grouper(iterable, n, fillvalue=None):
     """
 
     args = [iter(iterable)] * n
-    return itertools.izip_longest(fillvalue=fillvalue, *args)
+
+    if sys.version_info[0] == 2:
+        zip_longest = itertools.izip_longest
+    else:
+        zip_longest = itertools.zip_longest
+
+    return zip_longest(fillvalue=fillvalue, *args)
 
 
 def is_latest(representation):

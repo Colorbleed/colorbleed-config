@@ -5,12 +5,16 @@ import os
 import re
 import string
 import glob
+import sys
 
 from .error import ParseError
 
 # Regex pattern that matches valid file
 # A filename may not contain \/:*?"<>|
 RE_FILENAME = r"[^\\/:\"*?<>|]"
+
+if sys.version_info[0] == 3:
+    basestring = str
 
 
 def format(pattern, data, allow_partial=True):

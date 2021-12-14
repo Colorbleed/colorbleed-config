@@ -19,6 +19,9 @@ import logging
 
 from avalon.vendor import jsonschema
 
+if sys.version_info[0] == 3:
+    basestring = str
+
 log_ = logging.getLogger(__name__)
 
 ValidationError = jsonschema.ValidationError
@@ -52,10 +55,6 @@ def validate(data):
                         schema,
                         types={"array": (list, tuple)},
                         resolver=resolver)
-
-
-if sys.version_info[0] == 3:
-    basestring = str
 
 
 _MODULE_DIR = os.path.dirname(__file__)
