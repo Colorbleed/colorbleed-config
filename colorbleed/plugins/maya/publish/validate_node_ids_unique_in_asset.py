@@ -82,7 +82,7 @@ class ValidateNodeIdsUniqueInstanceClash(pyblish.api.InstancePlugin):
         # Take only the ids with more than one member
         invalid = list()
         ids = get_instance_node_ids(instance)
-        for _id, members in ids.iteritems():
+        for _id, members in ids.items():
             if _id in other_ids:
                 cls.log.error("ID found on multiple nodes: '%s'" % members)
                 cls.log.debug("Clashes with: %s" % (other_ids[_id],))
