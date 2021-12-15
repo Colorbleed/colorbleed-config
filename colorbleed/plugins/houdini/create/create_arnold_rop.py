@@ -42,7 +42,6 @@ class CreateArnoldRop(houdini.Creator):
             # Arnold ROP settings
             "ar_picture": prefix,
             "ar_exr_half_precision": 1           # half precision
-            #"ar_abort_on_license_fail": 1         # abort on no license
         }
         instance.setParms(parms)
 
