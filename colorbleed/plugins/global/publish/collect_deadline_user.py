@@ -40,7 +40,8 @@ class CollectDeadlineUser(pyblish.api.ContextPlugin):
                 "colorbleed.saver.deadline",
                 "colorbleed.usdrender",
                 "redshift_rop",
-                "arnold_rop"]
+                "arnold_rop",
+                "ass"]
 
     def process(self, context):
         """Inject the current working file"""

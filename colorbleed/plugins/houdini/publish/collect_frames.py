@@ -8,10 +8,11 @@ from colorbleed.houdini import lib
 class CollectFrames(pyblish.api.InstancePlugin):
     """Collect all frames which would be saved from the ROP nodes"""
 
-    order = pyblish.api.CollectorOrder
+    order = pyblish.api.CollectorOrder + 0.4
     label = "Collect Frames"
     families = ["colorbleed.vdbcache",
-                "colorbleed.imagesequence"]
+                "colorbleed.imagesequence",
+                "ass"]
 
     def process(self, instance):
 

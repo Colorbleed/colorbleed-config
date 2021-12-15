@@ -37,6 +37,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "colorbleed.usd",
                 "colorbleed.usd.bootstrap",
                 "colorbleed.usd.layered",
+                "ass",
                 "gpuCache",
                 "usdCamera",
                 "usdModel",
