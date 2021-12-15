@@ -34,7 +34,7 @@ class CreateArnoldRop(houdini.Creator):
         basename = instance.name()
         instance.setName(basename + "_ROP", unique_name=True)
 
-        prefix = '${HIP}/render/${HIPNAME}/`chs("subset")`.${AOV}.$F4.exr'
+        prefix = '${HIP}/render/${HIPNAME}/`chs("subset")`.$F4.exr'
         parms = {
             # Render frame range
             "trange": 1,
