@@ -87,5 +87,17 @@ class ValidateRenderFilenamePrefix(pyblish.api.InstancePlugin):
         key = "multi" if count > 1 else "single"
         prefixes = cls.settings[key]
 
-        return prefixes.get(renderer, prefixes["default"])
+        prefix = prefixes.get(renderer, prefixes["default"])
+
+        # For arnold whenever Merge AOVS is enabled make sure that
+        # .<RenderPass> is removed from the file path prefix, otherwise
+        # AOVs will still never get merged.
+        if renderer == "arnold":
+            layer = instance.data["setMembers"]
+            merge_aovs = lib.get_attr_in_layer("defaultArnoldDriver.mergeAOVs",
+                                               layer=layer)
+            if merge_aovs:
+                prefix = prefix.replace(".<RenderPass>", "")
+
+        return prefix
 
