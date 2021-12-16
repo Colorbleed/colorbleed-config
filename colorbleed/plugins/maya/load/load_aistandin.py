@@ -7,7 +7,7 @@ from avalon import api, io
 class LoadAiStandin(api.Loader):
     """Load AiStandin"""
 
-    families = ["colorbleed.pointcache", "colorbleed.model"]
+    families = ["colorbleed.pointcache", "colorbleed.model", "ass"]
     representations = ["abc", "ass", "usd", "usdc", "usda"]
 
     label = "Load as Arnold StandIn"
@@ -38,7 +38,7 @@ class LoadAiStandin(api.Loader):
 
         # Root group
         label = "{}:{}".format(namespace, name)
-        
+
         # Create transform with shape
         transform_name = label + "_aiStandIn"
         transform = cmds.createNode("transform", name=transform_name)
@@ -48,7 +48,7 @@ class LoadAiStandin(api.Loader):
 
         self._apply_settings(standin,
                              path=self.fname)
-                             
+
         cmds.lockNode(standin, lock=True)
 
         nodes = [transform, standin]
